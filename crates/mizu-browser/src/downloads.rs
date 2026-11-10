@@ -28,6 +28,8 @@ pub struct DownloadItem {
 pub struct Downloads {
     pub items: Vec<DownloadItem>,
     pub dirty: bool,
+    /// A state change that must reach the UI without throttling.
+    pub urgent: bool,
 }
 
 fn map_state(s: DownloadStatus) -> DownloadState {
@@ -110,7 +112,7 @@ impl Downloads {
                 sample: (Instant::now(), r.received_bytes),
             })
             .collect();
-        Self { items, dirty: true }
+        Self { items, dirty: true, urgent: true }
     }
 
     pub fn start(&mut self, op: Download, private: bool, storage: Option<&Storage>) -> DownloadId {
@@ -163,6 +165,7 @@ impl Downloads {
         if !new_state.is_active() {
             item.speed = 0.0;
         }
+        self.urgent |= state_changed;
         if state_changed || !new_state.is_active() {
             if let (Some(db), Some(storage)) = (item.db_id, storage) {
                 let _ = storage.update_download(db, item.state, item.received, item.total, &item.path);

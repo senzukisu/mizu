@@ -559,6 +559,7 @@ fn toggle_bookmark(app: &mut App, window: WindowId) {
         let title = if title.is_empty() { url.clone() } else { title };
         let _ = app.storage.add_bookmark(mizu_storage::BOOKMARKS_BAR_ID, &title, &url);
     }
+    app.bookmarks_bar = None;
     if let Some(w) = app.window_mut(window) {
         w.state_dirty = true;
     }

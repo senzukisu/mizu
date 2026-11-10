@@ -87,6 +87,7 @@ button {
 }
 
 .tab {
+  contain: layout style;
   -webkit-app-region: no-drag;
   app-region: no-drag;
   position: relative;
@@ -105,7 +106,6 @@ button {
     background var(--t-fast),
     color var(--t-fast),
     transform var(--t-med) var(--ease),
-    max-width var(--t-med) var(--ease),
     opacity var(--t-med);
 }
 .tab.pinned {
@@ -159,15 +159,48 @@ button {
 .tab:hover::before {
   opacity: 0 !important;
 }
+/* Closing: the tab's width is pinned in JS, then collapses while siblings slide in. */
 .tab.closing {
-  max-width: 0 !important;
+  flex: 0 0 auto !important;
   min-width: 0 !important;
+  max-width: none !important;
   padding: 0 !important;
+  margin: 0 !important;
   opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  transition:
+    width var(--t-med) var(--ease),
+    opacity calc(var(--t-med) * 0.6) linear;
 }
+.tab.closing > * {
+  transform: scale(0.9);
+  transition: transform var(--t-med) var(--ease);
+}
+/* Opening: grows from zero width, content fades and rises. */
 .tab.entering {
-  opacity: 0;
-  transform: translateY(6px);
+  animation: tab-grow var(--t-med) var(--ease) both;
+}
+.tab.entering > * {
+  animation: tab-content-in var(--t-slow) var(--ease) both;
+}
+@keyframes tab-grow {
+  from {
+    max-width: 0;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+@keyframes tab-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.96);
+  }
+}
+.tab.active .fav,
+.tab.active .title {
+  animation: none;
 }
 .tab.dragging {
   transition: none;
@@ -563,4 +596,20 @@ button {
   color: var(--ink-3);
   font-size: var(--fs-sm);
   padding: 0 6px;
+}
+
+.omni-btn.install {
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 0 10px 0 8px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.omni-btn.install:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  filter: brightness(1.08);
+}
+.omni-btn.install:disabled {
+  opacity: 0.6;
 }

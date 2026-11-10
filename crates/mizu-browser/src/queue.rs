@@ -40,6 +40,11 @@ pub enum WorkerResult {
     FiltersUpdated,
     ScriptFetched { url: String, result: Result<(String, String), String> },
     MediaReport(Box<mizu_media::SystemMediaReport>, u64),
+    ExtensionDownloaded {
+        key: mizu_engine::ViewKey,
+        rid: Option<u64>,
+        result: Result<Vec<u8>, String>,
+    },
 }
 
 thread_local! {

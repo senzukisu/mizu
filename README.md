@@ -29,7 +29,7 @@ Windows keeps the engine updated, including security fixes.
 **Mizu Scripts: a built-in userscript manager.** It is compatible with the Greasemonkey/Tampermonkey script format: `@match`, `@include`, `@exclude`, `@require`, `@run-at`, and the common `GM_*` / `GM.*` API.
 Click any `.user.js` link (Greasy Fork, OpenUserJS) to install a script.
 
-**Extensions.** Chromium Manifest V3 extensions, for example uBlock Origin Lite. Install them from a folder, a `.zip` or a `.crx` file.
+**Extensions.** Chromium Manifest V3 extensions, for example uBlock Origin Lite. Open an extension page on the Chrome Web Store or Microsoft Edge Add-ons and press **Add to Mizu**, or install from a `.crx`, `.zip` or folder.
 
 **Tabs and sessions.**
 - Drag to reorder, pin, duplicate, mute, and reopen closed tabs (Ctrl+Shift+T).

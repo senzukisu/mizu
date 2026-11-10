@@ -221,6 +221,12 @@ impl FilterStore {
 
 /// Fetches a text resource over HTTPS with a size cap (filter lists, userscripts).
 pub fn fetch_https_text(url: &str) -> Result<String, ListError> {
+    let bytes = fetch_https_bytes(url, MAX_DOWNLOAD_BYTES)?;
+    String::from_utf8(bytes).map_err(|_| ListError::Http("response is not UTF-8 text".into()))
+}
+
+/// Fetches a binary resource over HTTPS (redirects must stay on HTTPS), up to `limit` bytes.
+pub fn fetch_https_bytes(url: &str, limit: u64) -> Result<Vec<u8>, ListError> {
     if !url.starts_with("https://") {
         return Err(ListError::InsecureUrl);
     }
@@ -238,14 +244,14 @@ pub fn fetch_https_text(url: &str) -> Result<String, ListError> {
         .build()
         .into();
     let mut response = agent.get(url).call().map_err(|e| ListError::Http(e.to_string()))?;
-    let mut text = String::new();
+    let mut bytes = Vec::new();
     response
         .body_mut()
         .as_reader()
-        .take(MAX_DOWNLOAD_BYTES)
-        .read_to_string(&mut text)
+        .take(limit)
+        .read_to_end(&mut bytes)
         .map_err(|e| ListError::Http(e.to_string()))?;
-    Ok(text)
+    Ok(bytes)
 }
 
 fn looks_like_filter_list(text: &str) -> bool {

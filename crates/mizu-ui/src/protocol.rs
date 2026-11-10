@@ -149,6 +149,8 @@ pub enum Command {
     ScriptSource { id: String },
     ExtensionsGet,
     ExtensionInstall,
+    /// Install from a Chrome Web Store / Edge Add-ons page URL or an extension id.
+    ExtensionInstallFromStore { url: String },
     ExtensionToggle { id: String, enabled: bool },
     ExtensionRemove { id: String },
     ExtensionOpen { id: String },

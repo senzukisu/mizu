@@ -27,6 +27,7 @@ use windows::Win32::UI::WindowsAndMessaging::*;
 const TIMER_SESSION: usize = 1;
 const TIMER_SLEEP: usize = 2;
 const TIMER_STATS: usize = 3;
+const TIMER_FLUSH: usize = 4;
 
 /// A permission prompt waiting for the user.
 pub struct PendingPermission {
@@ -69,6 +70,10 @@ pub struct App {
     pub startup_notice: Option<String>,
     /// Replies that complete asynchronously: (view key, request id).
     pub media_waiters: HashMap<u64, (ViewKey, u64)>,
+    /// Cached bookmarks-bar items for the chrome state (None = needs reload).
+    pub bookmarks_bar: Option<Vec<serde_json::Value>>,
+    /// Last time download progress was pushed to the UI (progress events are throttled).
+    last_downloads_push: std::time::Instant,
     pub quitting: bool,
 }
 
@@ -218,6 +223,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         filters_updating: true,
         startup_notice,
         media_waiters: HashMap::new(),
+        bookmarks_bar: None,
+        last_downloads_push: std::time::Instant::now(),
         quitting: false,
     };
     APP.with(|a| *a.borrow_mut() = Some(app));
@@ -350,8 +357,21 @@ impl App {
                 w.state_dirty = true;
             }
         }
-        if self.downloads.dirty {
+        // Progress events arrive many times per second per download; ~4 UI updates per second
+        // are enough. State changes (finished, paused, failed) are pushed immediately.
+        let throttled = !self.downloads.urgent
+            && self.last_downloads_push.elapsed() < std::time::Duration::from_millis(250);
+        if self.downloads.dirty && throttled {
+            // Make sure the final progress reaches the UI even if no further event arrives.
+            // SAFETY: one-shot timer on our message window.
+            unsafe {
+                SetTimer(Some(self.msg_hwnd), TIMER_FLUSH, 260, None);
+            }
+        }
+        if self.downloads.dirty && !throttled {
             self.downloads.dirty = false;
+            self.downloads.urgent = false;
+            self.last_downloads_push = std::time::Instant::now();
             let any_private = self.windows.iter().any(|w| w.private);
             let items = self.downloads.to_json(any_private);
             let ev = Event::Downloads { items: items.clone() }.to_json();
@@ -385,6 +405,9 @@ impl App {
                 crate::internal::broadcast_to_pages(self, "shield", r#"{"type":"toast","message":"Filter lists updated"}"#);
             }
             WorkerResult::ScriptFetched { url, result } => self.finish_script_fetch(url, result),
+            WorkerResult::ExtensionDownloaded { key, rid, result } => {
+                crate::extensions::finish_store_install(self, key, rid, result);
+            }
             WorkerResult::MediaReport(report, token) => {
                 if let Some((key, rid)) = self.media_waiters.remove(&token) {
                     crate::commands::reply(key, rid, serde_json::to_value(&*report).unwrap_or_default());
@@ -401,6 +424,13 @@ impl App {
             }
             TIMER_SLEEP => self.sleep_background_tabs(),
             TIMER_STATS => self.save_stats(),
+            TIMER_FLUSH => {
+                // SAFETY: stopping our own one-shot timer.
+                unsafe {
+                    let _ = KillTimer(Some(self.msg_hwnd), TIMER_FLUSH);
+                }
+                self.downloads.urgent = true;
+            }
             _ => {}
         }
     }

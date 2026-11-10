@@ -366,13 +366,19 @@ impl App {
     // ───────────────────────────── State for the chrome ─────────────────────────────
 
     pub fn push_window_state(&mut self, id: WindowId) {
+        // The bookmarks bar rarely changes; it is cached and invalidated by bookmark edits.
+        if self.bookmarks_bar.is_none() {
+            self.bookmarks_bar = Some(
+                self.storage
+                    .bookmark_children(mizu_storage::BOOKMARKS_BAR_ID)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|b| json!({ "id": b.id, "title": b.title, "url": b.url, "kind": b.kind }))
+                    .collect(),
+            );
+        }
         let bookmarks: Vec<serde_json::Value> = if self.settings.appearance.show_bookmarks_bar {
-            self.storage
-                .bookmark_children(mizu_storage::BOOKMARKS_BAR_ID)
-                .unwrap_or_default()
-                .into_iter()
-                .map(|b| json!({ "id": b.id, "title": b.title, "url": b.url, "kind": b.kind }))
-                .collect()
+            self.bookmarks_bar.clone().unwrap_or_default()
         } else {
             Vec::new()
         };
@@ -434,6 +440,7 @@ impl App {
                 "blocked": blocked,
                 "shield": shield_on,
                 "crashed": s.crashed,
+                "store_extension": !w.private && crate::extensions::parse_store_url(&t.url).is_some(),
             }))
         });
         let state = json!({

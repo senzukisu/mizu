@@ -101,6 +101,105 @@ pub fn install(app: &mut App, window: WindowId, key: ViewKey, rid: Option<u64>) 
     Ok(None)
 }
 
+// ───────────────────────── Web stores ─────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Store {
+    Chrome,
+    Edge,
+}
+
+fn is_extension_id(s: &str) -> bool {
+    s.len() == 32 && s.bytes().all(|b| (b'a'..=b'p').contains(&b))
+}
+
+/// Recognises store detail pages (and bare extension ids) and returns the store and id.
+pub fn parse_store_url(input: &str) -> Option<(Store, String)> {
+    let input = input.trim();
+    if is_extension_id(input) {
+        return Some((Store::Chrome, input.to_owned()));
+    }
+    let url = url::Url::parse(input).ok()?;
+    let host = url.host_str()?;
+    let store = match host {
+        "chromewebstore.google.com" | "chrome.google.com" => Store::Chrome,
+        "microsoftedge.microsoft.com" => Store::Edge,
+        _ => return None,
+    };
+    let segments: Vec<&str> = url.path_segments()?.collect();
+    let detail = segments.iter().position(|s| *s == "detail")?;
+    segments[detail + 1..].iter().find(|s| is_extension_id(s)).map(|id| (store, (*id).to_owned()))
+}
+
+/// Official update-service URL that redirects to the extension's signed CRX package.
+fn crx_url(store: Store, id: &str) -> String {
+    match store {
+        Store::Chrome => {
+            let engine = mizu_engine::browser_version().unwrap_or_else(|| "130.0.0.0".into());
+            let version: String = engine.split(' ').next().unwrap_or("130.0.0.0").to_owned();
+            format!(
+                "https://clients2.google.com/service/update2/crx?response=redirect&prodversion={version}&acceptformat=crx2,crx3&x=id%3D{id}%26uc"
+            )
+        }
+        Store::Edge => format!(
+            "https://edge.microsoft.com/extensionwebstorestorebase/v1/crx?response=redirect&x=id%3D{id}%26installsource%3Dondemand%26uc"
+        ),
+    }
+}
+
+pub fn install_from_store(app: &mut App, key: ViewKey, rid: Option<u64>, input: &str) -> CmdResult {
+    require_view(app)?;
+    let (store, id) = parse_store_url(input)
+        .ok_or("Paste the address of an extension page on the Chrome Web Store or Microsoft Edge Add-ons.")?;
+    tracing::info!(?store, id, "downloading extension from store");
+    let sender = app.worker.clone();
+    let url = crx_url(store, &id);
+    std::thread::spawn(move || {
+        const LIMIT: u64 = 200 * 1024 * 1024;
+        let result = mizu_privacy::fetch_https_bytes(&url, LIMIT).map_err(|e| e.to_string()).and_then(|b| {
+            if b.starts_with(b"Cr24") || b.starts_with(b"PK") {
+                Ok(b)
+            } else {
+                Err("The store did not return an extension package (it may be unavailable in your region or not a Chromium extension).".into())
+            }
+        });
+        sender.send(crate::queue::WorkerResult::ExtensionDownloaded { key, rid, result });
+    });
+    Ok(None)
+}
+
+pub fn finish_store_install(app: &mut App, key: ViewKey, rid: Option<u64>, result: Result<Vec<u8>, String>) {
+    let fail = |msg: String| {
+        if let Some(rid) = rid {
+            reply_err(key, rid, msg);
+        }
+    };
+    let bytes = match result {
+        Ok(b) => b,
+        Err(e) => return fail(e),
+    };
+    let folder = match prepare_archive(&bytes, &app.paths.extensions()) {
+        Ok(f) => f,
+        Err(e) => return fail(e),
+    };
+    let Some(view) = profile_view(app) else { return fail("Open a normal window first.".into()) };
+    let folder_str = folder.to_string_lossy().into_owned();
+    view.add_extension(&folder_str, move |res| match res {
+        Ok(info) => {
+            tracing::info!(name = info.name, "extension installed from store");
+            if let Some(rid) = rid {
+                reply(key, rid, json!({ "id": info.id, "name": info.name }));
+            }
+        }
+        Err(e) => {
+            let _ = std::fs::remove_dir_all(&folder);
+            if let Some(rid) = rid {
+                reply_err(key, rid, format!("The engine could not install this extension: {e}. Manifest V2 extensions are no longer supported by Chromium."));
+            }
+        }
+    });
+}
+
 pub fn toggle(app: &mut App, key: ViewKey, rid: Option<u64>, id: String, enabled: bool) -> CmdResult {
     let view = require_view(app)?;
     view.enable_extension(&id, enabled, move |ok| {
@@ -181,17 +280,30 @@ fn resolve_name(dir: &Path, manifest: &Value) -> Option<String> {
 /// Copies or unpacks the chosen extension into the profile and returns the folder.
 fn prepare(picked: &Path, dest_root: &Path) -> Result<PathBuf, String> {
     let name = picked.file_name().map(|n| n.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+    if name == "manifest.json" {
+        let dest = new_dest(dest_root)?;
+        let src = picked.parent().ok_or("invalid path")?;
+        return finish_prepare(copy_dir(src, &dest, 0), dest);
+    }
+    let bytes = std::fs::read(picked).map_err(|e| e.to_string())?;
+    prepare_archive(&bytes, dest_root)
+}
+
+fn new_dest(dest_root: &Path) -> Result<PathBuf, String> {
     let stamp = format!("{:x}", mizu_storage::now_ms());
     let dest = dest_root.join(format!("ext-{stamp}"));
     std::fs::create_dir_all(&dest).map_err(|e| e.to_string())?;
-    let result = if name == "manifest.json" {
-        let src = picked.parent().ok_or("invalid path")?;
-        copy_dir(src, &dest, 0)
-    } else {
-        let bytes = std::fs::read(picked).map_err(|e| e.to_string())?;
-        let zip = if name.ends_with(".crx") { strip_crx_header(&bytes)? } else { &bytes[..] };
-        unzip(zip, &dest)
-    };
+    Ok(dest)
+}
+
+/// Unpacks a `.crx` (detected by its magic) or `.zip` archive into the profile.
+fn prepare_archive(bytes: &[u8], dest_root: &Path) -> Result<PathBuf, String> {
+    let dest = new_dest(dest_root)?;
+    let zip = if bytes.starts_with(b"Cr24") { strip_crx_header(bytes)? } else { bytes };
+    finish_prepare(unzip(zip, &dest), dest)
+}
+
+fn finish_prepare(result: Result<(), String>, dest: PathBuf) -> Result<PathBuf, String> {
     if let Err(e) = result {
         let _ = std::fs::remove_dir_all(&dest);
         return Err(e);
@@ -294,6 +406,39 @@ mod tests {
         crx.extend(b"PK");
         assert_eq!(strip_crx_header(&crx).unwrap(), b"PK");
         assert!(strip_crx_header(b"PK\x03\x04").is_err());
+    }
+
+    /// `MIZU_TEST_CRX=<path to a .crx> cargo test -p mizu-browser crx_unpacks -- --ignored`
+    #[test]
+    #[ignore = "needs a real CRX file"]
+    fn crx_unpacks() {
+        let path = std::env::var("MIZU_TEST_CRX").expect("set MIZU_TEST_CRX");
+        let bytes = std::fs::read(path).unwrap();
+        let dir = std::env::temp_dir().join(format!("mizu-crx-{}", std::process::id()));
+        let root = prepare_archive(&bytes, &dir).unwrap();
+        let manifest = read_manifest(&root.join("manifest.json")).unwrap();
+        assert!(manifest["manifest_version"].as_i64().is_some());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn parses_store_urls() {
+        let id = "ddkjiahejlhfcafbddmgiahcphecmpfh";
+        assert_eq!(
+            parse_store_url(&format!("https://chromewebstore.google.com/detail/ublock-origin-lite/{id}")),
+            Some((Store::Chrome, id.into()))
+        );
+        assert_eq!(
+            parse_store_url(&format!("https://chrome.google.com/webstore/detail/x/{id}?hl=en")),
+            Some((Store::Chrome, id.into()))
+        );
+        let edge = "cimighlppcgcoapaliogpjjdehbnofhn";
+        assert_eq!(
+            parse_store_url(&format!("https://microsoftedge.microsoft.com/addons/detail/ublock-origin-lite/{edge}")),
+            Some((Store::Edge, edge.into()))
+        );
+        assert_eq!(parse_store_url(id), Some((Store::Chrome, id.into())));
+        assert_eq!(parse_store_url("https://evil.example/detail/x/ddkjiahejlhfcafbddmgiahcphecmpfh"), None);
     }
 
     #[test]

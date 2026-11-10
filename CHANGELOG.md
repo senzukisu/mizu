@@ -46,9 +46,11 @@ First development release.
 ### Userscripts & extensions
 - Mizu Scripts: Greasemonkey/Tampermonkey-compatible userscript manager with install-from-link, `@require`, `GM_*` API
   and per-script storage protected by a per-page token.
-- Chromium MV3 extensions from a folder, `.zip` or `.crx`; enable, disable, remove, open options.
+- Chromium MV3 extensions: one-click "Add to Mizu" on Chrome Web Store / Edge Add-ons pages (or paste a store link),
+  or install from a `.crx`, `.zip` or unpacked folder; enable, disable, remove, open options.
 
 ### Performance
+- Chrome UI renders at most once per frame; download progress pushed ~4×/s; bookmarks bar cached.
 - Sleeping tabs (configurable delay), efficiency mode (low memory target for background tabs), hardware acceleration switch.
 
 ### Known limitations

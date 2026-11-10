@@ -387,6 +387,7 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
         // ── Extensions ───────────────────────────────────────────
         Command::ExtensionsGet => crate::extensions::list(app, key, current_rid()),
         Command::ExtensionInstall => crate::extensions::install(app, window, key, current_rid()),
+        Command::ExtensionInstallFromStore { url } => crate::extensions::install_from_store(app, key, current_rid(), &url),
         Command::ExtensionToggle { id, enabled } => crate::extensions::toggle(app, key, current_rid(), id, enabled),
         Command::ExtensionRemove { id } => crate::extensions::remove(app, key, current_rid(), id),
         Command::ExtensionOpen { id } => crate::extensions::open(app, window, id),
@@ -399,6 +400,7 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
 }
 
 fn mark_all_dirty(app: &mut App) {
+    app.bookmarks_bar = None;
     for w in &mut app.windows {
         w.state_dirty = true;
     }

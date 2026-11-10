@@ -129,7 +129,30 @@ async function extensionsView() {
   } catch (err) {
     card.append(h('div', { class: 'empty-state' }, icon('puzzle'), h('div', { text: err.message })));
   }
+  const link = h('input', { type: 'url', placeholder: 'Chrome Web Store or Edge Add-ons link, e.g. https://chromewebstore.google.com/detail/…', style: { flex: '1' } });
+  const fromStore = h('button', { class: 'btn primary', text: 'Add from store' });
+  const doStore = () => {
+    if (!link.value.trim()) return;
+    fromStore.disabled = true;
+    fromStore.textContent = 'Downloading…';
+    mizu.request('extension_install_from_store', { url: link.value.trim() }).then((r) => {
+      showToast(`${r.name} installed`);
+      render();
+    }).catch((e) => showToast(e.message)).finally(() => {
+      fromStore.disabled = false;
+      fromStore.textContent = 'Add from store';
+    });
+  };
+  fromStore.addEventListener('click', doStore);
+  link.addEventListener('keydown', (e) => e.key === 'Enter' && doStore());
+  const storeCard = h('section', { class: 'card' },
+    h('h2', { text: 'Install from a web store' }),
+    h('p', { class: 'note', text: 'Open an extension page on chromewebstore.google.com or microsoftedge.microsoft.com and press "Add to Mizu" in the address bar — or paste its link here.' }),
+    h('div', { class: 'setting' }, link, fromStore));
+  install.className = 'btn';
+  install.textContent = 'Install from file…';
   return [
+    storeCard,
     card,
     h('div', { class: 'row-actions' }, install),
     h('p', { class: 'muted', text: 'Mizu runs Chromium Manifest V3 extensions through its engine. Choose an unpacked extension folder\'s manifest.json, or a .zip / .crx file. Extensions have no toolbar button in Mizu 0.1 — open their options from this page. Example: uBlock Origin Lite (download the Chromium .zip from its GitHub releases page). Mizu Shield already blocks ads without any extension.' }),

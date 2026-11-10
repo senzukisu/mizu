@@ -56,6 +56,17 @@ $('menu').addEventListener('click', () => flyout('menu', $('menu')));
 els.downloads.addEventListener('click', () => flyout('downloads', els.downloads));
 els.shield.addEventListener('click', () => flyout('shield', els.shield));
 els.site.addEventListener('click', () => flyout('site_info', els.site));
+const extInstall = $('ext-install');
+extInstall.append(icon('puzzle'), h('span', { text: 'Add to Mizu' }));
+extInstall.addEventListener('click', () => {
+  extInstall.disabled = true;
+  toast('Installing extension…');
+  mizu
+    .request('extension_install_from_store', { url: state?.nav?.url || '' })
+    .then((r) => toast(`${r.name} added to Mizu`))
+    .catch((e) => toast(e.message))
+    .finally(() => (extInstall.disabled = false));
+});
 els.star.addEventListener('click', () => {
   if (!state?.nav?.bookmarked) mizu.send('toggle_bookmark');
   flyout('bookmark', els.star);
@@ -107,6 +118,7 @@ function tabSignature(t) {
 
 function buildTab(t) {
   const el = h('div', { class: 'tab', role: 'tab', dataset: { id: t.id } });
+  observeTab(el);
   el.addEventListener('pointerdown', (e) => onTabPointerDown(e, el));
   el.addEventListener('auxclick', (e) => {
     if (e.button === 1) {
@@ -154,9 +166,25 @@ function fillTab(el, t) {
   el.append(close);
 }
 
-function closeTab(el) {
+// Collapses a tab smoothly: pin its current width, then animate to zero.
+function animateOut(el) {
+  if (el._out) return;
+  el._out = true;
+  el.style.width = `${el.getBoundingClientRect().width}px`;
+  el.classList.remove('entering');
   el.classList.add('closing');
-  mizu.send('close_tab', { id: Number(el.dataset.id) });
+  void el.offsetWidth;
+  el.style.width = '0px';
+  const done = () => el.remove();
+  el.addEventListener('transitionend', (e) => e.propertyName === 'width' && done(), { once: false });
+  setTimeout(done, 400);
+}
+
+function closeTab(el) {
+  const id = Number(el.dataset.id);
+  tabEls.delete(id);
+  animateOut(el);
+  mizu.send('close_tab', { id });
 }
 
 function renderTabs() {
@@ -168,31 +196,35 @@ function renderTabs() {
     if (!el) {
       el = buildTab(t);
       tabEls.set(t.id, el);
-      el.classList.add('entering');
-      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('entering')));
+      if (rendered) {
+        el.classList.add('entering');
+        el.addEventListener('animationend', () => el.classList.remove('entering'), { once: true });
+      }
     }
-    el.classList.remove('closing');
     el.classList.toggle('active', t.id === state.active);
     el.classList.toggle('pinned', !!t.pinned);
     el.classList.toggle('sleeping', !!t.sleeping);
     el.setAttribute('aria-selected', t.id === state.active ? 'true' : 'false');
     fillTab(el, t);
-    if (els.tabs.children[i] !== el) els.tabs.insertBefore(el, els.tabs.children[i] || null);
+    // Closing tabs stay in the DOM while animating, so position against live tabs only.
+    const live = [...els.tabs.children].filter((c) => !c._out);
+    if (live[i] !== el) els.tabs.insertBefore(el, live[i] || null);
   });
   for (const [id, el] of tabEls) {
     if (!seen.has(id)) {
       tabEls.delete(id);
-      el.classList.add('closing');
-      setTimeout(() => el.remove(), 220);
+      animateOut(el);
     }
   }
-  requestAnimationFrame(markNarrow);
+  rendered = true;
 }
+let rendered = false;
 
-function markNarrow() {
-  for (const el of tabEls.values()) el.classList.toggle('narrow', el.getBoundingClientRect().width < 76);
-}
-window.addEventListener('resize', markNarrow);
+// Narrow-tab layout follows the strip's size without forcing layout on every state update.
+const narrowObserver = new ResizeObserver((entries) => {
+  for (const e of entries) e.target.classList.toggle('narrow', e.contentRect.width < 60);
+});
+const observeTab = (el) => narrowObserver.observe(el);
 
 // Drag to reorder (within the strip). Pinned and unpinned tabs stay in their own groups;
 // the browser enforces that too.
@@ -200,7 +232,7 @@ function onTabPointerDown(e, el) {
   if (e.button !== 0) return;
   const id = Number(el.dataset.id);
   const startX = e.clientX;
-  const siblings = [...els.tabs.children].filter((c) => !c.classList.contains('closing'));
+  const siblings = [...els.tabs.children].filter((c) => !c._out);
   const from = siblings.indexOf(el);
   const rects = siblings.map((s) => s.getBoundingClientRect());
   let dragging = false;
@@ -356,6 +388,9 @@ function renderNav() {
   els.star.classList.toggle('on', !!nav.bookmarked);
   els.star.replaceChildren(icon(nav.bookmarked ? 'star-filled' : 'star'));
 
+  const install = $('ext-install');
+  install.hidden = !nav.store_extension;
+
   const web = nav.security === 'secure' || nav.security === 'insecure';
   els.shield.hidden = !web;
   els.shield.classList.toggle('active', !!nav.shield);
@@ -440,9 +475,16 @@ function applySettings(s) {
 }
 
 // ── Browser events ──────────────────────────────────────────
+// Many state updates can arrive per frame (loading, titles, favicons): render once per frame.
+let renderQueued = false;
 mizu.on('state', (m) => {
   state = m.state;
-  render();
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    render();
+  });
 });
 mizu.on('favicon', (m) => {
   if (m.data) favicons.set(m.id, m.data);

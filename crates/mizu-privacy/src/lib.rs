@@ -15,6 +15,6 @@ pub mod resources;
 pub mod stats;
 
 pub use blocker::{ContentBlocker, CosmeticBundle, Verdict};
-pub use lists::{FilterStore, ListStatus, fetch_https_text};
+pub use lists::{FilterStore, ListStatus, fetch_https_bytes, fetch_https_text};
 pub use permissions::{PermissionDefault, PermissionKind};
 pub use stats::BlockStats;
