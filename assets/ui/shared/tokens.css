@@ -1,0 +1,255 @@
+/* Mizu design system — tokens shared by the browser chrome, flyouts and internal pages.
+ *
+ * Theme attributes on <html>:
+ *   data-theme="light|dark"      resolved by theme.js (System → OS setting)
+ *   data-palette="mizu|washi|matcha|sumi|sakura"
+ *   data-density="compact|comfortable|spacious"
+ *   data-style="soft|crisp"
+ *   data-motion="on|off"
+ *   data-private                 private window (overrides palette)
+ *   data-translucent             window uses Mica; frame surfaces become see-through
+ * The accent colour is injected as --accent by theme.js.
+ */
+
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI", "Yu Gothic UI", system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", "Yu Gothic UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+
+  --accent: #2f7de1;
+  --accent-ink: #ffffff;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 45%, transparent);
+
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  --t-fast: 120ms;
+  --t-med: 200ms;
+  --t-slow: 320ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+
+  /* density */
+  --tab-h: 36px;
+  --tabstrip-h: 42px;
+  --toolbar-h: 46px;
+  --bookmarks-h: 32px;
+  --ctl: 32px;
+  --gap: 6px;
+  --fs-ui: 13px;
+  --fs-sm: 12px;
+
+  --danger: #d6455d;
+  --success: #2e9d6a;
+  --warn: #c98a12;
+  --private: #8b6cf0;
+}
+
+[data-density="compact"] {
+  --tab-h: 30px;
+  --tabstrip-h: 36px;
+  --toolbar-h: 40px;
+  --bookmarks-h: 28px;
+  --ctl: 28px;
+  --gap: 4px;
+  --fs-ui: 12.5px;
+}
+
+[data-density="spacious"] {
+  --tab-h: 40px;
+  --tabstrip-h: 46px;
+  --toolbar-h: 52px;
+  --bookmarks-h: 34px;
+  --ctl: 36px;
+  --gap: 8px;
+  --fs-ui: 13.5px;
+}
+
+[data-style="crisp"] {
+  --r-sm: 3px;
+  --r-md: 5px;
+  --r-lg: 7px;
+  --r-xl: 9px;
+}
+
+[data-motion="off"] {
+  --t-fast: 0ms;
+  --t-med: 0ms;
+  --t-slow: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+    --t-slow: 0ms;
+  }
+}
+
+/* ── Palettes: light ─────────────────────────────────────────── */
+:root,
+[data-palette="mizu"] {
+  --frame: #e9eff5;
+  --surface: #ffffff;
+  --surface-2: #f3f6f9;
+  --surface-3: #e6ecf2;
+  --raised: #ffffff;
+  --ink: #17212c;
+  --ink-2: #4f5d6b;
+  --ink-3: #8592a0;
+  --line: #d9e1e9;
+  --line-2: #c6d0da;
+  --shadow: 0 1px 2px rgb(16 32 56 / 0.06), 0 6px 24px rgb(16 32 56 / 0.10);
+  --shadow-lg: 0 2px 6px rgb(16 32 56 / 0.08), 0 18px 48px rgb(16 32 56 / 0.18);
+  --wave: #c9dcef;
+}
+[data-palette="washi"] {
+  --frame: #f1ede6; --surface: #fffdf9; --surface-2: #f7f3ec; --surface-3: #ebe5db; --raised: #fffdf9;
+  --ink: #2a241d; --ink-2: #5f564b; --ink-3: #978c7f; --line: #e3dbcf; --line-2: #d3c8b8; --wave: #e6dccb;
+}
+[data-palette="matcha"] {
+  --frame: #e9efe6; --surface: #fcfefb; --surface-2: #f2f6f0; --surface-3: #e2eadd; --raised: #fcfefb;
+  --ink: #1d281c; --ink-2: #4f5e4c; --ink-3: #87957f; --line: #d8e1d2; --line-2: #c4d0bd; --wave: #cfdfc6;
+}
+[data-palette="sumi"] {
+  --frame: #eeeeee; --surface: #ffffff; --surface-2: #f5f5f5; --surface-3: #e7e7e7; --raised: #ffffff;
+  --ink: #111111; --ink-2: #4a4a4a; --ink-3: #8a8a8a; --line: #dddddd; --line-2: #c9c9c9; --wave: #d6d6d6;
+}
+[data-palette="sakura"] {
+  --frame: #f6ecee; --surface: #fffcfc; --surface-2: #fbf3f4; --surface-3: #f0e1e4; --raised: #fffcfc;
+  --ink: #2b1d21; --ink-2: #66505a; --ink-3: #a08c93; --line: #ecdade; --line-2: #dfc6cc; --wave: #f0d3da;
+}
+
+/* ── Palettes: dark ──────────────────────────────────────────── */
+[data-theme="dark"],
+[data-theme="dark"][data-palette="mizu"] {
+  --frame: #141a22;
+  --surface: #1d242e;
+  --surface-2: #232b36;
+  --surface-3: #2c3542;
+  --raised: #242c37;
+  --ink: #e6edf4;
+  --ink-2: #a9b6c3;
+  --ink-3: #74828f;
+  --line: #2c3541;
+  --line-2: #3a4553;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 28px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 2px 8px rgb(0 0 0 / 0.35), 0 20px 56px rgb(0 0 0 / 0.5);
+  --wave: #23324a;
+}
+[data-theme="dark"][data-palette="washi"] {
+  --frame: #1d1b18; --surface: #272420; --surface-2: #2e2a25; --surface-3: #38332d; --raised: #2e2a25;
+  --ink: #eee7dc; --ink-2: #bdb2a3; --ink-3: #8a8072; --line: #37322c; --line-2: #463f37; --wave: #3a3229;
+}
+[data-theme="dark"][data-palette="matcha"] {
+  --frame: #161c17; --surface: #1f2720; --surface-2: #252e26; --surface-3: #2e3a30; --raised: #252e26;
+  --ink: #e3ece1; --ink-2: #a9b8a5; --ink-3: #758571; --line: #2b352c; --line-2: #384539; --wave: #273a2b;
+}
+[data-theme="dark"][data-palette="sumi"] {
+  --frame: #0e0e0f; --surface: #18181a; --surface-2: #1f1f22; --surface-3: #2a2a2e; --raised: #1f1f22;
+  --ink: #f2f2f2; --ink-2: #b4b4b8; --ink-3: #7b7b80; --line: #26262a; --line-2: #34343a; --wave: #232327;
+}
+[data-theme="dark"][data-palette="sakura"] {
+  --frame: #1f171a; --surface: #2a1f23; --surface-2: #31252a; --surface-3: #3c2e34; --raised: #31252a;
+  --ink: #f3e6ea; --ink-2: #c4aab3; --ink-3: #8f7780; --line: #3a2b31; --line-2: #4a3840; --wave: #45303a;
+}
+
+/* ── Private windows: deep indigo, always dark ───────────────── */
+[data-private] {
+  --frame: #1b1726;
+  --surface: #252034;
+  --surface-2: #2c263d;
+  --surface-3: #372f4b;
+  --raised: #2c263d;
+  --ink: #ece8f7;
+  --ink-2: #b6addb;
+  --ink-3: #8178a3;
+  --line: #352e48;
+  --line-2: #453c5c;
+  --accent: var(--private) !important;
+  --wave: #3a2f5c;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 28px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 2px 8px rgb(0 0 0 / 0.35), 0 20px 56px rgb(0 0 0 / 0.5);
+}
+
+/* Mica: the frame shows the Windows backdrop; surfaces stay solid for legibility. */
+[data-translucent] {
+  --frame: transparent;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html {
+  color-scheme: light;
+  -webkit-font-smoothing: antialiased;
+}
+[data-theme="dark"],
+[data-private] {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  font: var(--fs-ui) / 1.4 var(--font);
+  color: var(--ink);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+svg.icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+svg.icon.filled {
+  fill: currentColor;
+  stroke: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-2);
+  border-radius: var(--r-pill);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -1,0 +1,11 @@
+[package]
+name = "mizu-tabs"
+description = "Engine-independent tab strip model for Mizu: ordering, pinning, closed-tab stack and session snapshots."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+mizu-core.workspace = true
+serde.workspace = true

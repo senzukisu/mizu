@@ -1,0 +1,11 @@
+[package]
+name = "mizu-ui"
+description = "Mizu's browser UI: the IPC protocol between UI surfaces and the browser, and the embedded HTML/CSS/JS assets."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

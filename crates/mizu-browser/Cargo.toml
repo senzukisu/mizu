@@ -1,0 +1,55 @@
+[package]
+name = "mizu-browser"
+description = "Mizu – a modern, privacy-focused web browser by Onibi Lab."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "mizu"
+path = "src/main.rs"
+
+[dependencies]
+mizu-core.workspace = true
+mizu-engine.workspace = true
+mizu-media.workspace = true
+mizu-privacy.workspace = true
+mizu-settings.workspace = true
+mizu-storage.workspace = true
+mizu-tabs.workspace = true
+mizu-ui.workspace = true
+mizu-userscripts.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-appender.workspace = true
+url.workspace = true
+base64 = "0.22"
+zip = { version = "7", default-features = false, features = ["deflate"] }
+windows-core.workspace = true
+
+[dependencies.windows]
+workspace = true
+features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Com",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Threading",
+    "Win32_System_DataExchange",
+    "Win32_System_Ole",
+    "Win32_System_Registry",
+    "Win32_Security",
+    "Win32_UI_Controls",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+[build-dependencies]
+embed-resource = "3"

@@ -1,0 +1,12 @@
+[package]
+name = "mizu-core"
+description = "Shared primitives for Mizu: identifiers, URL/omnibox handling, profile paths, internal pages."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+url.workspace = true
+thiserror.workspace = true

@@ -1,0 +1,48 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+default-members = ["crates/mizu-browser"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["Onibi Lab"]
+license = "MPL-2.0"
+repository = "https://github.com/onibi-lab/mizu"
+
+[workspace.dependencies]
+mizu-core = { path = "crates/mizu-core" }
+mizu-storage = { path = "crates/mizu-storage" }
+mizu-settings = { path = "crates/mizu-settings" }
+mizu-privacy = { path = "crates/mizu-privacy" }
+mizu-tabs = { path = "crates/mizu-tabs" }
+mizu-media = { path = "crates/mizu-media" }
+mizu-ui = { path = "crates/mizu-ui" }
+mizu-engine = { path = "crates/mizu-engine" }
+mizu-userscripts = { path = "crates/mizu-userscripts" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tracing-appender = "0.2"
+url = "2"
+rusqlite = { version = "0.41", features = ["bundled", "backup"] }
+adblock = { version = "0.13", default-features = false, features = ["embedded-domain-resolver", "full-regex-handling"] }
+ureq = { version = "3", default-features = false, features = ["native-tls", "gzip"] }
+tempfile = "3"
+windows = "0.62"
+windows-core = "0.62"
+webview2-com = "0.39"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "unwind"
+strip = "symbols"
+
+[profile.dev.package."*"]
+opt-level = 2
