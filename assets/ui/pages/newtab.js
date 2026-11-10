@@ -50,7 +50,9 @@ function render(info, d) {
   if (!isPrivate && d.top && d.top.length) {
     const tiles = h('div', { class: 'nt-tiles' });
     for (const s of d.top) {
-      const a = h('a', { class: 'nt-tile', href: s.url, title: s.url }, letterAvatar(s.url, s.title), h('span', { text: s.title || s.host || s.url }));
+      const label = (s.host || hostOf(s.url) || s.title || s.url).replace(/^www\./, '');
+      const a = h('a', { class: 'nt-tile', href: s.url, title: s.title ? `${s.title}
+${s.url}` : s.url }, letterAvatar(s.url, s.title), h('span', { text: label }));
       a.addEventListener('click', (e) => {
         e.preventDefault();
         mizu.send('open_url', { url: s.url, disposition: e.ctrlKey ? 'background' : 'current' });

@@ -109,18 +109,14 @@ impl Flyout {
             let _ = GetMonitorInfoW(monitor, &mut mi);
             let work = mi.rcWork;
             let gap = (4.0 * scale) as i32;
-            let mut x = if self.kind == Some(FlyoutKind::Omnibox) || a.right - a.left < w / 2 && a.left + w <= work.right {
-                a.left
-            } else {
-                a.right - w
+            // Toolbar buttons on the right open their panels right-aligned to the button; things
+            // anchored on the left (address bar, site info, prompts, tab menu) open left-aligned.
+            let x = match self.kind {
+                Some(FlyoutKind::Omnibox | FlyoutKind::SiteInfo | FlyoutKind::Permission | FlyoutKind::TabMenu) => a.left,
+                Some(FlyoutKind::Confirm) => a.left - w / 2,
+                _ => a.right - w,
             };
-            if self.kind == Some(FlyoutKind::TabMenu) {
-                x = a.left;
-            }
-            if self.kind == Some(FlyoutKind::Confirm) {
-                x = a.left - w / 2;
-            }
-            x = x.clamp(work.left + gap, (work.right - w - gap).max(work.left));
+            let x = x.clamp(work.left + gap, (work.right - w - gap).max(work.left));
             let mut y = a.bottom + gap;
             if y + h > work.bottom {
                 y = (a.top - h - gap).max(work.top);

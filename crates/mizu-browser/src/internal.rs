@@ -312,10 +312,13 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             let top: Vec<Value> = if private {
                 Vec::new()
             } else {
+                let mut seen = std::collections::HashSet::new();
                 app.storage
-                    .top_sites(8)
+                    .top_sites(40)
                     .unwrap_or_default()
                     .into_iter()
+                    .filter(|h| seen.insert(mizu_core::omnibox::host_of(&h.url).unwrap_or_default()))
+                    .take(8)
                     .map(|h| json!({ "url": h.url, "title": h.title, "host": mizu_core::omnibox::host_of(&h.url) }))
                     .collect()
             };

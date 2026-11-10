@@ -11,11 +11,11 @@ const open = (url, disposition = 'new_tab') => {
   close();
 };
 
+// Measure synchronously: the flyout window is hidden until it knows its size, and hidden
+// web views do not run requestAnimationFrame callbacks.
 function reportSize() {
-  requestAnimationFrame(() => {
-    const r = root.getBoundingClientRect();
-    mizu.send('flyout_size', { width: Math.ceil(r.width), height: Math.ceil(r.height) });
-  });
+  const r = root.getBoundingClientRect();
+  mizu.send('flyout_size', { width: Math.ceil(r.width), height: Math.ceil(r.height) });
 }
 
 function item(iconName, label, onClick, opts = {}) {

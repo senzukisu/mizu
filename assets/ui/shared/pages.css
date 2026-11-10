@@ -499,12 +499,15 @@ dialog .actions {
   padding: 0;
 }
 .nt-tiles {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
 }
 .nt-tile {
+  width: 112px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -529,7 +532,8 @@ dialog .actions {
   font-weight: 700;
 }
 .nt-tile span {
-  max-width: 100%;
+  width: 100%;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -957,4 +961,16 @@ pre.code {
   justify-content: center;
   gap: 10px;
   margin: 22px 0 14px;
+}
+
+/* Long values (paths, versions) wrap instead of overlapping the label. */
+.setting .txt {
+  min-width: 160px;
+}
+.setting > span,
+.setting > .mono {
+  min-width: 0;
+  max-width: 65%;
+  overflow-wrap: anywhere;
+  text-align: right;
 }

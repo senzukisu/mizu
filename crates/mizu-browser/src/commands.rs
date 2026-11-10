@@ -167,6 +167,7 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             ok()
         }
         Command::FlyoutSize { width, height } => {
+            tracing::debug!(width, height, "flyout size");
             if let Some(w) = app.window_mut(window) {
                 let hwnd = w.hwnd;
                 w.flyout.resize(hwnd, width.clamp(80.0, 900.0), height.clamp(20.0, 900.0));
