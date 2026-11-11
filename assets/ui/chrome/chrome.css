@@ -246,12 +246,27 @@ button {
   opacity: 0.55;
 }
 .tab .audio {
-  width: 22px;
+  flex: none;
+  width: 0;
   height: 22px;
+  margin-left: -8px;
   display: grid;
   place-items: center;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
   border-radius: var(--r-sm);
   color: var(--accent);
+  transition:
+    width var(--t-med) var(--ease),
+    margin var(--t-med) var(--ease),
+    opacity var(--t-med);
+}
+.tab .audio.on {
+  width: 22px;
+  margin-left: 0;
+  opacity: 1;
+  pointer-events: auto;
 }
 .tab .audio:hover {
   background: var(--surface-3);

@@ -71,7 +71,7 @@
 
 ## Install
 
-1. Download **`MizuSetup-0.1.1.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest) and run it.
+1. Download **`MizuSetup-0.1.2.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest) and run it.
 2. Choose the folder, or keep the default, and press **Install**.
    Mizu installs for your Windows account only, so you don't need administrator rights.
 3. Optionally, choose **"Make Mizu the default browser"** at the end of setup.
@@ -122,6 +122,7 @@ cargo test --workspace
 
 | | English | Русский |
 |---|---|---|
+| **User guide** | [GUIDE](docs/GUIDE.md) | [Руководство](docs/ru/GUIDE.md) |
 | Architecture | [ARCHITECTURE](docs/ARCHITECTURE.md) | [Архитектура](docs/ru/ARCHITECTURE.md) |
 | Security | [SECURITY](docs/SECURITY.md) | [Безопасность](docs/ru/SECURITY.md) |
 | Codecs | [CODECS](docs/CODECS.md) | [Кодеки](docs/ru/CODECS.md) |

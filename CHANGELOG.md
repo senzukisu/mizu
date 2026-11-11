@@ -3,6 +3,17 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] — 2026-11-11
+
+### Fixed
+- Tabs no longer twitch when a site keeps turning its sound on and off. The sound icon stays for a moment after the
+  sound stops and slides in and out instead of popping.
+
+### Added
+- **Unload tab** and **Unload other tabs** in the tab context menu. These close the page to free memory; the tab stays
+  and reloads when opened. Tabs playing sound are skipped.
+- A user guide with a troubleshooting table: [docs/GUIDE.md](docs/GUIDE.md) and [docs/ru/GUIDE.md](docs/ru/GUIDE.md).
+
 ## [0.1.1] — 2026-11-11
 
 ### Fixed

@@ -288,6 +288,33 @@ impl App {
         }
     }
 
+    /// "Unload tab": the page is closed to free memory, the tab stays and reloads its address
+    /// when it is opened again (like a tab restored from the last session). Never the active tab.
+    pub fn discard_tab(&mut self, window: WindowId, tab: TabId) {
+        let Some(w) = self.window_mut(window) else { return };
+        if w.strip.active() == Some(tab) {
+            return;
+        }
+        let url = w.strip.get(tab).map(|t| t.url.clone()).unwrap_or_default();
+        let Some(state) = w.tabs.get_mut(&tab) else { return };
+        let Some(view) = state.view.take() else { return };
+        state.pending_url = (!url.is_empty()).then_some(url);
+        state.loading = false;
+        state.audible = false;
+        state.sleeping = false;
+        state.low_memory = false;
+        w.state_dirty = true;
+        view.set_visible(false);
+        hot::with(|h| {
+            h.views.remove(&tab.0);
+            h.top_urls.remove(&tab.0);
+            h.page_blocked.remove(&tab.0);
+            h.gm_tokens.remove(&tab.0);
+            h.pw_tokens.remove(&tab.0);
+        });
+        self.retire_view(view);
+    }
+
     /// The default zoom changed: tabs still at the old default (not zoomed by hand) and the
     /// pre-created spare views follow it.
     pub fn apply_default_zoom(&mut self, old: f64) {

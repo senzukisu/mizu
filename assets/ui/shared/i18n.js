@@ -535,6 +535,8 @@ const i18n = (() => {
     'Delete folder': 'Удалить папку',
     'Open in new tab': 'Открыть в новой вкладке',
     'Search suggestions': 'Поисковые подсказки',
+    'Unload tab': 'Выгрузить вкладку',
+    'Unload other tabs': 'Выгрузить остальные вкладки',
     'Change': 'Изменить',
     'Reset': 'Сбросить',
     'Not set': 'Не задано',

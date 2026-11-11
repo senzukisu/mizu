@@ -177,7 +177,7 @@ function buildTab(t) {
   const el = h('div', { class: 'tab', role: 'tab', dataset: { id: t.id } });
   const fav = h('div', { class: 'fav' });
   const title = h('div', { class: 'title' });
-  const audio = h('button', { class: 'audio', hidden: true });
+  const audio = h('button', { class: 'audio' });
   const close = h('button', { class: 'close', title: 'Close tab (Ctrl+W)' }, icon('close'));
   el.append(fav, title, audio, close);
   el._parts = { fav, title, audio, close, favKey: '', audioKey: '' };
@@ -227,10 +227,20 @@ function fillTab(el, t) {
   const tip = t.title + (t.url && !t.internal ? `\n${t.url}` : '');
   if (el.title !== tip) el.title = tip;
   el._muted = !!t.muted;
-  const audioKey = t.audible || t.muted ? (t.muted ? 'mute' : 'volume') : '';
+  let audioKey = t.audible || t.muted ? (t.muted ? 'mute' : 'volume') : '';
+  // Sites flip "playing" on and off (ads, buffering): keep the icon a moment so the tab
+  // title doesn't jump back and forth.
+  clearTimeout(p.audioHold);
+  if (!audioKey && p.audioKey === 'volume') {
+    audioKey = 'volume';
+    p.audioHold = setTimeout(() => {
+      p.audioKey = '';
+      p.audio.classList.remove('on');
+    }, 3000);
+  }
   if (p.audioKey !== audioKey) {
     p.audioKey = audioKey;
-    p.audio.hidden = !audioKey;
+    p.audio.classList.toggle('on', !!audioKey);
     if (audioKey) {
       p.audio.replaceChildren(icon(audioKey));
       p.audio.title = t.muted ? 'Unmute tab' : 'Mute tab';

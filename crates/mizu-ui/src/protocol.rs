@@ -63,6 +63,13 @@ pub enum Command {
     MoveTab { id: u64, index: usize },
     PinTab { id: u64, pinned: bool },
     MuteTab { id: u64, muted: bool },
+    /// Closes the page of a background tab to free memory; it reloads when opened.
+    /// With `others`, every background tab except `id` that isn't playing sound.
+    DiscardTab {
+        id: u64,
+        #[serde(default)]
+        others: bool,
+    },
     DuplicateTab { id: u64 },
     ReloadTab { id: u64 },
     CloseOtherTabs { id: u64 },

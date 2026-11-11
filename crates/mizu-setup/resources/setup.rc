@@ -4,8 +4,8 @@
 1 24 "setup.manifest"
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     0,1,1,0
-PRODUCTVERSION  0,1,1,0
+FILEVERSION     0,1,2,0
+PRODUCTVERSION  0,1,2,0
 FILEFLAGSMASK   0x3fL
 FILEFLAGS       0x0L
 FILEOS          VOS_NT_WINDOWS32
@@ -18,12 +18,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "Onibi Lab"
             VALUE "FileDescription",  "Mizu Setup"
-            VALUE "FileVersion",      "0.1.1"
+            VALUE "FileVersion",      "0.1.2"
             VALUE "InternalName",     "MizuSetup"
             VALUE "LegalCopyright",   "Onibi Lab. Licensed under MPL-2.0."
             VALUE "OriginalFilename", "MizuSetup.exe"
             VALUE "ProductName",      "Mizu"
-            VALUE "ProductVersion",   "0.1.1"
+            VALUE "ProductVersion",   "0.1.2"
         END
     END
     BLOCK "VarFileInfo"

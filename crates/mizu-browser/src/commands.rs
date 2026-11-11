@@ -258,6 +258,22 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             app.session_dirty = true;
             ok()
         }
+        Command::DiscardTab { id, others } => {
+            let targets: Vec<TabId> = match app.window(window) {
+                Some(w) if others => w
+                    .tabs
+                    .iter()
+                    .filter(|(t, s)| t.0 != id && !s.audible && s.view.is_some())
+                    .map(|(t, _)| *t)
+                    .collect(),
+                Some(_) => vec![tab_id(id)],
+                None => Vec::new(),
+            };
+            for t in targets {
+                app.discard_tab(window, t);
+            }
+            ok()
+        }
         Command::MuteTab { id, muted } => {
             if let Some(v) = app.window(window).and_then(|w| w.tabs.get(&tab_id(id))).and_then(|t| t.view.clone()) {
                 v.set_muted(muted);
@@ -500,6 +516,9 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
                 "muted": state.is_some_and(|s| s.muted),
                 "count": count,
                 "closed": app.window(window).map(|w| w.strip.closed_tabs().count()).unwrap_or(0),
+                "active": app.window(window).and_then(|w| w.strip.active()).map(|t| t.0) == tab_id,
+                "unloaded": state.is_none_or(|s| s.view.is_none()),
+                "others": app.window(window).map_or(0, |w| w.tabs.iter().filter(|(t, s)| Some(t.0) != tab_id && s.view.is_some() && !s.audible).count()),
             })
         }
         FlyoutKind::BookmarkMenu => {
