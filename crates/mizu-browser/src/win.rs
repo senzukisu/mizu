@@ -98,6 +98,18 @@ pub fn fatal(message: &str) {
     }
 }
 
+/// The Windows UI language as a BCP-47 tag, e.g. "ru-RU".
+pub fn system_language() -> String {
+    use windows::Win32::Globalization::GetUserDefaultLocaleName;
+    let mut buf = [0u16; 85];
+    // SAFETY: buffer of LOCALE_NAME_MAX_LENGTH characters.
+    let n = unsafe { GetUserDefaultLocaleName(&mut buf) };
+    if n <= 1 {
+        return String::new();
+    }
+    String::from_utf16_lossy(&buf[..(n as usize - 1)]).to_ascii_lowercase()
+}
+
 /// Whether Windows apps are set to dark mode.
 pub fn system_prefers_dark() -> bool {
     use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};

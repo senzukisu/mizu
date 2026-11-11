@@ -38,8 +38,22 @@ pub enum Queued {
 pub enum WorkerResult {
     BlockerReady(std::sync::Arc<mizu_privacy::ContentBlocker>, u64),
     FiltersUpdated,
-    ScriptFetched { url: String, result: Result<(String, String), String> },
+    ScriptsFetched {
+        key: Option<mizu_engine::ViewKey>,
+        items: Vec<crate::scripts::Fetched>,
+        failures: Vec<(String, String)>,
+    },
+    ScriptUpdates {
+        updated: Vec<crate::scripts::Fetched>,
+        checked: Vec<String>,
+        failed: usize,
+        reply: Option<(mizu_engine::ViewKey, u64)>,
+    },
     MediaReport(Box<mizu_media::SystemMediaReport>, u64),
+    Update {
+        result: Result<crate::update::Outcome, String>,
+        reply: Option<(mizu_engine::ViewKey, u64)>,
+    },
     ExtensionDownloaded {
         key: mizu_engine::ViewKey,
         rid: Option<u64>,

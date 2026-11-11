@@ -44,6 +44,12 @@ pub struct Hot {
     pub scripts: ScriptStore,
     /// Per tab: the token and script ids of the current userscript injection.
     pub gm_tokens: HashMap<ViewKey, (String, Vec<String>)>,
+    /// Per tab: token of the login-capture script on the current page.
+    pub pw_tokens: HashMap<ViewKey, String>,
+    /// Offer to save passwords (Mizu Passwords enabled).
+    pub password_capture: bool,
+    /// Picture-in-picture button on videos.
+    pub pip_button: bool,
 }
 
 thread_local! {
@@ -95,6 +101,7 @@ pub fn forget(key: ViewKey) {
         h.internal_allowed.remove(&key);
         h.page_blocked.remove(&key);
         h.gm_tokens.remove(&key);
+        h.pw_tokens.remove(&key);
     });
 }
 

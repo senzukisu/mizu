@@ -25,6 +25,7 @@ const theme = (() => {
       if (opts.translucent && a.translucency && !opts.private) root.dataset.translucent = '';
       else delete root.dataset.translucent;
     }
+    if (typeof i18n !== 'undefined' && settings._lang) i18n.setLang(settings._lang);
     for (const fn of listeners) fn(settings);
   }
 

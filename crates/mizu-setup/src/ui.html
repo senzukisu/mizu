@@ -1,0 +1,556 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", Consolas, monospace;
+  --accent: #2f7de1;
+  --accent-2: #1f63c4;
+  --accent-soft: rgba(47, 125, 225, 0.12);
+  --bg: #f7f9fc;
+  --surface: #ffffff;
+  --surface-2: #eef2f8;
+  --line: rgba(20, 40, 70, 0.10);
+  --ink: #142033;
+  --ink-2: #4a586c;
+  --ink-3: #7b8799;
+  --danger: #d6455d;
+  --danger-soft: rgba(214, 69, 93, 0.10);
+  --ok: #1f9d6b;
+  --shadow: 0 1px 2px rgba(20, 32, 51, 0.06), 0 6px 24px rgba(20, 32, 51, 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #4b97f2;
+    --accent-2: #3a86e6;
+    --accent-soft: rgba(75, 151, 242, 0.16);
+    --bg: #12161d;
+    --surface: #1a2029;
+    --surface-2: #222a35;
+    --line: rgba(220, 230, 245, 0.09);
+    --ink: #e8edf5;
+    --ink-2: #a9b4c4;
+    --ink-3: #7a8698;
+    --danger: #ef6a80;
+    --danger-soft: rgba(239, 106, 128, 0.12);
+    --ok: #3cc58c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 28px rgba(0, 0, 0, 0.25);
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 var(--font);
+  -webkit-user-select: none;
+  user-select: none;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+button:focus-visible, input:focus-visible + .switch { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Title bar */
+.titlebar {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding-left: 14px;
+  app-region: drag;
+  -webkit-app-region: drag;
+}
+.titlebar .name { font-size: 12px; color: var(--ink-3); display: flex; gap: 8px; align-items: center; }
+.titlebar .name svg { width: 16px; height: 16px; }
+.titlebar .sp { flex: 1; }
+.cap {
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+  width: 46px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+  transition: background 0.12s;
+}
+.cap:hover { background: var(--surface-2); }
+.cap.close:hover { background: #c42b1c; color: #fff; }
+.cap svg { width: 10px; height: 10px; }
+
+/* Pages */
+main { height: calc(100% - 40px); position: relative; }
+.page {
+  position: absolute;
+  inset: 0;
+  padding: 6px 36px 28px;
+  display: flex;
+  flex-direction: column;
+  animation: page-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes page-in { from { opacity: 0; transform: translateY(8px); } }
+.hero { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+.hero .logo { width: 56px; height: 56px; flex: none; filter: drop-shadow(0 6px 14px rgba(31, 99, 196, 0.28)); }
+.hero h1 { margin: 0; font: 600 26px/1.15 var(--display); letter-spacing: -0.01em; }
+.hero h1 .kanji { color: var(--ink-3); font-weight: 400; margin-left: 6px; font-size: 20px; }
+.hero .tag { color: var(--ink-2); margin-top: 3px; }
+.pill {
+  display: inline-block;
+  padding: 1px 9px;
+  margin-left: 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  vertical-align: 3px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.row + .row { border-top: 1px solid var(--line); }
+.row .txt { flex: 1; min-width: 0; }
+.row .t { font-weight: 600; }
+.row .d { color: var(--ink-3); font-size: 12.5px; }
+.path {
+  font: 12.5px/1.4 var(--mono);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+.path bdi { direction: ltr; unicode-bidi: isolate; }
+.ico {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+}
+.ico svg { width: 18px; height: 18px; }
+
+/* Switch */
+label.opt { cursor: pointer; }
+.opt input { position: absolute; opacity: 0; pointer-events: none; }
+.switch {
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  position: relative;
+  flex: none;
+  transition: background 0.18s, border-color 0.18s;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  transition: transform 0.22s cubic-bezier(0.34, 1.4, 0.6, 1), background 0.18s;
+}
+.opt input:checked + .switch { background: var(--accent); border-color: var(--accent); }
+.opt input:checked + .switch::after { transform: translateX(16px); background: #fff; }
+.opt.danger input:checked + .switch { background: var(--danger); border-color: var(--danger); }
+
+/* Buttons */
+.actions { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 18px; }
+.actions .note { flex: 1; color: var(--ink-3); font-size: 12.5px; }
+.btn {
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-weight: 600;
+  transition: background 0.12s, transform 0.08s, filter 0.12s;
+}
+.btn:hover { background: var(--surface-2); }
+.btn:active { transform: scale(0.98); }
+.btn.primary { background: linear-gradient(180deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; min-width: 132px; box-shadow: 0 4px 14px rgba(47, 125, 225, 0.3); }
+.btn.primary:hover { filter: brightness(1.07); }
+.btn.danger { background: var(--danger); border-color: transparent; color: #fff; min-width: 132px; }
+.btn.danger:hover { filter: brightness(1.07); }
+.btn.small { height: 30px; padding: 0 12px; font-size: 13px; }
+.btn:disabled { opacity: 0.5; pointer-events: none; }
+
+.error {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 13px;
+  animation: page-in 0.25s;
+}
+
+/* Progress */
+.center { align-items: center; justify-content: center; text-align: center; }
+.center .logo { width: 72px; height: 72px; margin-bottom: 18px; }
+.center h2 { margin: 0 0 6px; font: 600 22px/1.2 var(--display); }
+.center p { margin: 0; color: var(--ink-2); max-width: 420px; }
+.bar { width: 320px; height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin: 22px 0 10px; }
+.bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--accent), #6fb6ff); transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.step { color: var(--ink-3); font-size: 12.5px; min-height: 18px; }
+.drop { animation: bob 1.6s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-4px); } }
+
+.check {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: var(--ok);
+  margin-bottom: 18px;
+  animation: pop 0.45s cubic-bezier(0.34, 1.5, 0.6, 1);
+}
+.check svg { width: 34px; height: 34px; stroke-dasharray: 30; stroke-dashoffset: 30; animation: draw 0.4s 0.15s forwards ease-out; }
+@keyframes pop { from { transform: scale(0.5); opacity: 0; } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.done-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; width: 300px; }
+.done-actions .btn { width: 100%; height: 40px; }
+.link { color: var(--accent); font-weight: 600; padding: 6px; border-radius: 8px; }
+.link:hover { background: var(--accent-soft); }
+
+.warn-data { color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="titlebar">
+  <div class="name"><svg viewBox="0 0 64 64"><use href="#logo"/></svg><span data-t="title"></span></div>
+  <div class="sp"></div>
+  <button class="cap" id="min" tabindex="-1"><svg viewBox="0 0 10 10"><path d="M0 5h10" stroke="currentColor" stroke-width="1"/></svg></button>
+  <button class="cap close" id="x" tabindex="-1"><svg viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1"/></svg></button>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f9cf0"/><stop offset="1" stop-color="#164fb8"/></linearGradient>
+    <symbol id="logo" viewBox="0 0 64 64">
+      <rect x="2.5" y="2.5" width="59" height="59" rx="15" fill="url(#lg)"/>
+      <path d="M32 12.5c7.6 9.2 13.5 16.6 13.5 23.4a13.5 13.5 0 0 1-27 0c0-6.8 5.9-14.2 13.5-23.4z" fill="#fff" fill-opacity="0.96"/>
+      <path d="M26.5 37.5a6.5 6.5 0 0 0 4 5.4" fill="none" stroke="#2a78dc" stroke-width="2.4" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<main>
+  <!-- Install -->
+  <section class="page" id="p-install" hidden>
+    <div class="hero">
+      <svg class="logo" viewBox="0 0 64 64"><use href="#logo"/></svg>
+      <div>
+        <h1>Mizu<span class="kanji">水</span><span class="pill" id="ver"></span></h1>
+        <div class="tag" data-t="tagline"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+        <div class="txt">
+          <div class="t" data-t="folder"></div>
+          <div class="path" id="dir"></div>
+        </div>
+        <button class="btn small" id="browse" data-t="change"></button>
+      </div>
+      <label class="row opt">
+        <div class="txt"><div class="t" data-t="desktop"></div></div>
+        <input type="checkbox" id="desktop" checked><span class="switch"></span>
+      </label>
+      <label class="row opt">
+        <div class="txt"><div class="t" data-t="launch_after"></div></div>
+        <input type="checkbox" id="launch" checked><span class="switch"></span>
+      </label>
+    </div>
+    <div class="error" id="install-error" hidden></div>
+    <div class="actions">
+      <div class="note" id="note"></div>
+      <button class="btn" id="cancel" data-t="cancel"></button>
+      <button class="btn primary" id="install" data-t="install"></button>
+    </div>
+  </section>
+
+  <!-- Progress -->
+  <section class="page center" id="p-progress" hidden>
+    <svg class="logo drop" viewBox="0 0 64 64"><use href="#logo"/></svg>
+    <h2 id="progress-title"></h2>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="step" id="step"></div>
+  </section>
+
+  <!-- Installed -->
+  <section class="page center" id="p-done" hidden>
+    <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h2 data-t="done_title"></h2>
+    <p data-t="done_body"></p>
+    <div class="done-actions">
+      <button class="btn primary" id="open" data-t="open"></button>
+      <button class="link" id="default" data-t="default"></button>
+    </div>
+  </section>
+
+  <!-- Uninstall -->
+  <section class="page" id="p-uninstall" hidden>
+    <div class="hero">
+      <svg class="logo" viewBox="0 0 64 64"><use href="#logo"/></svg>
+      <div>
+        <h1 data-t="un_title"></h1>
+        <div class="tag" data-t="un_body"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+        <div class="txt">
+          <div class="t" data-t="un_from"></div>
+          <div class="path" id="un-dir"></div>
+        </div>
+      </div>
+      <label class="row opt danger">
+        <div class="txt">
+          <div class="t" data-t="un_data"></div>
+          <div class="d" id="un-data-desc"></div>
+        </div>
+        <input type="checkbox" id="remove-data"><span class="switch"></span>
+      </label>
+    </div>
+    <div class="error" id="un-error" hidden></div>
+    <div class="actions">
+      <div class="note" id="un-note"></div>
+      <button class="btn" id="un-cancel" data-t="cancel"></button>
+      <button class="btn danger" id="un-go" data-t="uninstall"></button>
+    </div>
+  </section>
+
+  <!-- Uninstalled -->
+  <section class="page center" id="p-removed" hidden>
+    <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h2 data-t="removed_title"></h2>
+    <p id="removed-body"></p>
+    <div class="done-actions">
+      <button class="btn" id="close-removed" data-t="close"></button>
+    </div>
+  </section>
+</main>
+
+<script>
+'use strict';
+const STR = {
+  en: {
+    title: 'Mizu Setup',
+    title_un: 'Uninstall Mizu',
+    tagline: 'A fast, privacy-focused browser by Onibi Lab.',
+    folder: 'Install location',
+    change: 'Change…',
+    desktop: 'Create a desktop shortcut',
+    launch_after: 'Open Mizu when setup finishes',
+    note: 'For your Windows account only · no administrator rights · {size} MB',
+    note_update: 'Mizu {old} is installed here and will be updated. Your data is kept.',
+    cancel: 'Cancel',
+    install: 'Install',
+    update: 'Update',
+    reinstall: 'Reinstall',
+    installing: 'Installing Mizu…',
+    s_prepare: 'Preparing',
+    s_files: 'Copying files',
+    s_shortcuts: 'Creating shortcuts',
+    s_register: 'Registering Mizu with Windows',
+    done_title: 'Mizu is ready',
+    done_body: 'Find it in the Start menu. Mizu updates itself when new versions come out.',
+    open: 'Open Mizu',
+    default: 'Make Mizu the default browser',
+    close: 'Close',
+    un_title: 'Uninstall Mizu?',
+    un_body: 'The program will be removed from this PC.',
+    un_from: 'Installed in',
+    un_data: 'Also delete my browsing data',
+    un_data_desc: 'History, bookmarks, passwords, extensions and settings in {path}',
+    un_note: 'Your data is kept unless you choose to delete it.',
+    un_note_data: 'Your data will be deleted permanently.',
+    uninstall: 'Uninstall',
+    removing: 'Removing Mizu…',
+    removed_title: 'Mizu has been uninstalled',
+    removed_body: 'Your browsing data was kept. Install Mizu again any time to pick up where you left off.',
+    removed_body_data: 'Mizu and your browsing data have been removed.',
+  },
+  ru: {
+    title: 'Установка Mizu',
+    title_un: 'Удаление Mizu',
+    tagline: 'Быстрый браузер с заботой о приватности от Onibi Lab.',
+    folder: 'Папка установки',
+    change: 'Изменить…',
+    desktop: 'Ярлык на рабочем столе',
+    launch_after: 'Открыть Mizu после установки',
+    note: 'Только для вашей учётной записи · без прав администратора · {size} МБ',
+    note_update: 'Здесь установлен Mizu {old}, он будет обновлён. Ваши данные сохранятся.',
+    cancel: 'Отмена',
+    install: 'Установить',
+    update: 'Обновить',
+    reinstall: 'Переустановить',
+    installing: 'Устанавливаем Mizu…',
+    s_prepare: 'Подготовка',
+    s_files: 'Копирование файлов',
+    s_shortcuts: 'Создание ярлыков',
+    s_register: 'Регистрация Mizu в Windows',
+    done_title: 'Mizu готов',
+    done_body: 'Он есть в меню «Пуск». Mizu обновляется сам, когда выходят новые версии.',
+    open: 'Открыть Mizu',
+    default: 'Сделать Mizu браузером по умолчанию',
+    close: 'Закрыть',
+    un_title: 'Удалить Mizu?',
+    un_body: 'Программа будет удалена с этого компьютера.',
+    un_from: 'Установлен в',
+    un_data: 'Удалить также мои данные',
+    un_data_desc: 'История, закладки, пароли, расширения и настройки в {path}',
+    un_note: 'Ваши данные сохранятся, если вы не решите их удалить.',
+    un_note_data: 'Ваши данные будут удалены безвозвратно.',
+    uninstall: 'Удалить',
+    removing: 'Удаляем Mizu…',
+    removed_title: 'Mizu удалён',
+    removed_body: 'Ваши данные сохранены: если установите Mizu снова, всё будет на месте.',
+    removed_body_data: 'Mizu и ваши данные удалены.',
+  },
+};
+let T = STR.en;
+let info = null;
+const $ = (id) => document.getElementById(id);
+const send = (cmd, extra) => window.chrome.webview.postMessage(Object.assign({ cmd }, extra || {}));
+const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+const show = (id) => {
+  for (const p of document.querySelectorAll('.page')) p.hidden = p.id !== id;
+  const first = $(id).querySelector('.btn.primary, .btn.danger, .btn');
+  if (first) setTimeout(() => first.focus(), 50);
+};
+const setPath = (el, path) => {
+  const b = document.createElement('bdi');
+  b.textContent = path;
+  el.replaceChildren(b);
+  el.title = path;
+};
+
+function updateNote() {
+  const same = info.installed && info.installed.dir.toLowerCase() === info.dir.toLowerCase();
+  $('note').textContent = same ? fill(T.note_update, { old: info.installed.version }) : fill(T.note, { size: info.size_mb });
+  $('install').textContent = !same ? T.install : info.installed.version === info.version ? T.reinstall : T.update;
+}
+
+function init(msg) {
+  info = msg;
+  T = STR[msg.lang] || STR.en;
+  document.documentElement.lang = msg.lang;
+  for (const el of document.querySelectorAll('[data-t]')) el.textContent = T[el.dataset.t];
+  $('ver').textContent = msg.version;
+  if (msg.mode === 'uninstall') {
+    document.querySelector('[data-t="title"]').textContent = T.title_un;
+    setPath($('un-dir'), msg.dir);
+    $('un-data-desc').textContent = fill(T.un_data_desc, { path: msg.data_dir });
+    $('un-note').textContent = T.un_note;
+    show('p-uninstall');
+  } else {
+    setPath($('dir'), msg.dir);
+    updateNote();
+    show('p-install');
+  }
+}
+
+function progress(pct, step) {
+  $('bar').style.width = `${pct}%`;
+  if (step) $('step').textContent = T[step] || step;
+}
+
+window.chrome.webview.addEventListener('message', (e) => {
+  const m = e.data;
+  switch (m.type) {
+    case 'init':
+      init(m);
+      break;
+    case 'dir':
+      info.dir = m.dir;
+      setPath($('dir'), m.dir);
+      $('install-error').hidden = true;
+      updateNote();
+      break;
+    case 'progress':
+      progress(m.pct, m.step);
+      break;
+    case 'installed':
+      progress(100);
+      setTimeout(() => {
+        if ($('launch').checked) {
+          send('open');
+          send('close');
+        } else show('p-done');
+      }, 350);
+      break;
+    case 'removed':
+      progress(100);
+      setTimeout(() => {
+        $('removed-body').textContent = m.data_removed ? T.removed_body_data : T.removed_body;
+        show('p-removed');
+      }, 300);
+      break;
+    case 'error': {
+      const box = info.mode === 'uninstall' ? $('un-error') : $('install-error');
+      box.textContent = m.message;
+      box.hidden = false;
+      show(info.mode === 'uninstall' ? 'p-uninstall' : 'p-install');
+      break;
+    }
+  }
+});
+
+$('min').onclick = () => send('minimize');
+$('x').onclick = () => send('close');
+$('cancel').onclick = () => send('close');
+$('un-cancel').onclick = () => send('close');
+$('close-removed').onclick = () => send('close');
+$('browse').onclick = () => send('browse', { dir: info.dir });
+$('install').onclick = () => {
+  $('progress-title').textContent = T.installing;
+  progress(4, 's_prepare');
+  show('p-progress');
+  send('install', { dir: info.dir, desktop: $('desktop').checked });
+};
+$('open').onclick = () => {
+  send('open');
+  send('close');
+};
+$('default').onclick = () => send('default');
+$('remove-data').onchange = (e) => {
+  $('un-note').textContent = e.target.checked ? T.un_note_data : T.un_note;
+  $('un-note').classList.toggle('warn-data', e.target.checked);
+};
+$('un-go').onclick = () => {
+  $('progress-title').textContent = T.removing;
+  progress(10, null);
+  $('step').textContent = '';
+  show('p-progress');
+  send('uninstall', { remove_data: $('remove-data').checked });
+};
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') send('close');
+});
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+send('ready');
+</script>
+</body>
+</html>

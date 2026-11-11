@@ -1,0 +1,20 @@
+[package]
+name = "mizu-update"
+description = "Signed update manifests for Mizu: ed25519 verification, version comparison, SHA-256 checks."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+ed25519-dalek = "2"
+sha2 = "0.10"
+base64 = "0.22"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+getrandom = "0.2"
+
+[[bin]]
+name = "mizu-sign"
+path = "src/bin/mizu-sign.rs"

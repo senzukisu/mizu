@@ -1,5 +1,7 @@
-/target
+*.key
 *.pdb
 *.tmp
-.vscode/
 .idea/
+.vscode/
+/dist
+/target

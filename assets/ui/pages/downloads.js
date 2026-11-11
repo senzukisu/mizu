@@ -51,7 +51,7 @@ function render() {
       rm.addEventListener('click', () => mizu.send('download_action', { id: d.id, action: 'remove' }));
       acts.append(rm);
     }
-    const meta = h('div', { class: 'main' }, h('div', { class: 't', text: d.file || d.url }), h('div', { class: 'u', title: d.url, text: hostOf(d.url) || d.url }));
+    const meta = h('div', { class: 'main' }, h('div', { class: 't', text: d.file || d.url, translate: 'no' }), h('div', { class: 'u', title: d.url, text: hostOf(d.url) || d.url }));
     if (d.state === 'in_progress' || d.state === 'paused') {
       const pct = d.total > 0 ? (100 * d.received) / d.total : 0;
       meta.append(h('div', { class: `pbar${d.total > 0 ? '' : ' ind'}` }, h('div', { style: { width: `${pct}%` } })));

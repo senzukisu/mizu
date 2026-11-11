@@ -34,6 +34,12 @@ If video stutters or uses a lot of CPU:
 
 Autoplay can be restricted in Settings → Media; that takes effect after a restart.
 
+## Picture in picture
+
+When you hover a video, Mizu shows a small "PiP" button, and Alt+Shift+P pops out the playing video. Mizu uses the
+engine's standard Picture-in-Picture API, so it also works on sites that hide their own button. You can turn the
+button off in Settings → Media.
+
 ## Licensing
 
 - H.264 and AAC are covered by Microsoft's licences for the Edge WebView2 runtime, which is installed and updated by

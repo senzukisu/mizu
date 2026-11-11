@@ -13,11 +13,12 @@ New features never come at the cost of the first three.
 
 The goal is to make 0.1 something people keep as their default browser.
 
+Already in 0.1.0: a signed auto-updater, a per-user installer, vertical tabs, a password manager with CSV
+import/export, picture in picture, and a Russian translation.
+
 **Features**
-- Signed auto-updater for Mizu itself. It checks a release manifest signed with ed25519 (verified with a
-  well-reviewed crate, no custom crypto), downloads over HTTPS, verifies the signature, then installs in the background
-  and swaps on restart. Rollback if the new version fails to start.
-- MSI/MSIX installer, Start menu entry, "set as default browser", file and protocol associations.
+- Updater hardening: roll back if the new version fails to start, delta updates, and a "beta" channel.
+- Code-signed installer (Authenticode) and an MSIX package for the Microsoft Store.
 - Find bar integrated into the Mizu UI, using the engine's Find API.
 - Bookmark folders on the bookmarks bar open as flyout menus; drag a page's padlock icon onto the bar.
 - Generic cosmetic filtering (class/id selectors via a lightweight DOM observer), procedural cosmetic filters.
@@ -31,14 +32,14 @@ The goal is to make 0.1 something people keep as their default browser.
 
 **Depends on:** 0.1.0.
 **Done when:** the updater survives forced failure tests (bad signature, interrupted download, failed start), the installer
-passes Windows App Certification, and there are no crash reports in a week of dogfooding.
+passes Windows App Certification, and a week of dogfooding produces no crash reports.
 
 ## 0.3.0 — "Currents": workspaces and focus
 
 **Features**
 - **Mizu Spaces:** named tab sets (Work, Study, Play) with their own colour and icon, switchable from the tab strip.
   Each space is restored independently.
-- **Vertical tabs** as an optional layout, with tree grouping for tabs opened from a parent.
+- **Tree tabs** in the vertical sidebar: tabs opened from a parent are grouped under it.
 - **Tab groups** in the horizontal strip (collapse, colour, name).
 - **Mizu Focus:** a distraction-free mode that hides the toolbar and tab strip (revealed on hover), holds back site
   notifications, and optionally applies a per-space site blocklist.
@@ -69,9 +70,8 @@ passes Windows App Certification, and there are no crash reports in a week of do
 ## 0.5.0 — "Tide": passwords and sync
 
 **Features**
-- **Password manager:** passwords stored with Windows Hello / DPAPI protection; autofill through the engine's form
-  APIs; breach check with k-anonymity (only hash prefixes leave the device); passkey support where the engine
-  provides it.
+- **Passwords v2:** Windows Hello confirmation before revealing or filling a password, a password generator,
+  a breach check with k-anonymity (only hash prefixes leave the device), and passkeys where the engine provides them.
 - **Mizu Sync (optional):** end-to-end encrypted sync of bookmarks, history, open tabs, settings and passwords
   across devices. The server only stores ciphertext. Self-hostable server published under an OSI license.
 
@@ -84,7 +84,7 @@ passes Windows App Certification, and there are no crash reports in a week of do
 - **Translator:** page translation with a local model where hardware allows (no text sent off-device by default);
   an optional cloud provider only with explicit consent.
 - **Mizu Media:** a global media hub flyout listing every tab playing audio or video, with play/pause/mute and
-  picture-in-picture. Integrates with Windows media keys.
+  picture in picture. Integrates with Windows media keys.
 - **Developer tools additions:** network-request log export, quick viewport and device emulation presets, request
   blocking rules from DevTools into Mizu Shield.
 - Extension toolbar buttons and popups, once the engine exposes action UI (otherwise through a Mizu-hosted popup surface).
@@ -112,9 +112,9 @@ passes Windows App Certification, and there are no crash reports in a week of do
 | Idea | Verdict |
 |---|---|
 | **Servo engine** | Watch closely. It is a promising Rust engine but not yet compatible enough for daily browsing. Revisit every release. |
-| **Built-in VPN** | No. It needs servers, trust and a business model Onibi Lab doesn't have. We may integrate with WireGuard clients instead. |
 | **Built-in crypto wallet** | No. It is out of scope and expands the attack surface. |
 | **AI assistant** | Only as optional, local-first features (summarize page, translate). Never on by default, never with page content leaving the device silently. |
 | **Reading mode** | Yes, around 0.6, as a document-start reader view with Mizu typography. |
-| **Split view (two tabs side by side)** | Yes, after vertical tabs (0.3/0.4). The engine supports multiple visible views per window. |
+| **Split view (two tabs side by side)** | Yes, around 0.3/0.4. The engine supports multiple visible views per window. |
+| **More interface languages** | Yes. Translations are a single dictionary file; contributions are welcome. |
 | **Mobile** | Not before 1.0. |

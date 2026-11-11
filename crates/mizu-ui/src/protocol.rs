@@ -38,6 +38,14 @@ pub enum Command {
     },
     CloseFlyout,
     FlyoutSize { width: f64, height: f64 },
+    /// Collapse/expand the vertical tabs sidebar.
+    SidebarToggle,
+    /// Live resize of the sidebar (CSS px); `commit` on drag end saves the width.
+    SidebarResize {
+        width: f64,
+        #[serde(default)]
+        commit: bool,
+    },
     /// Height of the tab strip + toolbar (+ bookmarks bar) and where the omnibox is.
     ChromeMetrics { height: f64, omnibox: Anchor },
 
@@ -134,6 +142,8 @@ pub enum Command {
     MediaProbe,
     About,
     NewtabData,
+    UpdateCheck,
+    UpdateInstall,
     ChooseDownloadFolder,
     RestoreSession,
     BlockedProceed { url: String },
@@ -141,9 +151,53 @@ pub enum Command {
     // ── Userscripts & extensions ─────────────────────────────
     ScriptsGet,
     ScriptPending,
-    ScriptInstallConfirm,
+    /// Install the pending scripts with these indices (all when omitted).
+    ScriptInstallConfirm {
+        #[serde(default)]
+        indices: Option<Vec<usize>>,
+    },
     ScriptInstallCancel,
+    /// Fetch userscripts from links (GitHub, GitLab, Gist, Greasy Fork, raw URLs…).
+    ScriptInstallUrls { urls: Vec<String> },
+    /// Pick one or more `.user.js` files.
+    ScriptInstallFiles,
+    ScriptsCheckUpdates,
+
+    // ── Passwords ────────────────────────────────────────────
+    PasswordsGet {
+        #[serde(default)]
+        query: String,
+    },
+    PasswordReveal { id: i64 },
+    PasswordSave {
+        #[serde(default)]
+        id: Option<i64>,
+        origin: String,
+        username: String,
+        /// `None` keeps the stored password (editing other fields).
+        #[serde(default)]
+        password: Option<String>,
+        #[serde(default)]
+        note: String,
+    },
+    PasswordDelete { id: i64 },
+    PasswordNeverRemove { origin: String },
+    PasswordsImport,
+    PasswordsExport,
+    PasswordFill { id: i64 },
+    PasswordPromptResponse {
+        action: String,
+        #[serde(default)]
+        username: Option<String>,
+    },
     ScriptToggle { id: String, enabled: bool },
+    ScriptSites {
+        id: String,
+        #[serde(default)]
+        only: Vec<String>,
+        #[serde(default)]
+        never: Vec<String>,
+    },
     ScriptRemove { id: String },
     ScriptCreate { source: String },
     ScriptSource { id: String },
@@ -165,10 +219,14 @@ impl Command {
             Self::Window { .. }
                 | Self::ShowFlyout { .. }
                 | Self::FlyoutSize { .. }
+                | Self::SidebarToggle
+                | Self::SidebarResize { .. }
                 | Self::ChromeMetrics { .. }
                 | Self::OmniboxHighlight { .. }
                 | Self::PermissionResponse { .. }
                 | Self::ConfirmResponse { .. }
+                | Self::PasswordFill { .. }
+                | Self::PasswordPromptResponse { .. }
                 | Self::OmniboxInput { .. }
                 | Self::OmniboxCommit { .. }
                 | Self::OmniboxClose
@@ -198,6 +256,8 @@ pub enum FlyoutKind {
     SiteInfo,
     Permission,
     Confirm,
+    SavePassword,
+    Logins,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]

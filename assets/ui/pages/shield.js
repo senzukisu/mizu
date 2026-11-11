@@ -14,7 +14,7 @@ async function render() {
   if (!s.top.length) top.append(h('p', { class: 'note', text: 'Nothing blocked yet in this session.' }));
   const max = Math.max(1, ...s.top.map((t) => t[1]));
   for (const [host, n] of s.top) {
-    top.append(h('div', { class: 'list-row' }, letterAvatar(`https://${host}`, host), h('div', { class: 'main' }, h('div', { class: 't', text: host }), h('div', { class: 'meter' }, h('div', { style: { width: `${(100 * n) / max}%` } }))), h('span', { class: 'when', text: String(n) })));
+    top.append(h('div', { class: 'list-row' }, letterAvatar(`https://${host}`, host), h('div', { class: 'main', translate: 'no' }, h('div', { class: 't', text: host }), h('div', { class: 'meter' }, h('div', { style: { width: `${(100 * n) / max}%` } }))), h('span', { class: 'when', text: String(n) })));
   }
   const settingsBtn = h('button', { class: 'btn', text: 'Shield settings' });
   settingsBtn.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://settings/#privacy', disposition: 'current' }));

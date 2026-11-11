@@ -13,6 +13,7 @@ pub struct Dispatcher;
 
 const CHROME_URL: &str = "mizu://chrome/";
 const FLYOUT_URL: &str = "mizu://flyout/";
+const SIDEBAR_URL: &str = "mizu://chrome/?sidebar";
 
 fn host_of(url: &str) -> String {
     url::Url::parse(url)
@@ -49,7 +50,7 @@ fn themed_html(key: ViewKey, body: &[u8]) -> Vec<u8> {
     let Some(start) = text.find("<html") else { return body.to_vec() };
     let Some(len) = text[start..].find('>') else { return body.to_vec() };
     let private = if private { " data-private" } else { "" };
-    format!("{}<html lang=\"en\" {attrs}{private}>{}", &text[..start], &text[start + len + 1..]).into_bytes()
+    format!("{}<html {attrs}{private}>{}", &text[..start], &text[start + len + 1..]).into_bytes()
 }
 
 impl ViewHandler for Dispatcher {
@@ -61,7 +62,7 @@ impl ViewHandler for Dispatcher {
         let uri = req.uri.as_str();
         match hot::role(key) {
             Some(Role::Chrome(_)) => {
-                return if uri == CHROME_URL { NavigationDecision::Allow } else { NavigationDecision::Cancel };
+                return if uri == CHROME_URL || uri == SIDEBAR_URL { NavigationDecision::Allow } else { NavigationDecision::Cancel };
             }
             Some(Role::Flyout(_)) => {
                 return if uri == FLYOUT_URL { NavigationDecision::Allow } else { NavigationDecision::Cancel };

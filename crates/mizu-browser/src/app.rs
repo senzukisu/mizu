@@ -28,6 +28,11 @@ const TIMER_SESSION: usize = 1;
 const TIMER_SLEEP: usize = 2;
 const TIMER_STATS: usize = 3;
 const TIMER_FLUSH: usize = 4;
+const TIMER_REAP: usize = 5;
+const TIMER_SHOW: usize = 6;
+const TIMER_SCRIPTS: usize = 7;
+const TIMER_SPARE: usize = 8;
+const TIMER_UPDATE: usize = 9;
 
 /// A permission prompt waiting for the user.
 pub struct PendingPermission {
@@ -60,7 +65,12 @@ pub struct App {
     pub prompts: HashMap<u64, PendingPermission>,
     /// Permission answers that must not be persisted (private windows, "this time only").
     pub session_permissions: HashMap<(String, String), bool>,
-    pub pending_install: Option<PendingInstall>,
+    pub pending_install: Vec<PendingInstall>,
+    /// Links from the last install request that could not be fetched (url, error).
+    pub pending_failures: Vec<(String, String)>,
+    pub update: crate::update::UpdateState,
+    /// Login captured on a page, waiting for "Save password?".
+    pub pending_password: Option<crate::passwords::PendingPassword>,
     /// Tab that asked to install a userscript (shows the install page when fetched).
     pub script_install_tab: Option<ViewKey>,
     pub crashed_last_time: bool,
@@ -75,6 +85,10 @@ pub struct App {
     /// Last time download progress was pushed to the UI (progress events are throttled).
     last_downloads_push: std::time::Instant,
     pub quitting: bool,
+    /// Whether profile-wide engine settings were applied (normal, private).
+    pub profile_settings_applied: [bool; 2],
+    /// Views waiting to be closed after their tab's close animation.
+    dying: Vec<(std::time::Instant, View)>,
 }
 
 thread_local! {
@@ -159,7 +173,11 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
 
     let engine = Engine::create(&EngineOptions {
         user_data_dir: paths.engine_data(),
-        language: String::new(),
+        language: match settings.general.language.as_str() {
+            "ru" => "ru-RU".into(),
+            "en" => "en-US".into(),
+            _ => String::new(),
+        },
         browser_args: engine_args(&settings),
         extensions: settings.advanced.extensions,
         internal_scheme: mizu_core::internal::SCHEME.into(),
@@ -196,6 +214,9 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         stats_dirty: false,
         scripts: mizu_userscripts::ScriptStore::open(&paths.root.join("scripts")),
         gm_tokens: HashMap::new(),
+        pw_tokens: HashMap::new(),
+        password_capture: settings.privacy.password_manager,
+        pip_button: settings.media.pip_button,
     });
 
     window::register_class();
@@ -215,7 +236,10 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         msg_hwnd,
         prompts: HashMap::new(),
         session_permissions: HashMap::new(),
-        pending_install: None,
+        pending_install: Vec::new(),
+        pending_failures: Vec::new(),
+        pending_password: None,
+        update: crate::update::UpdateState::Idle,
         script_install_tab: None,
         crashed_last_time,
         previous_session,
@@ -226,6 +250,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         bookmarks_bar: None,
         last_downloads_push: std::time::Instant::now(),
         quitting: false,
+        profile_settings_applied: [false; 2],
+        dying: Vec::new(),
     };
     APP.with(|a| *a.borrow_mut() = Some(app));
 
@@ -237,6 +263,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
             SetTimer(Some(app.msg_hwnd), TIMER_SESSION, 3_000, None);
             SetTimer(Some(app.msg_hwnd), TIMER_SLEEP, 60_000, None);
             SetTimer(Some(app.msg_hwnd), TIMER_STATS, 15_000, None);
+            SetTimer(Some(app.msg_hwnd), TIMER_SCRIPTS, 60_000, None);
+            SetTimer(Some(app.msg_hwnd), TIMER_UPDATE, 90_000, None);
         }
     });
     Ok(())
@@ -245,6 +273,7 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
 pub fn shutdown() {
     let app = APP.with(|a| a.borrow_mut().take());
     if let Some(mut app) = app {
+        app.reap_views(true);
         app.save_stats();
         app.clear_on_exit();
         if let Err(e) = mizu_settings::save(&app.paths.settings(), &app.settings) {
@@ -351,6 +380,13 @@ impl App {
 
     /// Pushes coalesced state to UI surfaces.
     fn flush(&mut self) {
+        // Fallback for TIMER_SHOW: WM_TIMER is only generated when the queue is empty, so a
+        // busy start must not be able to keep the window hidden.
+        for w in &mut self.windows {
+            if !w.shown && w.created_at.elapsed() > std::time::Duration::from_millis(2500) {
+                w.reveal();
+            }
+        }
         let stats_dirty = hot::with(|h| std::mem::take(&mut h.stats_dirty)).unwrap_or(false);
         if stats_dirty {
             for w in &mut self.windows {
@@ -404,10 +440,14 @@ impl App {
                 self.filters_updating = false;
                 crate::internal::broadcast_to_pages(self, "shield", r#"{"type":"toast","message":"Filter lists updated"}"#);
             }
-            WorkerResult::ScriptFetched { url, result } => self.finish_script_fetch(url, result),
+            WorkerResult::ScriptsFetched { key, items, failures } => self.finish_scripts_fetched(key, items, failures),
+            WorkerResult::ScriptUpdates { updated, checked, failed, reply } => {
+                self.finish_script_updates(updated, checked, failed, reply);
+            }
             WorkerResult::ExtensionDownloaded { key, rid, result } => {
                 crate::extensions::finish_store_install(self, key, rid, result);
             }
+            WorkerResult::Update { result, reply } => self.finish_update_check(result, reply),
             WorkerResult::MediaReport(report, token) => {
                 if let Some((key, rid)) = self.media_waiters.remove(&token) {
                     crate::commands::reply(key, rid, serde_json::to_value(&*report).unwrap_or_default());
@@ -424,6 +464,48 @@ impl App {
             }
             TIMER_SLEEP => self.sleep_background_tabs(),
             TIMER_STATS => self.save_stats(),
+            TIMER_REAP => self.reap_views(false),
+            TIMER_SCRIPTS => {
+                // First run shortly after start, then every 30 minutes; each script is
+                // checked at most once a day.
+                // SAFETY: re-arming our own timer.
+                unsafe {
+                    SetTimer(Some(self.msg_hwnd), TIMER_SCRIPTS, 30 * 60 * 1000, None);
+                }
+                if self.settings.advanced.userscript_auto_update {
+                    self.check_script_updates(false, None);
+                }
+            }
+            TIMER_UPDATE => {
+                // First check 90 s after start, then every 6 hours (a check is cheap: two
+                // small signed files); the installer is only downloaded when newer.
+                // SAFETY: re-arming our own timer.
+                unsafe {
+                    SetTimer(Some(self.msg_hwnd), TIMER_UPDATE, 6 * 3600 * 1000, None);
+                }
+                if self.settings.general.auto_update {
+                    self.check_for_update(None);
+                }
+            }
+            TIMER_SPARE => {
+                // SAFETY: stopping our own one-shot timer.
+                unsafe {
+                    let _ = KillTimer(Some(self.msg_hwnd), TIMER_SPARE);
+                }
+                let ids: Vec<WindowId> = self.windows.iter().map(|w| w.id).collect();
+                for id in ids {
+                    self.ensure_spare(id);
+                }
+            }
+            TIMER_SHOW => {
+                // SAFETY: stopping our own one-shot timer.
+                unsafe {
+                    let _ = KillTimer(Some(self.msg_hwnd), TIMER_SHOW);
+                }
+                for w in &mut self.windows {
+                    w.reveal();
+                }
+            }
             TIMER_FLUSH => {
                 // SAFETY: stopping our own one-shot timer.
                 unsafe {
@@ -566,6 +648,19 @@ impl App {
             suggestions: Vec::new(),
             state_dirty: true,
             closing: false,
+            shown: false,
+            activated: false,
+            created_at: std::time::Instant::now(),
+            show_maximized: self.settings.general.start_maximized || placement.is_some_and(|p| p.4),
+            spare: None,
+            spare_creating: false,
+            sidebar: None,
+            sidebar_key: TabId::next().0,
+            sidebar_ready: false,
+            sidebar_creating: false,
+            side_tabs: self.settings.appearance.tab_layout == "side",
+            sidebar_collapsed: self.settings.appearance.sidebar_collapsed,
+            sidebar_width: f64::from(self.settings.appearance.sidebar_width),
         });
 
         self.create_surface_views(id);
@@ -584,9 +679,11 @@ impl App {
         } else if let Some(active) = self.window(id).and_then(|w| w.active_tab()) {
             self.activate_tab(id, active);
         }
-        window::show_native(hwnd, placement.is_some_and(|p| p.4));
-        if let Some(w) = self.window(id) {
-            w.layout();
+        // The window appears when its UI reports ready (commands::Ready), with a fallback so
+        // a slow engine start never leaves Mizu invisible.
+        // SAFETY: one-shot timer on our message window.
+        unsafe {
+            SetTimer(Some(self.msg_hwnd), TIMER_SHOW, 2000, None);
         }
         self.session_dirty = true;
         id
@@ -597,8 +694,6 @@ impl App {
         let private = w.private;
         let hwnd = w.hwnd;
         let chrome_key = w.chrome_key;
-        let flyout_hwnd = w.flyout.hwnd;
-        let flyout_key = w.flyout.key;
         let profile = if private { ProfileKind::Private } else { ProfileKind::Normal };
         let base = ViewConfig {
             key: chrome_key,
@@ -610,7 +705,7 @@ impl App {
             intercept_all: false,
             internal_scheme: mizu_core::internal::SCHEME.into(),
         };
-        View::create(&self.engine, hwnd, base.clone(), self.handler.clone(), move |res| {
+        View::create(&self.engine, hwnd, base, self.handler.clone(), move |res| {
             queue::with_app(move |app| match res {
                 Ok(view) => {
                     hot::attach_view(chrome_key, view.clone());
@@ -626,6 +721,89 @@ impl App {
                 Err(e) => tracing::error!(error = %e, "chrome view failed"),
             });
         });
+    }
+
+    /// Creates the vertical-tabs sidebar view of a window (if the layout asks for one).
+    pub fn ensure_sidebar(&mut self, id: WindowId) {
+        let Some(w) = self.window_mut(id) else { return };
+        if !w.side_tabs || w.sidebar.is_some() || w.sidebar_creating {
+            return;
+        }
+        w.sidebar_creating = true;
+        let (hwnd, key, private) = (w.hwnd, w.sidebar_key, w.private);
+        hot::register(key, Role::Chrome(id), private);
+        let config = ViewConfig {
+            key,
+            profile: if private { ProfileKind::Private } else { ProfileKind::Normal },
+            chrome: true,
+            devtools: cfg!(debug_assertions),
+            smartscreen: false,
+            background: {
+                let [r, g, b] = crate::theme::frame_rgb(&self.settings, private);
+                [r, g, b, 0xff]
+            },
+            intercept_all: false,
+            internal_scheme: mizu_core::internal::SCHEME.into(),
+        };
+        View::create(&self.engine, hwnd, config, self.handler.clone(), move |res| {
+            queue::with_app(move |app| match res {
+                Ok(view) => {
+                    hot::attach_view(key, view.clone());
+                    view.navigate("mizu://chrome/?sidebar");
+                    match app.window_mut(id) {
+                        Some(w) if w.side_tabs => {
+                            w.sidebar_creating = false;
+                            view.set_visible(false);
+                            w.sidebar = Some(view);
+                        }
+                        Some(w) => {
+                            w.sidebar_creating = false;
+                            view.close();
+                        }
+                        None => view.close(),
+                    }
+                }
+                Err(e) => tracing::error!(error = %e, "sidebar view failed"),
+            });
+        });
+    }
+
+    /// Removes the sidebar view (switching back to the top tab strip).
+    fn remove_sidebar(&mut self, id: WindowId) {
+        let Some(w) = self.window_mut(id) else { return };
+        if let Some(s) = w.sidebar.take() {
+            s.close();
+        }
+        w.sidebar_ready = false;
+        let key = w.sidebar_key;
+        w.sidebar_key = TabId::next().0;
+        hot::forget(key);
+        w.layout();
+    }
+
+    /// Creates the flyout's view. Deferred until the chrome is ready so both views do not
+    /// compete during startup.
+    pub fn create_flyout_view(&mut self, id: WindowId) {
+        let Some(w) = self.window(id) else { return };
+        if w.flyout.view.is_some() || w.flyout.creating {
+            return;
+        }
+        let private = w.private;
+        let flyout_hwnd = w.flyout.hwnd;
+        let flyout_key = w.flyout.key;
+        let base = ViewConfig {
+            key: flyout_key,
+            profile: if private { ProfileKind::Private } else { ProfileKind::Normal },
+            chrome: true,
+            devtools: cfg!(debug_assertions),
+            smartscreen: false,
+            background: [0, 0, 0, 0],
+            intercept_all: false,
+            internal_scheme: mizu_core::internal::SCHEME.into(),
+        };
+        if let Some(w) = self.window_mut(id) {
+            w.flyout.creating = true;
+        }
         let flyout_cfg = ViewConfig {
             key: flyout_key,
             background: {
@@ -672,7 +850,19 @@ impl App {
     }
 
     pub fn on_window_activated(&mut self, id: WindowId, active: bool) {
-        if active {
+        // Focus moves into the page only when the window really becomes active. Moving
+        // focus itself produces activation messages, so reacting to every WM_ACTIVATE (or
+        // to activations of a still-hidden window) loops forever: the window never
+        // appears, timers starve, and Explorer stalls waiting for us.
+        let Some(w) = self.window_mut(id) else { return };
+        if !w.shown {
+            return;
+        }
+        let was_active = std::mem::replace(&mut w.activated, active);
+        if !active || was_active {
+            return;
+        }
+        {
             // Most recently used window last, so `main_window` finds it.
             if let Some(pos) = self.windows.iter().position(|w| w.id == id) {
                 let w = self.windows.remove(pos);
@@ -758,6 +948,13 @@ impl App {
         if let Some(c) = w.chrome.take() {
             c.close();
         }
+        if let Some(s) = w.spare.take() {
+            s.close();
+        }
+        if let Some(s) = w.sidebar.take() {
+            s.close();
+        }
+        hot::forget(w.sidebar_key);
         hot::forget(w.chrome_key);
         hot::forget(w.flyout.key);
         w.flyout.destroy();
@@ -811,6 +1008,25 @@ impl App {
         let ui = crate::theme::ui_settings(&self.settings);
         let ev = Event::Settings { settings: ui }.to_json();
         let dark = crate::theme::is_dark(&self.settings);
+        let side = self.settings.appearance.tab_layout == "side";
+        let collapsed = self.settings.appearance.sidebar_collapsed;
+        let width = self.settings.appearance.sidebar_width;
+        let ids: Vec<WindowId> = self.windows.iter().map(|w| w.id).collect();
+        for id in ids {
+            let Some(w) = self.window_mut(id) else { continue };
+            let changed = w.side_tabs != side;
+            w.side_tabs = side;
+            w.sidebar_collapsed = collapsed;
+            w.sidebar_width = f64::from(width);
+            w.layout();
+            if changed {
+                if side {
+                    self.ensure_sidebar(id);
+                } else {
+                    self.remove_sidebar(id);
+                }
+            }
+        }
         for w in &mut self.windows {
             crate::win::apply_backdrop(w.hwnd, dark || w.private, self.settings.appearance.translucency && !w.private);
             if let Some(c) = &w.chrome {
@@ -820,10 +1036,22 @@ impl App {
             if let Some(f) = &w.flyout.view {
                 f.post_json(&ev);
             }
+            if let Some(s) = &w.sidebar {
+                s.post_json(&ev);
+            }
             for t in w.tabs.values() {
                 if let Some(v) = &t.view {
-                    crate::tabs::apply_view_settings(&self.settings, v, w.private);
+                    crate::tabs::apply_view_settings(&self.settings, v);
                 }
+            }
+            // Profile-wide settings: once per profile through any of its views.
+            let slot = usize::from(w.private);
+            match w.tabs.values().find_map(|t| t.view.as_ref()) {
+                Some(v) => {
+                    crate::tabs::apply_profile_settings(&self.settings, v, w.private);
+                    self.profile_settings_applied[slot] = true;
+                }
+                None => self.profile_settings_applied[slot] = false,
             }
             w.state_dirty = true;
             // SAFETY: repaint our own window with the new frame colour.
@@ -836,8 +1064,43 @@ impl App {
             h.content_blocking = self.settings.privacy.content_blocking;
             h.global_privacy_control = self.settings.privacy.global_privacy_control;
             h.theme_attrs = crate::theme::html_attrs(&self.settings);
+            h.password_capture = self.settings.privacy.password_manager;
+            h.pip_button = self.settings.media.pip_button;
             h.allowlist = self.settings.privacy.allowlist.iter().map(|x| crate::shield::normalize_host(x)).collect();
         });
+    }
+
+    /// Creates the spare view of a window soon (after the current work settles).
+    pub fn schedule_spare(&self) {
+        // SAFETY: one-shot timer on our message window.
+        unsafe {
+            SetTimer(Some(self.msg_hwnd), TIMER_SPARE, 700, None);
+        }
+    }
+
+    /// Queues a view to be closed shortly (after UI animations), off the interaction path.
+    pub fn retire_view(&mut self, view: View) {
+        self.dying.push((std::time::Instant::now(), view));
+        // SAFETY: timer on our message window.
+        unsafe {
+            SetTimer(Some(self.msg_hwnd), TIMER_REAP, 350, None);
+        }
+    }
+
+    fn reap_views(&mut self, all: bool) {
+        let cutoff = std::time::Duration::from_millis(300);
+        let (ready, waiting): (Vec<_>, Vec<_>) =
+            std::mem::take(&mut self.dying).into_iter().partition(|(t, _)| all || t.elapsed() >= cutoff);
+        self.dying = waiting;
+        for (_, v) in ready {
+            v.close();
+        }
+        if self.dying.is_empty() {
+            // SAFETY: stopping our own timer.
+            unsafe {
+                let _ = KillTimer(Some(self.msg_hwnd), TIMER_REAP);
+            }
+        }
     }
 
     fn clear_on_exit(&mut self) {

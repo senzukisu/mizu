@@ -50,6 +50,10 @@ See [ARCHITECTURE.md](ARCHITECTURE.md). In short:
 - A new command needs a variant in `mizu-ui::protocol::Command` and a handler in `mizu-browser::commands` or
   `mizu-browser::internal`. Decide whether it is chrome-only (`Command::is_chrome_only`).
 - Developer tools work in debug builds for the chrome and flyout views as well (right-click → Inspect).
+- **Translations.**
+  - Write UI text in English.
+  - Add the Russian string to the dictionary in `shared/i18n.js`, or a pattern for text that contains numbers or names.
+  - Mark website data with `translate="no"` so it is never translated.
 
 ## Code standards
 
@@ -62,6 +66,27 @@ See [ARCHITECTURE.md](ARCHITECTURE.md). In short:
 
 ## Releasing
 
-1. Update `version` in the root `Cargo.toml`, `crates/mizu-browser/resources/mizu.rc` and `CHANGELOG.md`.
-2. Run `cargo test --workspace` and do the manual checklist in [TESTING.md](TESTING.md).
-3. `cargo build --release` and tag `vX.Y.Z`.
+1. Update the version in:
+   - the root `Cargo.toml`;
+   - `crates/mizu-browser/resources/mizu.rc`;
+   - `crates/mizu-setup/resources/setup.rc` and `setup.manifest`;
+   - `CHANGELOG.md` and `docs/ru/CHANGELOG.md`.
+2. Run `cargo test --workspace` and the manual checklist in [TESTING.md](TESTING.md).
+3. Build everything:
+
+   ```bash
+   powershell -ExecutionPolicy Bypass -File scripts/release.ps1 -Notes "Short release notes"
+   ```
+
+   `dist/` then contains `MizuSetup-X.Y.Z.exe`, `Mizu-X.Y.Z-portable-x64.zip`, `mizu-update.json` and
+   `mizu-update.json.sig`.
+4. Tag `vX.Y.Z` and create a GitHub release with all four files. Installed copies find the update through
+   `releases/latest/download/mizu-update.json`.
+
+### The signing key
+
+Update manifests are signed with an ed25519 key at `%USERPROFILE%\.onibi\mizu-release.key` (override it with `-Key`).
+- It must **never** be committed; `*.key` is ignored by git.
+- `mizu-sign keygen <path>` creates a key and prints its public key, which goes into `RELEASE_PUBLIC_KEY` in
+  `crates/mizu-update/src/lib.rs`.
+- If the key changes, older versions can no longer verify updates, so keep a backup in a safe place.

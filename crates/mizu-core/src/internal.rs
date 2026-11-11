@@ -20,11 +20,12 @@ pub enum InternalPage {
     Media,
     Shield,
     Scripts,
+    Passwords,
     Blocked,
 }
 
 impl InternalPage {
-    pub const ALL: [InternalPage; 10] = [
+    pub const ALL: [InternalPage; 11] = [
         Self::NewTab,
         Self::Settings,
         Self::History,
@@ -34,6 +35,7 @@ impl InternalPage {
         Self::Media,
         Self::Shield,
         Self::Scripts,
+        Self::Passwords,
         Self::Blocked,
     ];
 
@@ -48,6 +50,7 @@ impl InternalPage {
             Self::Media => "media",
             Self::Shield => "shield",
             Self::Scripts => "scripts",
+            Self::Passwords => "passwords",
             Self::Blocked => "blocked",
         }
     }
@@ -67,6 +70,7 @@ impl InternalPage {
             Self::Media => "Media diagnostics",
             Self::Shield => "Mizu Shield",
             Self::Scripts => "Scripts & extensions",
+            Self::Passwords => "Passwords",
             Self::Blocked => "Page blocked",
         }
     }

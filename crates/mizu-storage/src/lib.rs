@@ -13,6 +13,7 @@
 mod bookmarks;
 mod downloads;
 mod history;
+mod logins;
 mod migrations;
 mod permissions;
 mod session;
@@ -20,6 +21,7 @@ mod session;
 pub use bookmarks::{BOOKMARKS_BAR_ID, Bookmark, BookmarkKind, OTHER_BOOKMARKS_ID};
 pub use downloads::{DownloadRecord, DownloadState};
 pub use history::{HistoryEntry, TimeRange};
+pub use logins::Login;
 pub use permissions::{PermissionRecord, PermissionState};
 
 use rusqlite::Connection;

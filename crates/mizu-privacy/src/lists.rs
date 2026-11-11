@@ -153,9 +153,10 @@ impl FilterStore {
         force || self.is_stale(RESOURCES_ID) || !self.dir.join("resources.json").exists()
     }
 
-    /// Downloads one list. Blocking; call from a worker thread.
+    /// Downloads one list (trying official mirrors and retrying transient network errors).
+    /// Blocking; call from a worker thread.
     pub fn update_list(&mut self, sub: &FilterListSubscription) -> Result<u64, ListError> {
-        let result = fetch_https_text(&sub.url).and_then(|text| {
+        let result = fetch_with_mirrors(&sub.url).and_then(|text| {
             if !looks_like_filter_list(&text) {
                 return Err(ListError::NotAFilterList);
             }
@@ -217,6 +218,41 @@ impl FilterStore {
             })
             .collect()
     }
+}
+
+/// Official mirrors of a filter list URL, best first. uBlock Origin publishes its lists on
+/// GitHub Pages and Cloudflare Pages; some networks block one of them.
+pub fn mirrors(url: &str) -> Vec<String> {
+    let mut out = vec![url.to_owned()];
+    if let Some(path) = url.strip_prefix("https://ublockorigin.github.io/uAssets/") {
+        out.push(format!("https://ublockorigin.pages.dev/{path}"));
+    }
+    if let Some(path) = url.strip_prefix("https://easylist.to/easylist/") {
+        out.push(format!("https://easylist-downloads.adblockplus.org/{path}"));
+    }
+    out
+}
+
+fn fetch_with_mirrors(url: &str) -> Result<String, ListError> {
+    let mut last = ListError::Http("no source".into());
+    for candidate in mirrors(url) {
+        for attempt in 0..2 {
+            match fetch_https_text(&candidate) {
+                Ok(text) if looks_like_filter_list(&text) => return Ok(text),
+                Ok(_) => {
+                    last = ListError::NotAFilterList;
+                    break;
+                }
+                Err(e @ ListError::InsecureUrl) => return Err(e),
+                Err(e) => {
+                    tracing::debug!(url = candidate, attempt, error = %e, "list download attempt failed");
+                    last = e;
+                    std::thread::sleep(Duration::from_millis(400 * (attempt + 1)));
+                }
+            }
+        }
+    }
+    Err(last)
 }
 
 /// Fetches a text resource over HTTPS with a size cap (filter lists, userscripts).
@@ -299,6 +335,14 @@ mod tests {
     #[test]
     fn rejects_insecure_urls() {
         assert!(matches!(fetch_https_text("http://example.com/list.txt"), Err(ListError::InsecureUrl)));
+    }
+
+    #[test]
+    fn list_mirrors() {
+        let m = mirrors("https://ublockorigin.github.io/uAssets/filters/badware.min.txt");
+        assert_eq!(m.len(), 2);
+        assert_eq!(m[1], "https://ublockorigin.pages.dev/filters/badware.min.txt");
+        assert_eq!(mirrors("https://example.com/l.txt").len(), 1);
     }
 
     #[test]

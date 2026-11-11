@@ -50,12 +50,23 @@ pub fn chrome_rgba(settings: &Settings, private: bool) -> [u8; 4] {
 
 /// `<html>` attributes matching the current appearance, injected into internal pages before
 /// they are served so they paint in the right theme immediately (no light→dark flash).
+/// The interface language actually used ("en" or "ru").
+pub fn ui_language(settings: &Settings) -> &'static str {
+    match settings.general.language.as_str() {
+        "ru" => "ru",
+        "en" => "en",
+        _ if crate::win::system_language().starts_with("ru") => "ru",
+        _ => "en",
+    }
+}
+
 pub fn html_attrs(settings: &Settings) -> String {
     let a = &settings.appearance;
     let enum_str = |v: serde_json::Value| v.as_str().unwrap_or_default().to_owned();
     let accent = if a.accent.len() == 7 && a.accent.starts_with('#') { a.accent.as_str() } else { "#2f7de1" };
     format!(
-        r#"data-theme="{}" data-palette="{}" data-density="{}" data-style="{}" data-motion="{}" style="--accent:{accent}""#,
+        r#"data-lang="{}" data-theme="{}" data-palette="{}" data-density="{}" data-style="{}" data-motion="{}" style="--accent:{accent}""#,
+        ui_language(settings),
         if is_dark(settings) { "dark" } else { "light" },
         enum_str(serde_json::to_value(a.palette).unwrap_or_default()),
         enum_str(serde_json::to_value(a.density).unwrap_or_default()),
@@ -69,5 +80,6 @@ pub fn ui_settings(settings: &Settings) -> serde_json::Value {
     let mut v = serde_json::to_value(settings).unwrap_or_default();
     v["_dark"] = serde_json::Value::Bool(is_dark(settings));
     v["_engine"] = serde_json::Value::String(settings.search.active_engine().name);
+    v["_lang"] = serde_json::Value::String(ui_language(settings).into());
     v
 }

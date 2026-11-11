@@ -88,6 +88,7 @@ button {
 
 .tab {
   contain: layout style;
+  will-change: transform;
   -webkit-app-region: no-drag;
   app-region: no-drag;
   position: relative;
@@ -159,48 +160,18 @@ button {
 .tab:hover::before {
   opacity: 0 !important;
 }
-/* Closing: the tab's width is pinned in JS, then collapses while siblings slide in. */
-.tab.closing {
-  flex: 0 0 auto !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  opacity: 0;
+/* Tab animations run in JS with the Web Animations API on transform/opacity only
+   (GPU-composited, no layout per frame). A closing tab becomes an absolutely positioned
+   "ghost" that fades out while the remaining tabs slide into place (FLIP). */
+.tab.ghost {
+  position: absolute;
+  bottom: 0;
   pointer-events: none;
-  overflow: hidden;
-  transition:
-    width var(--t-med) var(--ease),
-    opacity calc(var(--t-med) * 0.6) linear;
+  z-index: 1;
 }
-.tab.closing > * {
-  transform: scale(0.9);
-  transition: transform var(--t-med) var(--ease);
-}
-/* Opening: grows from zero width, content fades and rises. */
-.tab.entering {
-  animation: tab-grow var(--t-med) var(--ease) both;
-}
-.tab.entering > * {
-  animation: tab-content-in var(--t-slow) var(--ease) both;
-}
-@keyframes tab-grow {
-  from {
-    max-width: 0;
-    min-width: 0;
-    padding-left: 0;
-    padding-right: 0;
-  }
-}
-@keyframes tab-content-in {
-  from {
-    opacity: 0;
-    transform: translateY(5px) scale(0.96);
-  }
-}
-.tab.active .fav,
-.tab.active .title {
-  animation: none;
+.tab.ghost::before,
+.tab.ghost::after {
+  display: none;
 }
 .tab.dragging {
   transition: none;
@@ -612,4 +583,296 @@ button {
 }
 .omni-btn.install:disabled {
   opacity: 0.6;
+}
+
+/* ── Top chrome when tabs are in the sidebar ─────────────────── */
+#win-title {
+  display: none;
+}
+#app.side-tabs #tabs,
+#app.side-tabs #new-tab {
+  display: none;
+}
+#app.side-tabs #win-title {
+  display: block;
+  align-self: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
+  margin-left: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+/* ── Vertical tabs sidebar surface ───────────────────────────── */
+body.sidebar-surface #tabstrip,
+body.sidebar-surface #toolbar,
+body.sidebar-surface #bookmarks {
+  display: none !important;
+}
+body.sidebar-surface {
+  background: var(--frame);
+}
+body.sidebar-surface #app {
+  position: relative;
+  height: 100vh;
+  background: color-mix(in srgb, var(--frame) 70%, var(--surface));
+}
+[data-translucent] body.sidebar-surface #app {
+  background: var(--surface-2);
+}
+#vt {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 10px 8px 8px;
+  gap: 8px;
+}
+.vt-new {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 8px;
+  border-radius: var(--r-md);
+  color: var(--ink-2);
+  font-weight: 500;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.vt-plus {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+  transition: transform var(--t-med) var(--ease-spring);
+}
+.vt-plus svg.icon {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+.vt-new:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+.vt-new:hover .vt-plus {
+  transform: rotate(90deg);
+}
+#vt-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px;
+  margin: 0 -2px;
+  scrollbar-width: thin;
+}
+#vt #tabs {
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  height: auto;
+  overflow: visible;
+  gap: 3px;
+}
+#vt-list .vt-new {
+  flex: none;
+}
+#vt .tab {
+  flex: none;
+  max-width: none;
+  min-width: 0;
+  height: 38px;
+  padding: 0 6px 0 10px;
+  gap: 10px;
+  border-radius: var(--r-md);
+  margin: 0;
+  color: var(--ink-2);
+  border: 1px solid transparent;
+}
+#vt .tab::before,
+#vt .tab::after {
+  display: none !important;
+}
+#vt .tab:hover:not(.active) {
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  color: var(--ink);
+}
+#vt .tab.active {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 4px 14px rgb(0 0 0 / 0.10);
+}
+#vt .tab.active .fav {
+  color: var(--accent);
+}
+#vt .tab .title {
+  font-size: var(--fs-ui);
+}
+#vt .tab.sleeping .title,
+#vt .tab.sleeping .fav {
+  opacity: 0.8;
+}
+#vt .tab.pinned {
+  padding: 0 6px 0 10px;
+  justify-content: flex-start;
+}
+#vt .tab.pinned .title,
+#vt .tab.pinned .close {
+  display: flex;
+}
+#vt .tab.pinned + .tab:not(.pinned) {
+  margin-top: 8px;
+}
+#vt .tab.narrow .close,
+#vt .tab.narrow .fav {
+  display: grid;
+}
+#vt .tab .close {
+  opacity: 0;
+  width: 24px;
+  height: 24px;
+}
+#vt .tab:hover .close,
+#vt .tab.active .close {
+  opacity: 1;
+}
+#vt .tab.dragging {
+  box-shadow: var(--shadow-lg);
+  background: var(--surface);
+}
+.vt-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 2px 0 8px;
+  border-top: 1px solid var(--line);
+}
+.vt-count {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.vt-collapse {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-md);
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  transition: background var(--t-fast);
+}
+.vt-collapse svg.icon {
+  transform: rotate(180deg);
+  transition: transform var(--t-med) var(--ease);
+}
+.vt-collapse:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+.vt-grip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 5;
+}
+.vt-grip::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 1px;
+  background: var(--line);
+  transition: background var(--t-fast), width var(--t-fast);
+}
+.vt-grip:hover::after,
+.vt-grip.active::after {
+  width: 3px;
+  background: var(--accent);
+}
+
+/* Collapsed: icons only */
+body.collapsed #vt {
+  padding: 10px 6px 8px;
+  align-items: center;
+}
+body.collapsed .vt-grip {
+  cursor: default;
+}
+body.collapsed .vt-grip:hover::after {
+  width: 1px;
+  background: var(--line);
+}
+body.collapsed .vt-new {
+  width: 40px;
+  justify-content: center;
+  padding: 0;
+}
+body.collapsed .vt-label,
+body.collapsed .vt-count,
+body.collapsed #vt .tab .title,
+body.collapsed #vt .tab .close,
+body.collapsed #vt .tab .audio {
+  display: none !important;
+}
+body.collapsed #vt-list {
+  width: 100%;
+  align-items: center;
+}
+body.collapsed #vt #tabs {
+  width: 100%;
+  align-items: center;
+}
+body.collapsed #vt .tab {
+  width: 40px;
+  padding: 0;
+  justify-content: center;
+}
+body.collapsed .vt-foot {
+  justify-content: center;
+  width: 100%;
+  padding-left: 0;
+}
+body.collapsed .vt-collapse svg.icon {
+  transform: rotate(0deg);
+}
+
+.update-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px 0 10px;
+  margin: 0 4px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  animation: pill-in var(--t-slow) var(--ease-spring);
+}
+.update-pill:hover {
+  filter: brightness(1.08);
+}
+@keyframes pill-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
 }

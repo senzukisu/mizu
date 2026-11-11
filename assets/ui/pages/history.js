@@ -22,7 +22,7 @@ function row(e) {
   const del = h('button', { class: 'icon-btn', title: 'Remove from history' }, icon('trash'));
   const r = h('div', { class: 'list-row' },
     letterAvatar(e.url, e.title),
-    h('a', { class: 'main', href: e.url, title: e.url }, h('div', { class: 't', text: e.title || e.url }), h('div', { class: 'u', text: e.url })),
+    h('a', { class: 'main', href: e.url, title: e.url, translate: 'no' }, h('div', { class: 't', text: e.title || e.url }), h('div', { class: 'u', text: e.url })),
     h('span', { class: 'when', text: new Date(e.last_visit).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }),
     h('div', { class: 'acts' }, del));
   r.querySelector('a').addEventListener('click', (ev) => {

@@ -39,6 +39,8 @@ pub struct TabState {
     pub muted: bool,
     pub crashed: bool,
     pub sleeping: bool,
+    /// Engine memory target lowered (efficiency mode, long-idle background tab).
+    pub low_memory: bool,
     pub zoom: f64,
     pub last_active: Instant,
     /// Opened only to retry a download: close it once the download starts.
@@ -61,6 +63,7 @@ impl TabState {
             muted: false,
             crashed: false,
             sleeping: false,
+            low_memory: false,
             zoom: 1.0,
             last_active: Instant::now(),
             close_if_download: false,
@@ -103,6 +106,38 @@ pub struct BrowserWindow {
     pub suggestions: Vec<crate::omnibox::Suggestion>,
     pub state_dirty: bool,
     pub closing: bool,
+    /// The native window is shown once the browser UI has loaded (no empty frame on start).
+    pub shown: bool,
+    pub show_maximized: bool,
+    /// Last WM_ACTIVATE state, so focus is moved only on a real activation.
+    pub activated: bool,
+    pub created_at: std::time::Instant,
+    /// Pre-created, hidden engine view handed to the next new tab (makes new tabs instant).
+    pub spare: Option<View>,
+    pub spare_creating: bool,
+    /// Vertical tabs: a second browser-UI view (`mizu://chrome/?sidebar`) left of the page.
+    pub sidebar: Option<View>,
+    pub sidebar_key: ViewKey,
+    pub sidebar_ready: bool,
+    pub sidebar_creating: bool,
+    pub side_tabs: bool,
+    pub sidebar_collapsed: bool,
+    /// Expanded sidebar width in CSS pixels.
+    pub sidebar_width: f64,
+}
+
+/// Collapsed (icons only) sidebar width in CSS pixels.
+const SIDEBAR_COLLAPSED: f64 = 56.0;
+
+impl BrowserWindow {
+    /// Shows the native window if it is still hidden.
+    pub fn reveal(&mut self) {
+        if !self.shown {
+            self.shown = true;
+            show_native(self.hwnd, self.show_maximized);
+            self.layout();
+        }
+    }
 }
 
 impl BrowserWindow {
@@ -127,7 +162,16 @@ impl BrowserWindow {
         }
     }
 
-    /// Positions the chrome and the active tab view.
+    /// Width of the vertical tabs sidebar in physical pixels (0 when not shown).
+    fn sidebar_px(&self) -> i32 {
+        if !self.side_tabs || !self.sidebar_ready || self.fullscreen.active() {
+            return 0;
+        }
+        let css = if self.sidebar_collapsed { SIDEBAR_COLLAPSED } else { self.sidebar_width };
+        (css * dpi_scale(self.hwnd)).round() as i32
+    }
+
+    /// Positions the chrome, the sidebar and the active tab view.
     pub fn layout(&self) {
         let rc = win::client_rect(self.hwnd);
         let scale = dpi_scale(self.hwnd);
@@ -138,9 +182,13 @@ impl BrowserWindow {
             chrome.set_visible(!fullscreen && self.chrome_ready);
             chrome.set_bounds(RECT { left: 0, top, right: rc.right, bottom: top + chrome_px });
         }
-        let content = RECT { left: 0, top: top + chrome_px, right: rc.right, bottom: rc.bottom };
+        let side = self.sidebar_px();
+        if let Some(sidebar) = &self.sidebar {
+            sidebar.set_visible(side > 0);
+            sidebar.set_bounds(RECT { left: 0, top: top + chrome_px, right: side, bottom: rc.bottom });
+        }
         if let Some(view) = self.active_view() {
-            view.set_bounds(content);
+            view.set_bounds(self.content_rect());
         }
     }
 
@@ -149,12 +197,15 @@ impl BrowserWindow {
         let scale = dpi_scale(self.hwnd);
         let chrome_px = if self.fullscreen.active() { 0 } else { (self.chrome_height * scale).round() as i32 };
         let top = self.top_inset() + chrome_px;
-        RECT { left: 0, top, right: rc.right, bottom: rc.bottom }
+        RECT { left: self.sidebar_px(), top, right: rc.right, bottom: rc.bottom }
     }
 
     pub fn post_chrome(&self, json: &str) {
         if let (Some(c), true) = (&self.chrome, self.chrome_ready) {
             c.post_json(json);
+        }
+        if let (Some(s), true) = (&self.sidebar, self.sidebar_ready) {
+            s.post_json(json);
         }
     }
 

@@ -92,7 +92,8 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 || old.privacy.custom_rules != app.settings.privacy.custom_rules;
             let restart_needed = old.performance.hardware_acceleration != app.settings.performance.hardware_acceleration
                 || old.media.autoplay != app.settings.media.autoplay
-                || old.advanced.extensions != app.settings.advanced.extensions;
+                || old.advanced.extensions != app.settings.advanced.extensions
+                || old.general.language != app.settings.general.language;
             app.persist_settings();
             app.apply_settings_to_surfaces();
             if lists_changed {
@@ -305,23 +306,33 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             "engine": "Microsoft Edge WebView2 (Chromium)",
             "engine_version": mizu_engine::browser_version().unwrap_or_default(),
             "os": os_version(),
-            "profile": app.paths.root.to_string_lossy(),
+            "profile": app.paths.root.to_string_lossy().replace('/', "\\"),
             "user_agent_note": "Mizu uses the engine's standard user agent for compatibility.",
+            "update": app.update,
+            "installed": crate::update::is_installed_copy(),
+            "auto_update": app.settings.general.auto_update,
         })),
         Command::NewtabData => {
-            let top: Vec<Value> = if private {
-                Vec::new()
-            } else {
-                let mut seen = std::collections::HashSet::new();
-                app.storage
-                    .top_sites(40)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter(|h| seen.insert(mizu_core::omnibox::host_of(&h.url).unwrap_or_default()))
-                    .take(8)
-                    .map(|h| json!({ "url": h.url, "title": h.title, "host": mizu_core::omnibox::host_of(&h.url) }))
-                    .collect()
-            };
+            // Speed dial = bookmarks on the bookmarks bar (folders skipped).
+            let top: Vec<Value> = app
+                .storage
+                .bookmark_children(mizu_storage::BOOKMARKS_BAR_ID)
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|b| b.kind == mizu_storage::BookmarkKind::Url)
+                .take(24)
+                .map(|b| {
+                    let url = b.url.unwrap_or_default();
+                    json!({ "id": b.id, "url": url, "title": b.title, "host": mizu_core::omnibox::host_of(&url) })
+                })
+                .collect();
+            let engines: Vec<Value> = app
+                .settings
+                .search
+                .all_engines()
+                .into_iter()
+                .map(|e| json!({ "id": e.id, "name": e.name, "template": e.template }))
+                .collect();
             let (session, lifetime) = hot::with(|h| (h.stats.session_blocked, h.stats.lifetime_blocked)).unwrap_or_default();
             data(json!({
                 "top": top,
@@ -331,7 +342,17 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 "blocked_session": session,
                 "blocked_lifetime": lifetime,
                 "engine": app.settings.search.active_engine().name,
+                "engine_id": app.settings.search.active_engine().id,
+                "engines": engines,
             }))
+        }
+        Command::UpdateCheck => {
+            app.check_for_update(current_rid().map(|r| (key, r)));
+            Ok(None)
+        }
+        Command::UpdateInstall => {
+            app.install_update()?;
+            ok()
         }
         Command::RestoreSession => {
             app.restore_previous_session();
@@ -343,30 +364,77 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             let scripts = hot::with(|h| serde_json::to_value(h.scripts.scripts()).unwrap_or_default()).unwrap_or_default();
             data(scripts)
         }
-        Command::ScriptPending => match &app.pending_install {
-            Some(p) => {
-                let installed = hot::with(|h| h.scripts.installed_version(&p.meta).map(str::to_owned)).flatten();
-                data(json!({
-                    "url": p.url,
-                    "meta": p.meta,
-                    "source": p.source,
-                    "requires_bytes": p.requires.len(),
-                    "installed_version": installed,
-                }))
+        Command::ScriptPending => {
+            if app.pending_install.is_empty() && app.pending_failures.is_empty() {
+                return Ok(Some(Value::Null));
             }
-            None => Ok(Some(Value::Null)),
-        },
-        Command::ScriptInstallConfirm => {
-            let p = app.pending_install.take().ok_or("Nothing to install")?;
-            let id = hot::with(|h| h.scripts.install(&p.source, &p.requires, &p.url))
-                .ok_or("unavailable")?
-                .map_err(|e| e.to_string())?;
-            tracing::info!(name = p.meta.name, "userscript installed");
-            data(json!({ "id": id }))
+            let items: Vec<Value> = app
+                .pending_install
+                .iter()
+                .enumerate()
+                .map(|(i, p)| {
+                    let installed = hot::with(|h| h.scripts.installed_version(&p.meta).map(str::to_owned)).flatten();
+                    json!({
+                        "index": i,
+                        "url": p.url,
+                        "meta": p.meta,
+                        "source": p.source,
+                        "requires_bytes": p.requires.len(),
+                        "installed_version": installed,
+                    })
+                })
+                .collect();
+            let failures: Vec<Value> =
+                app.pending_failures.iter().map(|(u, e)| json!({ "url": u, "error": e })).collect();
+            data(json!({ "items": items, "failures": failures }))
+        }
+        Command::ScriptInstallConfirm { indices } => {
+            let pending = std::mem::take(&mut app.pending_install);
+            app.pending_failures.clear();
+            let mut installed = Vec::new();
+            for (i, p) in pending.into_iter().enumerate() {
+                if indices.as_ref().is_some_and(|ix| !ix.contains(&i)) {
+                    continue;
+                }
+                let r = hot::with(|h| h.scripts.install(&p.source, &p.requires, &p.url)).ok_or("unavailable")?;
+                match r {
+                    Ok(_) => {
+                        tracing::info!(name = p.meta.name, "userscript installed");
+                        installed.push(p.meta.name);
+                    }
+                    Err(e) => return Err(format!("{}: {e}", p.meta.name)),
+                }
+            }
+            data(json!({ "installed": installed }))
         }
         Command::ScriptInstallCancel => {
-            app.pending_install = None;
+            app.pending_install.clear();
+            app.pending_failures.clear();
             ok()
+        }
+        Command::ScriptInstallUrls { urls } => {
+            let urls: Vec<String> = urls.into_iter().map(|u| u.trim().to_owned()).filter(|u| !u.is_empty()).collect();
+            if urls.is_empty() {
+                return Err("Paste at least one link".into());
+            }
+            app.begin_script_install_many(Some(key), urls, false);
+            ok()
+        }
+        Command::ScriptInstallFiles => {
+            let owner = app.window(window).map(|w| w.hwnd).unwrap_or_default();
+            let sender = app.worker.clone();
+            queue::outside(move || {
+                let files = crate::dialogs::pick_files(owner, "Install userscripts", "Userscripts", "*.user.js;*.js");
+                if !files.is_empty() {
+                    crate::scripts::read_files_for_install(Some(key), files, sender);
+                }
+            });
+            ok()
+        }
+        Command::ScriptsCheckUpdates => {
+            let rid = current_rid();
+            app.check_script_updates(true, rid.map(|r| (key, r)));
+            Ok(None)
         }
         Command::ScriptCreate { source } => {
             let id = hot::with(|h| h.scripts.install(&source, "", ""))
@@ -378,6 +446,12 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             hot::with(|h| h.scripts.set_enabled(&id, enabled)).ok_or("unavailable")?.map_err(|e| e.to_string())?;
             ok()
         }
+        Command::ScriptSites { id, only, never } => {
+            let rules = mizu_userscripts::SiteRules { only, never };
+            hot::with(|h| h.scripts.set_sites(&id, rules)).ok_or("unavailable")?.map_err(|e| e.to_string())?;
+            let sites = hot::with(|h| h.scripts.get(&id).map(|s| s.sites.clone())).flatten().unwrap_or_default();
+            data(json!({ "sites": sites }))
+        }
         Command::ScriptRemove { id } => {
             hot::with(|h| h.scripts.remove(&id)).ok_or("unavailable")?.map_err(|e| e.to_string())?;
             ok()
@@ -388,6 +462,15 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
         }
 
         // ── Extensions ───────────────────────────────────────────
+        cmd @ (Command::PasswordsGet { .. }
+        | Command::PasswordReveal { .. }
+        | Command::PasswordSave { .. }
+        | Command::PasswordDelete { .. }
+        | Command::PasswordNeverRemove { .. }
+        | Command::PasswordsImport
+        | Command::PasswordsExport
+        | Command::PasswordFill { .. }
+        | Command::PasswordPromptResponse { .. }) => crate::passwords::handle(app, window, key, current_rid(), cmd),
         Command::ExtensionsGet => crate::extensions::list(app, key, current_rid()),
         Command::ExtensionInstall => crate::extensions::install(app, window, key, current_rid()),
         Command::ExtensionInstallFromStore { url } => crate::extensions::install_from_store(app, key, current_rid(), &url),

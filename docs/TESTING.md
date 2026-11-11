@@ -10,13 +10,14 @@ cargo test --workspace
 |---|---|
 | mizu-core | URL vs search classification (IDN, ports, IPs, `javascript:` refusal), search URLs, origins, profile name sanitising, internal page registry |
 | mizu-settings | round trip, defaults for partial files, corrupt file recovery, sanitising invalid values |
-| mizu-storage | migrations, history (record, search, suggestions, delete, clear by period), bookmarks (folders, move, cycles, protection of roots), downloads lifecycle, permissions, session, **corruption recovery from backup** |
+| mizu-storage | migrations, history (record, search, suggestions, delete, clear by period), bookmarks (folders, move, cycles, protection of roots), downloads lifecycle, permissions, session, saved logins, **corruption recovery from backup** |
 | mizu-tabs | activation after close, reopen position, pinned ordering rules, drag constraints, duplicate, cycling and shortcuts, snapshot round trip |
 | mizu-privacy | third-party blocking, exceptions, `$redirect`, `$removeparam`, allowlist, cosmetic filters and scriptlets, hosts files, bundled list, HTTPS-only downloads, list validation, path safety |
-| mizu-userscripts | metadata parsing, `@match`/`@include` (globs, regex, `.tld`), install/update/enable/remove, value storage limit, bootstrap generation and escaping |
+| mizu-userscripts | metadata parsing, `@match`/`@include` (globs, regex, `.tld`), install/update/enable/remove, value storage limit, bootstrap generation and escaping, GitHub/Gist/GitLab/Greasy Fork link rewriting, several scripts in one file, update scheduling, per-script site rules |
 | mizu-media | Media Foundation probe runs and finds an H.264 decoder |
+| mizu-update | signature verification, tampered manifests, wrong key, installer hash, version comparison |
 | mizu-ui | protocol parsing and rejection of unknown commands, asset resolution and path traversal |
-| mizu-browser | shortcuts, launch args, omnibox suggestions and keyword engines, data URL decoding, allowlist matching, download file naming, CRX parsing, token generation |
+| mizu-browser | shortcuts, launch args, omnibox suggestions and keyword engines, data URL decoding, allowlist matching, download file naming, CRX parsing, token generation, DPAPI round trip, password CSV import/export (Chrome, Firefox, Bitwarden) |
 
 Syntax check of the UI scripts (requires Node.js):
 
@@ -53,4 +54,19 @@ Use a fresh profile: `MIZU_USER_DATA=%TEMP%\mizu-test`.
 17. **Memory.** With 20 tabs open, after the sleep delay background tabs are suspended (Task manager, Shift+Esc).
 18. **Userscripts.** Install a script from greasyfork.org, check it runs, that `GM_setValue` persists across reloads, then
     disable and remove it.
-19. **Extensions.** Install uBlock Origin Lite from its `.zip`, open its options, disable and remove it.
+19. **Extensions.** Install an extension with "Add to Mizu" on the Chrome Web Store, open its options, disable and remove it.
+20. **Passwords.**
+    1. Sign in to a site and check the save prompt appears.
+    2. Sign out, then fill the login from the key icon.
+    3. Export to CSV and import it again.
+21. **Script sites.** Open "Where it runs" for a script, limit it to one site, check it runs only there, then add a
+    site to "Never run on".
+22. **Vertical tabs.** Switch the layout in Settings → Appearance, then:
+    - resize the sidebar and collapse it;
+    - check that "New tab" stays under the last tab.
+23. **Picture in picture.** Hover a video and press PiP, then try Alt+Shift+P.
+24. **Language.** Switch to Russian in Settings → General and check every page and menu is translated.
+25. **Installer and update.**
+    1. Install with MizuSetup into a custom folder and start Mizu from the Start menu.
+    2. Check that Default apps lists Mizu, then uninstall.
+    3. Publish a test release with a higher version and check that "Restart to update" installs it.

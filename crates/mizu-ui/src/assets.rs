@@ -35,6 +35,7 @@ fn shared(file: &str) -> Option<&'static [u8]> {
         "bridge.js" => asset!("shared/bridge.js"),
         "theme.js" => asset!("shared/theme.js"),
         "icons.js" => asset!("shared/icons.js"),
+        "i18n.js" => asset!("shared/i18n.js"),
         "logo.svg" => asset!("shared/logo.svg"),
         _ => return None,
     })
@@ -66,6 +67,8 @@ fn surface(host: &str, file: &str) -> Option<&'static [u8]> {
         ("shield", "page.js") => asset!("pages/shield.js"),
         ("scripts", "") => asset!("pages/scripts.html"),
         ("scripts", "page.js") => asset!("pages/scripts.js"),
+        ("passwords", "") => asset!("pages/passwords.html"),
+        ("passwords", "page.js") => asset!("pages/passwords.js"),
         ("blocked", "") => asset!("pages/blocked.html"),
         ("blocked", "page.js") => asset!("pages/blocked.js"),
         _ => return None,

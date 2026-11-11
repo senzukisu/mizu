@@ -26,14 +26,18 @@ crates/
 ├── mizu-media        media diagnostics (Media Foundation decoders, DXGI GPUs)
 ├── mizu-ui           UI protocol (typed JSON commands/events) + embedded HTML/CSS/JS assets
 ├── mizu-engine       the only crate that touches WebView2/COM: Engine, View, Download, events
-└── mizu-browser      the application: windows, tabs, flyouts, wiring, internal page data
+├── mizu-update       signed release manifest: ed25519 verification, SHA-256, version compare; `mizu-sign` tool
+├── mizu-setup        MizuSetup.exe: per-user installer/uninstaller with the browser embedded
+└── mizu-browser      the application: windows, tabs, flyouts, passwords, updater, wiring, internal page data
 assets/
-├── ui/               chrome (tab strip/toolbar), flyout (menus/panels), pages (mizu://…), shared design system
+├── ui/               chrome (tab strip/toolbar/sidebar), flyout (menus/panels), pages (mizu://…), shared design
+│                     system and translations (shared/i18n.js)
 ├── filters/          bundled "Mizu Shield – essential trackers" list
 └── icons/            application icon
 ```
 
-Everything except `mizu-engine`, `mizu-media` (Windows part) and `mizu-browser` is platform independent and unit tested.
+Everything except `mizu-engine`, `mizu-media` (Windows part), `mizu-setup` and `mizu-browser` is platform independent
+and unit tested.
 
 ## Process and window model
 
@@ -41,7 +45,9 @@ Everything except `mizu-engine`, `mizu-media` (Windows part) and `mizu-browser` 
 mizu.exe (UI thread, single-threaded COM apartment)
  ├── Browser window (Win32, custom frame, Mica)
  │    ├── chrome view   mizu://chrome/   tab strip, toolbar, bookmarks bar        (privileged)
+ │    ├── sidebar view  mizu://chrome/?sidebar  vertical tabs, side layout only   (privileged)
  │    ├── tab views     one WebView2 controller per tab (created lazily)          (untrusted)
+ │    ├── spare view    a pre-created blank view, so a new tab appears instantly
  │    └── flyout popup  mizu://flyout/   menus, panels, prompts (owned popup)     (privileged)
  ├── hidden message window   event queue pump, timers, single-instance IPC
  └── worker threads   filter list downloads & compilation, userscript fetches, media probe
@@ -52,6 +58,10 @@ msedgewebview2.exe processes (managed by WebView2): browser, GPU, network, utili
 The browser UI is HTML too, but it runs in dedicated views that only ever load embedded `mizu://` assets. Web content
 is a native child window that HTML cannot overlap, so menus and suggestion lists live in a separate popup window (the
 *flyout*). That window is created once per browser window and reused, so menus open instantly.
+
+With vertical tabs, the same chrome document runs a second time in sidebar mode, to the left of the content. Both
+views receive the same coalesced state. The sidebar width is a setting (160–520 px) that you change by dragging its edge.
+The window is shown only when the chrome view reports it is ready (with a 2 s fallback), so it never flashes empty.
 
 ## Event flow
 
@@ -89,7 +99,7 @@ WebResourceRequested (every request) ─► check(url, page url, type) ─► bl
 %LOCALAPPDATA%\Onibi Lab\Mizu\User Data\
 ├── logs\                       daily logs, 7 kept
 └── Default\
-    ├── mizu.db / mizu.db.bak   SQLite (WAL) + last good backup
+    ├── mizu.db / mizu.db.bak   SQLite (WAL) + last good backup; includes DPAPI-encrypted logins
     ├── settings.toml
     ├── stats.json              lifetime Shield counter
     ├── engine\                 WebView2 user data (cookies, cache, site storage), Default + InPrivate profiles
@@ -108,12 +118,42 @@ seconds when it changes and on exit. `running.lock` exists while Mizu runs; if i
 crashed and Mizu restores the session or offers a restore button on the new tab page. Restored tabs are *lazy*: their
 engine view is created only when the tab is first shown.
 
-## Updates (planned for 0.2)
+## Passwords
 
-0.1.0 contains no updater. The design for 0.2 is:
-- a release manifest (`version`, `url`, `sha256`, `min_engine`) signed with an Onibi Lab ed25519 key, whose public key is
-  compiled into the binary;
-- HTTPS download, hash plus signature verification before anything is executed, an atomic swap on restart, and
-  automatic rollback if the new version fails to reach the message loop.
+1. A small capture script (part of each navigation's document script) notices submitted login forms. It reports the
+   origin, username and password over the token-authenticated channel.
+2. The browser shows the "Save password?" flyout. Saved secrets are encrypted with DPAPI (`vault.rs`) and stored in
+   the `logins` table.
+3. The key icon in the omnibox opens the logins flyout. Filling runs a script in the page through `ExecuteScript`.
 
-The engine itself is updated by Windows independently of Mizu. `mizu://about` shows the running engine version.
+## Translations
+
+- `shared/i18n.js` holds the Russian dictionary and a few regular-expression patterns.
+- It translates text nodes and the `title`, `placeholder` and `aria-label` attributes, including content added later
+  (through a `MutationObserver`).
+- The browser sets `data-lang` on `<html>` when it serves a page, so text is translated before the first paint.
+- Website data is marked `translate="no"`.
+
+## Updates
+
+```
+TIMER_UPDATE (90 s after start, then every 6 h)
+  ─► fetch mizu-update.json + .sig from the latest GitHub release
+  ─► ed25519 signature check (public key compiled in) ─► is the version newer?
+  ─► installed copy? ─► download the installer (URL must be in this repo's releases) ─► SHA-256 check
+  ─► "Restart to update" ─► MizuSetup /S --wait-pid <pid> --relaunch
+     (waits for Mizu to exit, replaces the files, starts Mizu again)
+```
+
+Only the copy MizuSetup installed (the folder recorded in its uninstall entry) updates itself. A portable copy only announces
+new versions. Windows updates the engine independently, and `mizu://about` shows both versions and the update state.
+
+## Installer
+
+`mizu-setup` embeds the release `mizu.exe` at build time (`MIZU_SETUP_PAYLOAD`). Its window is a small frameless
+WebView2 page (`ui.html`); if WebView2 cannot start, plain Windows task dialogs are used instead. It:
+- installs per user into a folder the user chooses, and creates shortcuts;
+- registers Mizu under `HKCU\Software\Clients\StartMenuInternet\Mizu`, with `MizuURL`/`MizuHTML` ProgIDs, so it appears
+  in Windows "Default apps";
+- writes an uninstall entry and copies itself as `uninstall.exe`. Started under that name it uninstalls, removing only
+  the files it installed and the folder only when it is empty.

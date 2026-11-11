@@ -64,6 +64,22 @@ const MIGRATIONS: &[&str] = &[
         saved_at INTEGER NOT NULL
     );
     "#,
+    // 2 – password manager (secrets are encrypted by the browser before storage)
+    r#"
+    CREATE TABLE logins (
+        id         INTEGER PRIMARY KEY,
+        origin     TEXT NOT NULL,
+        username   TEXT NOT NULL,
+        secret     BLOB NOT NULL,
+        note       TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        last_used  INTEGER NOT NULL DEFAULT 0,
+        UNIQUE (origin, username)
+    );
+    CREATE INDEX logins_origin ON logins(origin);
+    CREATE TABLE login_never (origin TEXT PRIMARY KEY);
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {

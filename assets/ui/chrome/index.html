@@ -12,6 +12,7 @@
       <div id="private-badge" hidden></div>
       <div id="tabs" role="tablist"></div>
       <button id="new-tab" class="icon-btn" title="New tab (Ctrl+T)"></button>
+      <div id="win-title" translate="no"></div>
       <div class="drag-fill"></div>
       <div id="toast" role="status" aria-live="polite"></div>
       <div id="caption">
@@ -30,6 +31,7 @@
         <input id="address" type="text" spellcheck="false" autocomplete="off" aria-label="Address and search bar">
         <span id="zoom-badge" hidden></span>
         <button id="ext-install" class="omni-btn install" title="Install this extension in Mizu" hidden></button>
+        <button id="pw-btn" class="omni-btn" title="Saved passwords for this site" hidden></button>
         <button id="star" class="omni-btn" title="Bookmark this page (Ctrl+D)"></button>
         <button id="shield-btn" class="omni-btn" title="Mizu Shield"><span id="shield-count"></span></button>
         <div id="progress"></div>
@@ -37,11 +39,13 @@
       <button id="downloads" class="icon-btn" title="Downloads (Ctrl+J)" hidden>
         <svg id="dl-ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5"/></svg>
       </button>
+      <button id="update-btn" class="update-pill" hidden></button>
       <button id="menu" class="icon-btn" title="Menu"></button>
     </nav>
     <div id="bookmarks" hidden></div>
   </div>
   <script src="/_/bridge.js"></script>
+  <script src="/_/i18n.js"></script>
   <script src="/_/theme.js"></script>
   <script src="/_/icons.js"></script>
   <script src="chrome.js"></script>

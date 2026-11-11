@@ -396,17 +396,17 @@ button {
 
 /* Confirmation */
 .confirm {
-  width: 360px;
-  padding: 16px 16px 10px;
+  width: 440px;
+  padding: 24px 24px 20px;
 }
 .confirm .q {
   display: flex;
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 .confirm .ic {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: var(--accent-soft);
   color: var(--accent);
@@ -414,11 +414,140 @@ button {
   place-items: center;
   flex: none;
 }
+.confirm .ic svg.icon {
+  width: 24px;
+  height: 24px;
+}
 .confirm .ct {
-  font: 600 16px/1.3 var(--font-display);
-  margin: 2px 0 4px;
+  font: 600 19px/1.3 var(--font-display);
+  margin: 2px 0 6px;
+}
+.confirm .muted {
+  font-size: 14px;
+  line-height: 1.45;
+}
+.confirm .check {
+  margin: 0 0 18px 64px;
+  font-size: 13.5px;
+}
+.confirm .footer {
+  gap: 10px;
+  padding: 0;
+}
+.confirm .footer .btn {
+  height: 38px;
+  padding: 0 20px;
+  font-size: 14px;
 }
 .btn.danger {
   background: var(--danger);
   color: #fff;
+}
+
+/* Password save prompt */
+.pwsave {
+  width: 372px;
+  padding: 14px 14px 12px;
+}
+.pw-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.site-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  display: grid;
+  place-items: center;
+  font: 700 17px/1 var(--font-display);
+  flex: none;
+}
+.panel h2 .site-badge {
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+  border-radius: var(--r-sm);
+}
+.pw-title {
+  flex: 1;
+  min-width: 0;
+}
+.pw-title .ttl {
+  font: 600 16px/1.25 var(--font-display);
+}
+.pw-title .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pw-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.pw-field > span {
+  font-size: var(--fs-sm);
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.pw-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 4px 0 11px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.pw-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.pw-input input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13.5px;
+}
+.pw-input input[type="password"] {
+  letter-spacing: 0.12em;
+}
+.pw-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  margin: 2px 2px 14px;
+}
+.pw-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pw-actions .grow {
+  flex: 1;
+}
+.link.subtle {
+  color: var(--ink-3);
+  font-weight: 500;
+  font-size: var(--fs-sm);
+  padding: 6px 2px;
+}
+.link.subtle:hover {
+  color: var(--ink);
+}
+.item.acct .kbd {
+  color: var(--accent);
+  font-weight: 600;
 }

@@ -974,3 +974,407 @@ pre.code {
   overflow-wrap: anywhere;
   text-align: right;
 }
+
+.pick {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.pick input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Passwords ───────────────────────────────────────────────── */
+.pw-row .secret {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-2);
+  min-width: 120px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+.pw-row .acts {
+  opacity: 1;
+}
+.pw-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  border-radius: var(--r-lg);
+  background: var(--accent-soft);
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.pw-banner svg.icon {
+  color: var(--accent);
+  width: 20px;
+  height: 20px;
+}
+
+/* ── New tab: engine switch, tiles actions, notes ─────────────── */
+.nt-search {
+  position: relative;
+  padding-left: 8px;
+}
+.nt-engine {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 36px;
+  padding: 0 8px 0 10px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-weight: 700;
+  flex: none;
+}
+.nt-engine:hover {
+  color: var(--ink);
+}
+.nt-engines {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: var(--r-lg);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: nt-pop var(--t-med) var(--ease);
+}
+@keyframes nt-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.nt-engines button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink);
+  text-align: left;
+}
+.nt-engines button:hover,
+.nt-engines button.on {
+  background: var(--surface-3);
+}
+.nt-engines .ei {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+}
+.nt-tile {
+  position: relative;
+  border: 0;
+  background: none;
+  font: inherit;
+}
+.nt-tile.add {
+  color: var(--ink-3);
+}
+.nt-tile.add .fav {
+  border: 1.5px dashed var(--line-2);
+  background: none;
+  color: var(--ink-3);
+}
+.nt-tile.add:hover .fav {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.nt-tile-acts {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--t-fast);
+}
+.nt-tile:hover .nt-tile-acts {
+  opacity: 1;
+}
+.nt-tile-act {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--ink-2);
+  box-shadow: var(--shadow);
+}
+.nt-tile-act:hover {
+  color: var(--ink);
+}
+
+/* ── About ───────────────────────────────────────────────────── */
+.about .about-hero {
+  position: relative;
+  text-align: center;
+  padding: 34px 20px 30px;
+  margin-bottom: 18px;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 140% at 50% 120%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+    var(--surface);
+  border: 1px solid var(--line);
+}
+.about .about-hero img {
+  width: 88px;
+  height: 88px;
+  filter: drop-shadow(0 10px 24px color-mix(in srgb, var(--accent) 40%, transparent));
+  animation: about-float 6s ease-in-out infinite;
+}
+@keyframes about-float {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.about-name {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+}
+.about-name h1 {
+  font: 650 36px/1.15 var(--font-display);
+  margin: 14px 0 2px;
+  letter-spacing: -0.01em;
+}
+.about-name .kanji {
+  font: 400 22px/1 "Yu Gothic UI", "Yu Gothic", var(--font);
+  color: var(--accent);
+}
+.about-hero .tag {
+  color: var(--ink-2);
+  font-size: 16px;
+  margin-bottom: 14px;
+}
+.about-chips {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.about-feature {
+  padding: 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition: transform var(--t-med) var(--ease), border-color var(--t-med);
+}
+.about-feature:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-line);
+}
+.af-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-md);
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.af-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.af-text {
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 12px;
+}
+.about-links {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 4px 0 18px;
+}
+.about-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 500;
+}
+.about-link svg.icon {
+  color: var(--accent);
+}
+.about-link:hover {
+  border-color: var(--accent-line);
+}
+.about-credits,
+.about-legal {
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 12px;
+  margin: 6px auto;
+  max-width: 640px;
+}
+@media (max-width: 760px) {
+  .about-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .about-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.card-head h2 {
+  margin: 0;
+  padding: 14px 20px 6px;
+  font: 600 13px/1.3 var(--font);
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Scripts: where a script runs ────────────────────────────── */
+.sites-dialog {
+  width: min(560px, 92vw);
+}
+.site-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.site-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.site-own {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.site-own code {
+  font: 12px/1.4 var(--font-mono);
+  color: var(--ink-2);
+}
+.site-own code + code::before {
+  content: "·";
+  margin-right: 6px;
+  color: var(--ink-3);
+}
+.site-add {
+  display: flex;
+  gap: 8px;
+}
+.site-add input {
+  flex: 1;
+  min-width: 0;
+}
+.site-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.site-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  animation: chip-in var(--t-med) var(--ease-spring);
+}
+.site-chip .x {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  opacity: 0.7;
+}
+.site-chip .x:hover {
+  opacity: 1;
+  background: var(--accent-soft);
+}
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+.site-hint {
+  font-size: 12.5px;
+  margin: 0;
+}
+.site-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  max-width: 100%;
+  padding: 2px 10px 2px 8px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

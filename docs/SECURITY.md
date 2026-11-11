@@ -7,8 +7,8 @@ Please report security issues privately via GitHub Security Advisories on the re
 ## Principles
 
 - Use the engine's sandbox and site isolation. Never weaken them.
-- Use no custom cryptography: TLS is done by the engine and by Windows (SChannel), and future signature or encryption
-  work will use audited crates.
+- Use no custom cryptography. TLS is done by the engine and by Windows (SChannel), passwords are encrypted by Windows
+  DPAPI, and update signatures use `ed25519-dalek`.
 - Web content is untrusted. Mizu's own UI is the only privileged web content, and it never loads anything from the network.
 - Fail closed: unknown messages are dropped, unknown permissions are denied, invalid certificates are rejected.
 
@@ -69,8 +69,11 @@ dialog, and schemes that have been used for attacks (`ms-msdt:`, `search-ms:`, `
   exists only inside the closure; the browser accepts writes only for (token, script) pairs it issued to that tab.
   Storage is capped at 4 MB per script.
 - The install page shows the source, the sites the script runs on, unsupported APIs and a warning before installing.
-- Extensions are installed only through a file dialog, copied into the profile, and unpacked with zip-slip protection
-  and a size limit. Private windows run without extensions.
+- Userscript sources are fetched over HTTPS only. Links to GitHub, GitLab, Gist and similar hosts are rewritten to
+  their raw-file addresses. Automatic updates use `@updateURL`/`@downloadURL`.
+- Extensions come from a file the user picks, or from the Chrome Web Store when the user presses "Add to Mizu" on a
+  store page. CRX files are parsed and unpacked with zip-slip protection and a size limit, then copied into the
+  profile. Private windows run without extensions.
 
 ## Downloads
 
@@ -80,8 +83,30 @@ Mizu never opens a downloaded file automatically.
 ## Local data
 
 The profile lives under `%LOCALAPPDATA%`, which is protected by Windows user ACLs. The engine stores cookies
-(encrypted with DPAPI by Chromium) in `engine\`. Mizu 0.1 has no password manager; engine password saving is off by
-default.
+(encrypted with DPAPI by Chromium) in `engine\`.
+
+## Passwords
+
+- Secrets are encrypted with `CryptProtectData` (DPAPI, bound to the Windows user) with additional entropy, and stored
+  as blobs in `mizu.db`. Usernames and origins are not encrypted, so the list can be searched.
+- The capture script runs in pages, but it can only *suggest* a login. The message must carry the per-page token, and
+  nothing is stored until the user presses Save in Mizu's own prompt.
+- Logins are offered only for the exact origin they were saved for, and are filled only when the user picks one.
+- CSV export writes passwords in plain text, as every browser does. Mizu warns about this before exporting.
+- The engine's own password saving is off, so there is only one password store.
+
+## Updates
+
+- The release manifest is signed with an Onibi Lab ed25519 key kept offline. Only the public key is in the binary.
+- The installer URL must start with `https://github.com/senzukisu/mizu/releases/download/`, and its SHA-256 must match the
+  signed manifest. Nothing runs before both checks pass.
+- The update runs only after the user chooses "Restart to update", as the same user and without elevation.
+
+## Installer
+
+- Setup never asks for elevation; a folder the user cannot write to is refused with an explanation.
+- Uninstall deletes only `mizu.exe`, `uninstall.exe` and their temporary copies, then the folder if it is empty, so a
+  folder chosen by mistake never loses other files. Browsing data is deleted only when the user ticks the option.
 
 ## Telemetry
 

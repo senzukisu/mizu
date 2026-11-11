@@ -28,6 +28,13 @@ impl Settings {
         if self.search.find_engine(&self.search.engine).is_none() {
             self.search.engine = SearchSettings::default().engine;
         }
+        self.appearance.sidebar_width = self.appearance.sidebar_width.clamp(160, 520);
+        if !["top", "side"].contains(&self.appearance.tab_layout.as_str()) {
+            self.appearance.tab_layout = "top".into();
+        }
+        if !["auto", "en", "ru"].contains(&self.general.language.as_str()) {
+            self.general.language = "auto".into();
+        }
         let home = self.general.home_page.trim();
         let home_ok = ["https://", "http://", "mizu://"]
             .iter()
@@ -35,10 +42,16 @@ impl Settings {
         if !home_ok {
             self.general.home_page = GeneralSettings::default().home_page;
         }
+        // Built-in lists that were retired drop out of saved settings too.
+        let builtin = builtin_filter_lists();
         self.privacy.filter_lists.retain(|l| {
-            l.builtin || l.url.starts_with("https://")
+            if l.builtin {
+                builtin.iter().any(|b| b.id == l.id)
+            } else {
+                l.url.starts_with("https://")
+            }
         });
-        for list in builtin_filter_lists() {
+        for list in builtin {
             if !self.privacy.filter_lists.iter().any(|l| l.id == list.id) {
                 self.privacy.filter_lists.push(list);
             }
@@ -63,6 +76,12 @@ pub enum StartupBehavior {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GeneralSettings {
+    /// Interface language: "auto" (follow Windows), "en" or "ru".
+    pub language: String,
+    /// New windows open maximized.
+    pub start_maximized: bool,
+    /// Check for new Mizu versions once a day and download them in the background.
+    pub auto_update: bool,
     pub startup: StartupBehavior,
     pub home_page: String,
     /// Offer to restore tabs after Mizu was not shut down cleanly.
@@ -73,6 +92,9 @@ pub struct GeneralSettings {
 impl Default for GeneralSettings {
     fn default() -> Self {
         Self {
+            language: "auto".into(),
+            start_maximized: true,
+            auto_update: true,
             startup: StartupBehavior::RestoreSession,
             home_page: "mizu://newtab/".into(),
             restore_after_crash: true,
@@ -138,6 +160,12 @@ pub struct AppearanceSettings {
     pub show_bookmarks_bar: bool,
     pub show_home_button: bool,
     pub zoom_percent: u32,
+    /// "top" (tab strip) or "side" (vertical tabs in a sidebar).
+    pub tab_layout: String,
+    /// Vertical tabs sidebar shows icons only.
+    pub sidebar_collapsed: bool,
+    /// Vertical tabs sidebar width in CSS pixels (resizable by dragging its edge).
+    pub sidebar_width: u32,
 }
 
 impl Default for AppearanceSettings {
@@ -153,6 +181,9 @@ impl Default for AppearanceSettings {
             show_bookmarks_bar: true,
             show_home_button: false,
             zoom_percent: 100,
+            tab_layout: "top".into(),
+            sidebar_collapsed: false,
+            sidebar_width: 252,
         }
     }
 }
@@ -249,7 +280,6 @@ pub fn builtin_filter_lists() -> Vec<FilterListSubscription> {
         remote("peter-lowe", "Peter Lowe's Ad and tracking server list", "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0&mimetype=plaintext", true),
         remote("ublock-annoyances", "uBlock filters – Annoyances", "https://ublockorigin.github.io/uAssets/filters/annoyances-others.txt", false),
         remote("easylist-cookie", "EasyList Cookie (consent banners)", "https://secure.fanboy.co.nz/fanboy-cookiemonster.txt", false),
-        remote("ruadlist", "RU AdList", "https://easylist-downloads.adblockplus.org/advblock.txt", false),
     ]
 }
 
@@ -270,6 +300,8 @@ pub struct PrivacySettings {
     /// manager UI yet, and stored passwords would be invisible to the user.
     pub engine_password_saving: bool,
     pub engine_autofill: bool,
+    /// Mizu Passwords: offer to save logins and fill them from the address bar.
+    pub password_manager: bool,
     pub clear_on_exit: ClearOnExit,
 }
 
@@ -284,6 +316,7 @@ impl Default for PrivacySettings {
             global_privacy_control: true,
             engine_password_saving: false,
             engine_autofill: false,
+            password_manager: true,
             clear_on_exit: ClearOnExit::default(),
         }
     }
@@ -397,12 +430,15 @@ pub enum AutoplayPolicy {
 pub struct MediaSettings {
     /// Requires restart.
     pub autoplay: AutoplayPolicy,
+    /// Show a picture-in-picture button on videos (and enable Alt+Shift+P).
+    pub pip_button: bool,
 }
 
 impl Default for MediaSettings {
     fn default() -> Self {
         Self {
             autoplay: AutoplayPolicy::Default,
+            pip_button: true,
         }
     }
 }
@@ -415,6 +451,8 @@ pub struct AdvancedSettings {
     pub developer_tools: bool,
     /// Load unpacked extensions from the profile (e.g. uBlock Origin Lite). Requires restart.
     pub extensions: bool,
+    /// Check installed userscripts for new versions once a day.
+    pub userscript_auto_update: bool,
 }
 
 impl Default for AdvancedSettings {
@@ -422,6 +460,7 @@ impl Default for AdvancedSettings {
         Self {
             developer_tools: true,
             extensions: true,
+            userscript_auto_update: true,
         }
     }
 }

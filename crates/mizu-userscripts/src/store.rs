@@ -17,14 +17,107 @@ use std::path::{Path, PathBuf};
 /// Per-script limit for `GM_setValue` data, so a runaway script cannot fill the disk.
 pub const VALUES_LIMIT_BYTES: usize = 4 * 1024 * 1024;
 
+/// The user's own choice of where a script runs, on top of the script's metadata.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct SiteRules {
+    /// When not empty, the script runs **only** on these sites (its own `@match`/`@include`
+    /// are ignored; its `@exclude` rules still apply).
+    #[serde(default)]
+    pub only: Vec<String>,
+    /// The script never runs on these sites.
+    #[serde(default)]
+    pub never: Vec<String>,
+}
+
+impl SiteRules {
+    /// Cleans user input: trims, drops empties and duplicates, caps the list size.
+    pub fn normalized(self) -> Self {
+        let clean = |v: Vec<String>| {
+            let mut out: Vec<String> = Vec::new();
+            for s in v {
+                let s = s.trim().trim_end_matches('/').to_string();
+                if !s.is_empty() && s.len() <= 512 && !out.iter().any(|o| o.eq_ignore_ascii_case(&s)) {
+                    out.push(s);
+                }
+            }
+            out.truncate(200);
+            out
+        };
+        Self { only: clean(self.only), never: clean(self.never) }
+    }
+}
+
+/// Whether a user site rule matches `url`. Accepted forms:
+/// - `example.com` – the site and all its subdomains, any page;
+/// - `*.example.com` – the same;
+/// - `example.com/watch*` – pages whose path starts that way (`*` is a wildcard);
+/// - `https://example.com/*` or any `@match`/`@include` pattern – used as is.
+pub fn site_rule_matches(rule: &str, url: &str) -> bool {
+    let rule = rule.trim();
+    if rule.is_empty() {
+        return false;
+    }
+    if rule == "*" || rule == "<all_urls>" {
+        return true;
+    }
+    if rule.contains("://") || (rule.starts_with('/') && rule.ends_with('/') && rule.len() > 2) {
+        return match_pattern(rule, url) || include_pattern(rule, url);
+    }
+    let Ok(parsed) = url::Url::parse(url) else { return false };
+    let Some(host) = parsed.host_str() else { return false };
+    let (host_rule, path_rule) = match rule.find('/') {
+        Some(i) => (&rule[..i], Some(&rule[i..])),
+        None => (rule, None),
+    };
+    let base = host_rule.trim_start_matches("*.").trim_start_matches("www.").to_ascii_lowercase();
+    let host = host.to_ascii_lowercase();
+    let host = host.strip_prefix("www.").unwrap_or(&host);
+    let host_ok = if base.contains('*') {
+        crate::pattern::glob(&base, host)
+    } else {
+        host == base || host.ends_with(&format!(".{base}"))
+    };
+    if !host_ok {
+        return false;
+    }
+    match path_rule {
+        None => true,
+        Some(p) => {
+            let mut path = parsed.path().to_owned();
+            if let Some(q) = parsed.query() {
+                path.push('?');
+                path.push_str(q);
+            }
+            let p = if p.ends_with('*') { p.to_owned() } else { format!("{p}*") };
+            crate::pattern::glob(&p, &path)
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct IndexEntry {
     id: String,
     enabled: bool,
     #[serde(default)]
+    sites: SiteRules,
+    #[serde(default)]
     source_url: String,
     installed_at: i64,
     updated_at: i64,
+    #[serde(default)]
+    last_checked: i64,
+}
+
+/// What to fetch to check one script for a newer version.
+#[derive(Debug, Clone)]
+pub struct UpdateCheck {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    /// `@updateURL` (often a small `.meta.js`), else the download URL.
+    pub check_url: String,
+    /// `@downloadURL`, else the URL the script was installed from.
+    pub download_url: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -34,6 +127,10 @@ pub struct UserScript {
     pub source_url: String,
     pub installed_at: i64,
     pub updated_at: i64,
+    /// Last automatic or manual update check (0 = never).
+    pub last_checked: i64,
+    /// Where the user allows or forbids this script, beyond its metadata.
+    pub sites: SiteRules,
     pub meta: ScriptMeta,
     #[serde(skip)]
     pub source: String,
@@ -47,11 +144,17 @@ impl UserScript {
         if !self.enabled || !(url.starts_with("http://") || url.starts_with("https://") || url.starts_with("file://")) {
             return false;
         }
+        if self.sites.never.iter().any(|r| site_rule_matches(r, url)) {
+            return false;
+        }
         let m = &self.meta;
         if m.excludes.iter().any(|p| include_pattern(p, url))
             || m.exclude_matches.iter().any(|p| match_pattern(p, url))
         {
             return false;
+        }
+        if !self.sites.only.is_empty() {
+            return self.sites.only.iter().any(|r| site_rule_matches(r, url));
         }
         m.matches.iter().any(|p| match_pattern(p, url)) || m.includes.iter().any(|p| include_pattern(p, url))
     }
@@ -132,6 +235,8 @@ impl ScriptStore {
                 source_url: entry.source_url,
                 installed_at: entry.installed_at,
                 updated_at: entry.updated_at,
+                last_checked: entry.last_checked,
+                sites: entry.sites,
                 meta,
                 source,
                 requires,
@@ -151,9 +256,11 @@ impl ScriptStore {
             .map(|s| IndexEntry {
                 id: s.id.clone(),
                 enabled: s.enabled,
+                sites: s.sites.clone(),
                 source_url: s.source_url.clone(),
                 installed_at: s.installed_at,
                 updated_at: s.updated_at,
+                last_checked: s.last_checked,
             })
             .collect();
         let json = serde_json::to_vec_pretty(&index).map_err(std::io::Error::other)?;
@@ -192,6 +299,8 @@ impl ScriptStore {
                     source_url: source_url.to_owned(),
                     installed_at: now,
                     updated_at: now,
+                    last_checked: now,
+                    sites: SiteRules::default(),
                     meta,
                     source: source.to_owned(),
                     requires: requires.to_owned(),
@@ -208,9 +317,48 @@ impl ScriptStore {
         self.get(&id).map(|s| s.meta.version.as_str())
     }
 
+    /// Scripts with a remote source whose last check is older than `max_age_ms` (all of them
+    /// when `force`). Only HTTPS sources are ever checked.
+    pub fn due_for_update(&self, max_age_ms: i64, force: bool) -> Vec<UpdateCheck> {
+        let now = now_ms();
+        self.scripts
+            .iter()
+            .filter(|s| force || now - s.last_checked >= max_age_ms)
+            .filter_map(|s| {
+                let https = |u: &str| (u.starts_with("https://") || u.starts_with("http://")).then(|| u.to_owned());
+                let download = https(&s.meta.download_url).or_else(|| https(&s.source_url))?;
+                let check = https(&s.meta.update_url).unwrap_or_else(|| download.clone());
+                Some(UpdateCheck {
+                    id: s.id.clone(),
+                    name: s.meta.name.clone(),
+                    version: s.meta.version.clone(),
+                    check_url: check,
+                    download_url: download,
+                })
+            })
+            .collect()
+    }
+
+    pub fn mark_checked(&mut self, ids: &[String]) {
+        let now = now_ms();
+        for s in self.scripts.iter_mut().filter(|s| ids.contains(&s.id)) {
+            s.last_checked = now;
+        }
+        if let Err(e) = self.save_index() {
+            tracing::warn!(error = %e, "could not save script index");
+        }
+    }
+
     pub fn set_enabled(&mut self, id: &str, enabled: bool) -> Result<(), StoreError> {
         let s = self.scripts.iter_mut().find(|s| s.id == id).ok_or(StoreError::NotFound)?;
         s.enabled = enabled;
+        self.save_index()?;
+        Ok(())
+    }
+
+    pub fn set_sites(&mut self, id: &str, sites: SiteRules) -> Result<(), StoreError> {
+        let s = self.scripts.iter_mut().find(|s| s.id == id).ok_or(StoreError::NotFound)?;
+        s.sites = sites.normalized();
         self.save_index()?;
         Ok(())
     }
@@ -301,6 +449,23 @@ mod tests {
     }
 
     #[test]
+    fn update_checks() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut store = ScriptStore::open(dir.path());
+        let with_urls = "// ==UserScript==\n// @name U\n// @namespace t\n// @version 1.0\n// @updateURL https://x/u.meta.js\n// @downloadURL https://x/u.user.js\n// ==/UserScript==\n";
+        let local = "// ==UserScript==\n// @name L\n// @namespace t\n// @version 1.0\n// ==/UserScript==\n";
+        let id = store.install(with_urls, "", "").unwrap();
+        store.install(local, "", "").unwrap();
+        assert!(store.due_for_update(86_400_000, false).is_empty(), "just installed");
+        let due = store.due_for_update(0, true);
+        assert_eq!(due.len(), 1, "scripts without a remote source are skipped");
+        assert_eq!(due[0].check_url, "https://x/u.meta.js");
+        assert_eq!(due[0].download_url, "https://x/u.user.js");
+        store.mark_checked(&[id.clone()]);
+        assert!(ScriptStore::open(dir.path()).get(&id).unwrap().last_checked > 0);
+    }
+
+    #[test]
     fn enforces_value_limit() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = ScriptStore::open(dir.path());
@@ -310,5 +475,34 @@ mod tests {
             store.set_value(&id, "k", Some(big.into())),
             Err(StoreError::TooLarge)
         ));
+    }
+}
+
+#[cfg(test)]
+mod site_rule_tests {
+    use super::*;
+
+    #[test]
+    fn plain_domain_covers_subdomains_and_paths() {
+        assert!(site_rule_matches("youtube.com", "https://www.youtube.com/watch?v=1"));
+        assert!(site_rule_matches("youtube.com", "https://m.youtube.com/"));
+        assert!(site_rule_matches("*.youtube.com", "https://youtube.com/"));
+        assert!(!site_rule_matches("youtube.com", "https://notyoutube.com/"));
+        assert!(!site_rule_matches("youtube.com", "https://youtube.com.evil.net/"));
+    }
+
+    #[test]
+    fn path_prefix_and_patterns() {
+        assert!(site_rule_matches("github.com/senzukisu", "https://github.com/senzukisu/mizu"));
+        assert!(!site_rule_matches("github.com/senzukisu", "https://github.com/other"));
+        assert!(site_rule_matches("example.com/a*b", "https://example.com/a-x-b/c"));
+        assert!(site_rule_matches("https://*.example.org/*", "https://docs.example.org/x"));
+        assert!(!site_rule_matches("https://*.example.org/*", "http://docs.example.org/x"));
+    }
+
+    #[test]
+    fn normalizes_lists() {
+        let r = SiteRules { only: vec![" a.com/ ".into(), "A.com".into(), String::new()], never: vec![] }.normalized();
+        assert_eq!(r.only, vec!["a.com".to_string()]);
     }
 }

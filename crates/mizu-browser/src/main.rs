@@ -16,6 +16,7 @@ mod handler;
 mod hot;
 mod internal;
 mod omnibox;
+mod passwords;
 mod queue;
 mod scripts;
 mod session;
@@ -24,6 +25,8 @@ mod shortcuts;
 mod single_instance;
 mod tabs;
 mod theme;
+mod update;
+mod vault;
 mod win;
 mod window;
 

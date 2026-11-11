@@ -12,11 +12,13 @@
 pub mod inject;
 pub mod meta;
 pub mod pattern;
+pub mod sources;
 pub mod store;
 
 pub use inject::{GmMessage, build_injection};
 pub use meta::{RunAt, ScriptMeta};
-pub use store::{ScriptStore, UserScript};
+pub use sources::{compare_versions, install_candidates, split_scripts};
+pub use store::{ScriptStore, SiteRules, UpdateCheck, UserScript, site_rule_matches};
 
 /// Whether a URL points to an installable userscript.
 pub fn is_userscript_url(url: &str) -> bool {

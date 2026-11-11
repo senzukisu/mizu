@@ -97,7 +97,12 @@ function general() {
     g.home_page = home.value.trim();
     save();
   });
+  const lang = select([['auto', 'Automatic'], ['en', 'English'], ['ru', 'Русский']], g.language || 'auto', (v) => {
+    g.language = v;
+    save(true);
+  });
   return [
+    card('Language', null, setting('Language', 'Interface language. "Automatic" follows Windows.', lang)),
     card('On startup', null,
       setting('When Mizu starts', null, seg([['restore_session', 'Continue where I left off'], ['new_tab', 'New tab'], ['home_page', 'Home page']], g.startup, (v) => {
         g.startup = v;
@@ -106,6 +111,8 @@ function general() {
       setting('Home page', 'Used by the Home button and on startup.', home),
       toggle('Offer to restore tabs after a crash', 'If Mizu didn\'t close normally, your tabs come back.', () => g.restore_after_crash, (v) => (g.restore_after_crash = v)),
       toggle('Confirm before closing many tabs', null, () => g.confirm_close_multiple_tabs, (v) => (g.confirm_close_multiple_tabs = v)),
+      toggle('Update Mizu automatically', 'Downloads signed updates in the background and installs them when you restart.', () => g.auto_update, (v) => (g.auto_update = v)),
+      toggle('Open windows maximized', 'Mizu starts full-size instead of in a smaller window.', () => g.start_maximized, (v) => (g.start_maximized = v)),
     ),
   ];
 }
@@ -172,6 +179,10 @@ function appearance() {
       })),
       toggle('Animations', 'Smooth transitions in the interface. Windows "reduce motion" is always respected.', () => a.animations, (v) => (a.animations = v)),
       toggle('Translucent window (Mica)', 'Lets the desktop colour show through the tab strip on Windows 11.', () => a.translucency, (v) => (a.translucency = v)),
+      setting('Tab layout', 'Vertical tabs live in a sidebar on the left; collapse it to icons with the arrow at its bottom.', seg([['top', 'Top'], ['side', 'Side']], a.tab_layout || 'top', (v) => {
+        a.tab_layout = v;
+        save(true);
+      })),
       toggle('Show bookmarks bar', 'Ctrl+Shift+B', () => a.show_bookmarks_bar, (v) => (a.show_bookmarks_bar = v)),
       toggle('Show Home button', null, () => a.show_home_button, (v) => (a.show_home_button = v)),
       setting('Default page zoom', null, zoom),
@@ -326,9 +337,14 @@ function privacy() {
       toggle('Download history', 'Files stay on disk.', () => p.clear_on_exit.downloads, (v) => (p.clear_on_exit.downloads = v)),
     ),
     permissionsCard(),
-    card('Forms and passwords', 'Mizu does not have its own password manager yet. These let the engine remember entries inside your profile.',
-      toggle('Offer to save passwords', null, () => p.engine_password_saving, (v) => (p.engine_password_saving = v)),
-      toggle('Autofill forms', null, () => p.engine_autofill, (v) => (p.engine_autofill = v)),
+    card('Passwords', 'Mizu Passwords stores logins encrypted with your Windows account (DPAPI) on this device only.',
+      toggle('Offer to save passwords', 'After you sign in, Mizu asks whether to remember the login. Fill it later with the key in the address bar.', () => p.password_manager, (v) => (p.password_manager = v)),
+      setting('Saved passwords', 'View, edit, import from other browsers or export.', (() => {
+        const b = h('button', { class: 'btn', text: 'Manage passwords' });
+        b.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://passwords/', disposition: 'new_tab' }));
+        return b;
+      })()),
+      toggle('Engine form autofill', 'Lets the web engine remember addresses and other form entries.', () => p.engine_autofill, (v) => (p.engine_autofill = v)),
     ),
   ];
 }
@@ -378,6 +394,13 @@ function security() {
     card('Protection', null,
       toggle('Microsoft Defender SmartScreen', 'Warns about phishing and malware sites and downloads. Addresses you visit are checked with Microsoft\'s service.', () => sec.smartscreen, (v) => (sec.smartscreen = v)),
       toggle('Block pop-ups', 'Pop-ups that open without a click are blocked; you will see a notice.', () => sec.block_unrequested_popups, (v) => (sec.block_unrequested_popups = v)),
+    ),
+    card('Password manager', null,
+      setting('Mizu Passwords', 'Your saved logins, encrypted with your Windows account. View, edit, import or export them.', (() => {
+        const b = h('button', { class: 'btn primary' }, icon('key'), h('span', { text: 'Open password manager' }));
+        b.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://passwords/', disposition: 'new_tab' }));
+        return b;
+      })()),
     ),
     card('Always on', 'These protections cannot be turned off.',
       setting('Process sandbox and site isolation', 'Every site runs in a separate, sandboxed process of the Chromium engine.', h('span', { class: 'pill ok', text: 'On' })),
@@ -448,6 +471,9 @@ function media() {
         save();
       })),
     ),
+    card('Picture in picture', null,
+      toggle('Picture-in-picture button on videos', 'Hover a video to pop it out into a floating window that stays on top. Shortcut: Alt+Shift+P. Works even where a site hides its own button.', () => m.pip_button, (v) => (m.pip_button = v)),
+    ),
     card('Codecs', 'See which video and audio formats this system can decode, and whether hardware acceleration is available.', h('div', { class: 'setting' }, h('div', { class: 'txt' }), diag)),
   ];
 }
@@ -470,6 +496,7 @@ function advanced() {
     card('Developers', null,
       toggle('Developer tools', 'F12 and "Inspect" in the context menu.', () => a.developer_tools, (v) => (a.developer_tools = v)),
       toggle('Extensions', 'Allow Chromium extensions (Manifest V3), e.g. uBlock Origin Lite. Requires restart.', () => a.extensions, (v) => (a.extensions = v)),
+      toggle('Update userscripts automatically', 'Checks each script\'s update source once a day and installs newer versions.', () => a.userscript_auto_update, (v) => (a.userscript_auto_update = v)),
       setting('Userscripts and extensions', null, scripts),
     ),
     card('Engine', null, setting('Microsoft Edge WebView2', 'Updated automatically by Windows, independently of Mizu.', h('span', { class: 'mono', text: payload.engine_version || 'unknown' }))),

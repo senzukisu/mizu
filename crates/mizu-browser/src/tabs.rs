@@ -21,6 +21,8 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Clone, Copy)]
 pub struct OpenOptions {
     pub activate: bool,
+    /// The tab receives a `window.open` request: its view must not be navigated by us.
+    pub popup: bool,
     /// Create the engine view now even if the tab stays in the background.
     pub load_now: bool,
     /// Insert next to the active tab rather than at the end.
@@ -29,16 +31,22 @@ pub struct OpenOptions {
 
 impl OpenOptions {
     pub fn foreground() -> Self {
-        Self { activate: true, load_now: true, adjacent: false }
+        Self { activate: true, popup: false, load_now: true, adjacent: false }
     }
     pub fn background() -> Self {
-        Self { activate: false, load_now: true, adjacent: true }
+        Self { activate: false, popup: false, load_now: true, adjacent: true }
     }
 }
 
-/// Engine settings that follow user preferences.
-pub fn apply_view_settings(settings: &Settings, view: &View, private: bool) {
+/// Per-view engine settings (cheap; applied to every tab).
+pub fn apply_view_settings(settings: &Settings, view: &View) {
     view.apply_live_settings(settings.advanced.developer_tools, settings.security.smartscreen);
+}
+
+/// Profile-wide engine settings. These affect every view of the profile, so they are applied
+/// once per profile (and again only when settings change). Applying them for each new tab
+/// made the engine revisit all open tabs and caused stutter when opening tabs.
+pub fn apply_profile_settings(settings: &Settings, view: &View, private: bool) {
     let level = match settings.privacy.tracking_prevention {
         TrackingPrevention::Off => mizu_engine::TrackingLevel::None,
         TrackingPrevention::Basic => mizu_engine::TrackingLevel::Basic,
@@ -55,8 +63,10 @@ pub fn apply_view_settings(settings: &Settings, view: &View, private: bool) {
         mizu_settings::Theme::Light => Some(false),
         mizu_settings::Theme::System => None,
     });
-    view.set_zoom(f64::from(settings.appearance.zoom_percent) / 100.0);
 }
+
+/// Background tabs unused for this long get a low memory target (efficiency mode).
+const LOW_MEMORY_AFTER: Duration = Duration::from_secs(120);
 
 fn png_data_url(png: &[u8]) -> Option<String> {
     (!png.is_empty()).then(|| format!("data:image/png;base64,{}", base64::prelude::BASE64_STANDARD.encode(png)))
@@ -67,17 +77,35 @@ impl App {
 
     pub fn open_tab(&mut self, window: WindowId, url: String, opts: OpenOptions) -> Option<TabId> {
         let position = self.settings.tabs.new_tab_position;
+        let settings = self.settings.clone();
         let w = self.window_mut(window)?;
-        let tab = Tab::new(url.clone());
+        // Use the pre-created spare view if there is one: no engine start-up delay.
+        let spare = if opts.activate || opts.load_now { w.spare.take() } else { None };
+        let tab = match &spare {
+            Some(v) => Tab::with_id(TabId(v.key()), url.clone()),
+            None => Tab::new(url.clone()),
+        };
         let id = tab.id;
         if opts.adjacent && position == NewTabPosition::AfterCurrent {
             w.strip.insert_after_active(tab);
         } else {
             w.strip.push(tab);
         }
-        w.tabs.insert(id, TabState::new(Some(url)));
+        w.tabs.insert(id, TabState::new(Some(url.clone())));
         hot::register(id.0, Role::Tab { window, tab: id }, w.private);
         w.state_dirty = true;
+        if let Some(view) = spare {
+            hot::attach_view(id.0, view.clone());
+            if let Some(state) = w.tabs.get_mut(&id) {
+                state.view = Some(view.clone());
+                state.pending_url = None;
+            }
+            apply_view_settings(&settings, &view);
+            if !opts.popup {
+                load(id.0, &view, &url);
+            }
+            self.schedule_spare();
+        }
         if opts.activate {
             self.activate_tab(window, id);
         } else if opts.load_now {
@@ -88,7 +116,6 @@ impl App {
     }
 
     pub fn activate_tab(&mut self, window: WindowId, tab: TabId) {
-        let efficiency = self.settings.performance.efficiency_mode;
         let Some(w) = self.window_mut(window) else { return };
         let previous = w.strip.active();
         if !w.strip.activate(tab) {
@@ -97,9 +124,6 @@ impl App {
         if let Some(prev) = previous.filter(|p| *p != tab) {
             if let Some(v) = w.tabs.get(&prev).and_then(|t| t.view.clone()) {
                 v.set_visible(false);
-                if efficiency {
-                    v.set_low_memory(true);
-                }
             }
         }
         let content = w.content_rect();
@@ -110,7 +134,10 @@ impl App {
                     v.resume();
                     state.sleeping = false;
                 }
-                v.set_low_memory(false);
+                if state.low_memory {
+                    v.set_low_memory(false);
+                    state.low_memory = false;
+                }
                 v.set_bounds(content);
                 v.set_visible(true);
                 v.focus();
@@ -126,6 +153,49 @@ impl App {
             self.ensure_view(window, tab);
         }
         self.session_dirty = true;
+    }
+
+    /// Pre-creates a hidden view for the window's next new tab.
+    pub fn ensure_spare(&mut self, window: WindowId) {
+        let (hwnd, private) = {
+            let Some(w) = self.window_mut(window) else { return };
+            if w.spare.is_some() || w.spare_creating || !w.chrome_ready {
+                return;
+            }
+            w.spare_creating = true;
+            (w.hwnd, w.private)
+        };
+        let key = TabId::next().0;
+        let config = ViewConfig {
+            key,
+            profile: if private { ProfileKind::Private } else { ProfileKind::Normal },
+            chrome: false,
+            devtools: self.settings.advanced.developer_tools,
+            smartscreen: self.settings.security.smartscreen,
+            background: crate::theme::page_rgba(&self.settings, private),
+            intercept_all: true,
+            internal_scheme: mizu_core::internal::SCHEME.into(),
+        };
+        let zoom = f64::from(self.settings.appearance.zoom_percent) / 100.0;
+        View::create(&self.engine, hwnd, config, self.handler.clone(), move |res| {
+            queue::with_app(move |app| {
+                let Some(w) = app.window_mut(window) else {
+                    if let Ok(v) = res {
+                        v.close();
+                    }
+                    return;
+                };
+                w.spare_creating = false;
+                match res {
+                    Ok(v) => {
+                        v.set_visible(false);
+                        v.set_zoom(zoom);
+                        w.spare = Some(v);
+                    }
+                    Err(e) => tracing::warn!(error = %e, "could not create spare view"),
+                }
+            });
+        });
     }
 
     /// Creates the engine view for a tab if it does not exist yet (lazy loading).
@@ -168,6 +238,7 @@ impl App {
             }
         };
         let settings = self.settings.clone();
+        let applied = self.profile_settings_applied;
         let clear_flag = self.paths.root.join("clear-on-start");
         let Some(w) = self.window_mut(window) else {
             view.close();
@@ -180,7 +251,13 @@ impl App {
             return;
         };
         hot::attach_view(tab.0, view.clone());
-        apply_view_settings(&settings, &view, w.private);
+        apply_view_settings(&settings, &view);
+        view.set_zoom(f64::from(settings.appearance.zoom_percent) / 100.0);
+        let profile_slot = usize::from(w.private);
+        let apply_profile = !applied[profile_slot];
+        if apply_profile {
+            apply_profile_settings(&settings, &view, w.private);
+        }
         if !w.private && clear_flag.exists() {
             let _ = std::fs::remove_file(&clear_flag);
             let c = settings.privacy.clear_on_exit;
@@ -198,9 +275,6 @@ impl App {
             view.focus();
         } else {
             view.set_visible(false);
-            if settings.performance.efficiency_mode {
-                view.set_low_memory(true);
-            }
         }
         if let Some(req) = state.pending_new_window.take() {
             state.pending_url = None;
@@ -209,14 +283,21 @@ impl App {
             load(tab.0, &view, &url);
         }
         w.state_dirty = true;
+        if apply_profile {
+            self.profile_settings_applied[profile_slot] = true;
+        }
     }
 
     pub fn close_tab(&mut self, window: WindowId, tab: TabId) {
         let Some(w) = self.window_mut(window) else { return };
         let Some(state) = w.tabs.remove(&tab) else { return };
         if let Some(v) = state.view {
-            v.close();
+            // Closing a controller blocks for a moment: hide it now and close it after the
+            // tab-close animation has finished.
+            v.set_visible(false);
+            self.retire_view(v);
         }
+        let Some(w) = self.window_mut(window) else { return };
         hot::forget(tab.0);
         let next = w.strip.close(tab);
         w.state_dirty = true;
@@ -441,6 +522,14 @@ impl App {
                 "shield": shield_on,
                 "crashed": s.crashed,
                 "store_extension": !w.private && crate::extensions::parse_store_url(&t.url).is_some(),
+                "logins": if self.settings.privacy.password_manager {
+                    mizu_core::omnibox::origin_of(&t.url)
+                        .filter(|o| o.starts_with("http"))
+                        .and_then(|o| self.storage.count_logins_for_origin(&o).ok())
+                        .unwrap_or(0)
+                } else {
+                    0
+                },
             }))
         });
         let state = json!({
@@ -454,6 +543,10 @@ impl App {
             "closed": w.strip.closed_tabs().count(),
             "downloads": { "active": dl_active, "progress": dl_progress, "any": !self.downloads.items.is_empty() },
             "shield": { "session": session_blocked },
+            "update": match &self.update {
+                crate::update::UpdateState::Ready { version, .. } => serde_json::Value::String(version.clone()),
+                _ => serde_json::Value::Null,
+            },
         });
         let ev = Event::State { state }.to_json();
         w.post_chrome(&ev);
@@ -465,6 +558,19 @@ impl App {
     // ───────────────────────────── Background tabs ─────────────────────────────
 
     pub fn sleep_background_tabs(&mut self) {
+        let efficiency = self.settings.performance.efficiency_mode;
+        for w in &mut self.windows {
+            let active = w.strip.active();
+            for (id, s) in w.tabs.iter_mut() {
+                let idle = s.last_active.elapsed() >= LOW_MEMORY_AFTER;
+                if efficiency && Some(*id) != active && !s.low_memory && !s.audible && idle {
+                    if let Some(v) = &s.view {
+                        v.set_low_memory(true);
+                        s.low_memory = true;
+                    }
+                }
+            }
+        }
         if !self.settings.tabs.sleeping_tabs {
             return;
         }
@@ -506,7 +612,7 @@ impl App {
             return;
         }
         let activate = self.settings.tabs.switch_to_new_tabs_from_links || req.uri.is_empty() || req.uri == "about:blank";
-        let opts = OpenOptions { activate, load_now: true, adjacent: true };
+        let opts = OpenOptions { activate, popup: true, load_now: true, adjacent: true };
         let url = req.uri.clone();
         if let Some(tab) = self.open_tab(window, url, opts) {
             if let Some(state) = self.window_mut(window).and_then(|w| w.tabs.get_mut(&tab)) {

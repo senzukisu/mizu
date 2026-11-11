@@ -26,8 +26,13 @@ pub struct Tab {
 
 impl Tab {
     pub fn new(url: impl Into<String>) -> Self {
+        Self::with_id(TabId::next(), url)
+    }
+
+    /// A tab whose id was allocated earlier (e.g. for a pre-created engine view).
+    pub fn with_id(id: TabId, url: impl Into<String>) -> Self {
         Self {
-            id: TabId::next(),
+            id,
             url: url.into(),
             title: String::new(),
             pinned: false,

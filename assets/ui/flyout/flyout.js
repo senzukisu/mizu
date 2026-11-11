@@ -61,6 +61,7 @@ function renderMenu(d) {
     item('history', 'History', () => open('mizu://history/'), { kbd: 'Ctrl+H' }),
     item('download', 'Downloads', () => open('mizu://downloads/'), { kbd: 'Ctrl+J' }),
     item('bookmark', 'Bookmarks', () => open('mizu://bookmarks/'), { kbd: 'Ctrl+Shift+O' }),
+    item('key', 'Passwords', () => open('mizu://passwords/')),
     item('puzzle', 'Scripts & extensions', () => open('mizu://scripts/')),
     item('shield', 'Mizu Shield', () => open('mizu://shield/')),
     sep(),
@@ -244,7 +245,7 @@ const SUG_ICONS = { navigate: 'globe', search: 'search', history: 'history', boo
 function renderOmnibox(d) {
   const box = h('div', { class: 'omni', style: { width: `${Math.max(320, Math.round(d.width || 560)) - 12}px` } });
   (d.items || []).forEach((s, i) => {
-    const row = h('div', { class: `sug${i === d.selected ? ' sel' : ''}` }, icon(SUG_ICONS[s.kind] || 'globe'), h('span', { class: 't', text: s.title }), s.display && s.display !== s.title ? h('span', { class: 'd', text: s.display }) : null);
+    const row = h('div', { class: `sug${i === d.selected ? ' sel' : ''}` }, icon(SUG_ICONS[s.kind] || 'globe'), h('span', { class: 't', text: s.title, translate: s.kind === 'internal' ? null : 'no' }), s.display && s.display !== s.title ? h('span', { class: 'd', text: s.display }) : null);
     row.addEventListener('mousedown', (e) => e.preventDefault());
     row.addEventListener('click', () => mizu.send('omnibox_commit', { index: i }));
     box.append(row);
@@ -269,6 +270,61 @@ function renderPermission(d) {
   );
 }
 
+// ── Passwords ────────────────────────────────────────────────
+function siteBadge(host) {
+  const s = host || '?';
+  let hash = 0;
+  for (const c of s) hash = (hash * 31 + c.charCodeAt(0)) | 0;
+  const hue = Math.abs(hash) % 360;
+  return h('div', { class: 'site-badge', text: s.charAt(0).toUpperCase(), style: { background: `hsl(${hue} 60% 50% / 0.18)`, color: `hsl(${hue} 55% 55%)` } });
+}
+
+function renderSavePassword(d) {
+  const user = h('input', { type: 'text', value: d.username || '', placeholder: 'Username or email', spellcheck: 'false' });
+  const pass = h('input', { type: 'password', value: d.password || '', readonly: true });
+  const eye = h('button', { class: 'mini eye', title: 'Show password' }, icon('eye'));
+  eye.addEventListener('click', () => {
+    const show = pass.type === 'password';
+    pass.type = show ? 'text' : 'password';
+    eye.replaceChildren(icon(show ? 'eye-off' : 'eye'));
+    eye.title = show ? 'Hide password' : 'Show password';
+  });
+  const respond = (action) => mizu.send('password_prompt_response', { action, username: user.value });
+  const never = h('button', { class: 'link subtle', text: 'Never for this site' });
+  never.addEventListener('click', () => respond('never'));
+  const later = h('button', { class: 'btn', text: 'Not now' });
+  later.addEventListener('click', () => respond('dismiss'));
+  const save = h('button', { class: 'btn primary', text: d.update ? 'Update' : 'Save' });
+  save.addEventListener('click', () => respond('save'));
+  user.addEventListener('keydown', (e) => e.key === 'Enter' && respond('save'));
+  const close = h('button', { class: 'mini', title: 'Close' }, icon('close'));
+  close.addEventListener('click', () => respond('dismiss'));
+  setTimeout(() => save.focus(), 40);
+  return h('div', { class: 'pwsave' },
+    h('div', { class: 'pw-head' }, siteBadge(d.host),
+      h('div', { class: 'pw-title' }, h('div', { class: 'ttl', text: d.update ? 'Update password?' : 'Save password?' }), h('div', { class: 'muted', translate: 'no', text: d.host })),
+      close),
+    h('label', { class: 'pw-field' }, h('span', { text: 'Username' }), h('div', { class: 'pw-input' }, icon('user'), user)),
+    h('label', { class: 'pw-field' }, h('span', { text: 'Password' }), h('div', { class: 'pw-input' }, icon('key'), pass, eye)),
+    h('div', { class: 'pw-note' }, icon('lock', { size: 13 }), h('span', { text: 'Encrypted with your Windows account. Only you can read it on this PC.' })),
+    h('div', { class: 'pw-actions' }, never, h('div', { class: 'grow' }), later, save),
+  );
+}
+
+function renderLogins(d) {
+  const panel = h('div', { class: 'panel', style: { width: '320px' } },
+    h('h2', null, siteBadge(d.host), h('span', { class: 'grow', translate: 'no', text: d.host })));
+  for (const l of d.logins || []) {
+    const row = h('button', { class: 'item acct' }, icon('user'), h('span', { class: 'label', translate: 'no', text: l.username || '(no username)' }), h('span', { class: 'kbd', text: 'Fill' }));
+    row.addEventListener('click', () => mizu.request('password_fill', { id: l.id }).catch(() => {}));
+    panel.append(row);
+  }
+  const manage = h('button', { class: 'link', text: 'Manage passwords' });
+  manage.addEventListener('click', () => open('mizu://passwords/'));
+  panel.append(h('div', { class: 'footer' }, manage));
+  return panel;
+}
+
 // ── Confirmation (closing many tabs) ─────────────────────────
 function renderConfirm(d) {
   const skip = h('input', { type: 'checkbox' });
@@ -288,6 +344,8 @@ function renderConfirm(d) {
 
 const RENDERERS = {
   confirm: renderConfirm,
+  save_password: renderSavePassword,
+  logins: renderLogins,
   menu: renderMenu,
   tab_menu: renderTabMenu,
   downloads: renderDownloads,

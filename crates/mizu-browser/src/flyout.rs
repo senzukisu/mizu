@@ -21,6 +21,7 @@ pub struct Flyout {
     pub view: Option<View>,
     pub key: ViewKey,
     pub ready: bool,
+    pub creating: bool,
     pub kind: Option<FlyoutKind>,
     /// Screen-space anchor rectangle (physical pixels).
     anchor: RECT,
@@ -60,6 +61,7 @@ impl Flyout {
             view: None,
             key: mizu_core::ids::TabId::next().0,
             ready: false,
+            creating: false,
             kind: None,
             anchor: RECT::default(),
             activate: true,
@@ -113,6 +115,7 @@ impl Flyout {
             // anchored on the left (address bar, site info, prompts, tab menu) open left-aligned.
             let x = match self.kind {
                 Some(FlyoutKind::Omnibox | FlyoutKind::SiteInfo | FlyoutKind::Permission | FlyoutKind::TabMenu) => a.left,
+                // Anchored to the whole address bar: align with its right end.
                 Some(FlyoutKind::Confirm) => a.left - w / 2,
                 _ => a.right - w,
             };

@@ -58,6 +58,31 @@ pub fn pick_file(owner: HWND, title: &str, filter_name: &str, pattern: &str) -> 
     }
 }
 
+/// Multi-select file picker; returns the chosen paths (empty if cancelled).
+pub fn pick_files(owner: HWND, title: &str, filter_name: &str, pattern: &str) -> Vec<String> {
+    use windows::Win32::UI::Shell::FOS_ALLOWMULTISELECT;
+    // SAFETY: standard IFileOpenDialog usage on an STA thread; strings outlive the call.
+    unsafe {
+        let Ok(dialog) = CoCreateInstance::<_, IFileOpenDialog>(&FileOpenDialog, None, CLSCTX_INPROC_SERVER) else {
+            return Vec::new();
+        };
+        let name = HSTRING::from(filter_name);
+        let spec = HSTRING::from(pattern);
+        let filters = [COMDLG_FILTERSPEC { pszName: windows_core::PCWSTR(name.as_ptr()), pszSpec: windows_core::PCWSTR(spec.as_ptr()) }];
+        let _ = dialog.SetFileTypes(&filters);
+        let _ = dialog.SetTitle(&HSTRING::from(title));
+        if let Ok(opts) = dialog.GetOptions() {
+            let _ = dialog.SetOptions(opts | FOS_ALLOWMULTISELECT | FOS_FORCEFILESYSTEM);
+        }
+        if dialog.Show(Some(owner)).is_err() {
+            return Vec::new();
+        }
+        let Ok(items) = dialog.GetResults() else { return Vec::new() };
+        let count = items.GetCount().unwrap_or(0);
+        (0..count).filter_map(|i| items.GetItemAt(i).ok()).filter_map(|it| item_path(&it)).collect()
+    }
+}
+
 pub fn save_file(owner: HWND, suggested: &str) -> Option<String> {
     let path = std::path::Path::new(suggested);
     // SAFETY: standard IFileSaveDialog usage on an STA thread.

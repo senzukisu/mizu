@@ -45,6 +45,10 @@ pub fn on_message(app: &mut App, key: ViewKey, source: &str, json: &str) {
         Some(Role::Tab { window, .. }) => {
             // Untrusted web content: userscript channel only.
             let Ok(value) = serde_json::from_str::<Value>(json) else { return };
+            if value.get("mizu_pw").is_some() {
+                crate::passwords::on_capture(app, key, &value);
+                return;
+            }
             let action = hot::with(|h| crate::scripts::handle_gm_message(h, key, &value));
             if let Some(crate::scripts::GmAction::OpenTab { url, background }) = action {
                 let opts = if background { OpenOptions::background() } else { OpenOptions::foreground() };
@@ -65,6 +69,7 @@ pub fn on_message(app: &mut App, key: ViewKey, source: &str, json: &str) {
         tracing::warn!("internal page attempted a chrome-only command");
         return;
     }
+    tracing::debug!(?surface, command = ?envelope.command, "ui command");
     crate::internal::set_current_rid(envelope.rid);
     let result = handle(app, window, key, surface, envelope.command);
     crate::internal::set_current_rid(None);
@@ -94,13 +99,26 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
     match cmd {
         // ── Surfaces ──────────────────────────────────────────────
         Command::Ready => {
+            let is_sidebar = app.window(window).is_some_and(|w| w.sidebar_key == key);
+            if is_sidebar {
+                if let Some(w) = app.window_mut(window) {
+                    w.sidebar_ready = true;
+                    w.layout();
+                    w.state_dirty = true;
+                }
+            }
             match surface {
+                Surface::Chrome if is_sidebar => {}
                 Surface::Chrome => {
                     if let Some(w) = app.window_mut(window) {
                         w.chrome_ready = true;
                         w.layout();
                         w.state_dirty = true;
+                        w.reveal();
                     }
+                    app.create_flyout_view(window);
+                    app.ensure_sidebar(window);
+                    app.schedule_spare();
                     if let Some(notice) = app.startup_notice.take() {
                         app.toast_all(&notice);
                     }
@@ -119,7 +137,7 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             })))
         }
         Command::ChromeMetrics { height, omnibox } => {
-            if let Some(w) = app.window_mut(window) {
+            if let Some(w) = app.window_mut(window).filter(|w| w.sidebar_key != key) {
                 if (w.chrome_height - height).abs() > 0.5 {
                     w.chrome_height = height.clamp(30.0, 200.0);
                     w.layout();
@@ -144,13 +162,40 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             }
             ok()
         }
-        Command::ShowFlyout { kind, anchor, tab_id } => {
+        Command::ShowFlyout { kind, mut anchor, tab_id } => {
             tracing::debug!(?kind, "show flyout");
+            // The sidebar sits below the toolbar: convert its coordinates to the chrome's.
+            if let Some(w) = app.window(window).filter(|w| w.sidebar_key == key) {
+                anchor.y += w.chrome_height;
+            }
             let data = flyout_data(app, window, kind, tab_id);
             app.show_flyout(window, kind, anchor, data, tab_id);
             ok()
         }
+        Command::SidebarResize { width, commit } => {
+            let width = width.clamp(160.0, 520.0).round();
+            for w in &mut app.windows {
+                if w.side_tabs {
+                    w.sidebar_width = width;
+                    w.layout();
+                }
+            }
+            if commit {
+                app.settings.appearance.sidebar_width = width as u32;
+                app.persist_settings();
+            }
+            ok()
+        }
+        Command::SidebarToggle => {
+            app.settings.appearance.sidebar_collapsed = !app.settings.appearance.sidebar_collapsed;
+            app.persist_settings();
+            app.apply_settings_to_surfaces();
+            ok()
+        }
         Command::CloseFlyout => {
+            if app.pending_password.as_ref().is_some_and(|p| p.window == window) {
+                app.pending_password = None;
+            }
             let prompt = app.window_mut(window).and_then(|w| {
                 let p = w.flyout.prompt_id.take();
                 w.flyout.hide();
@@ -222,7 +267,7 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
         Command::DuplicateTab { id } => {
             let url = app.window(window).and_then(|w| w.strip.get(tab_id(id))).map(|t| t.url.clone());
             if let Some(url) = url {
-                app.open_tab(window, url, OpenOptions { activate: true, load_now: true, adjacent: true });
+                app.open_tab(window, url, OpenOptions { activate: true, popup: false, load_now: true, adjacent: true });
             }
             ok()
         }
@@ -495,7 +540,8 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
                 "bookmarks_bar": app.settings.appearance.show_bookmarks_bar,
             })
         }
-        FlyoutKind::Omnibox | FlyoutKind::Permission | FlyoutKind::Confirm => Value::Null,
+        FlyoutKind::Logins => crate::passwords::logins_flyout_data(app, window),
+        FlyoutKind::Omnibox | FlyoutKind::Permission | FlyoutKind::Confirm | FlyoutKind::SavePassword => Value::Null,
     }
 }
 
@@ -574,7 +620,7 @@ pub fn open_url(app: &mut App, window: WindowId, url: String, disposition: Dispo
     match disposition {
         Disposition::Current => app.navigate_active(window, &url),
         Disposition::NewTab => {
-            app.open_tab(window, url, OpenOptions { activate: true, load_now: true, adjacent: true });
+            app.open_tab(window, url, OpenOptions { activate: true, popup: false, load_now: true, adjacent: true });
         }
         Disposition::Background => {
             app.open_tab(window, url, OpenOptions::background());
@@ -609,7 +655,7 @@ fn open_internal(app: &mut App, window: WindowId, page: InternalPage) {
             if reuse_newtab {
                 app.navigate_active(window, &page.url());
             } else {
-                app.open_tab(window, page.url(), OpenOptions { activate: true, load_now: true, adjacent: true });
+                app.open_tab(window, page.url(), OpenOptions { activate: true, popup: false, load_now: true, adjacent: true });
             }
         }
     }

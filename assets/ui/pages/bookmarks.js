@@ -91,7 +91,7 @@ function itemRow(b, index) {
   const del = h('button', { class: 'icon-btn', title: 'Delete' }, icon('trash'));
   const r = h('div', { class: 'list-row', draggable: 'true' },
     isFolder ? h('div', { class: 'fav' }, icon('folder')) : letterAvatar(b.url, b.title),
-    h('div', { class: 'main' }, h('div', { class: 't', text: b.title }), isFolder ? h('div', { class: 'u', text: `${childrenOf(b.id).length} items` }) : h('div', { class: 'u', text: b.url })),
+    h('div', { class: 'main', translate: 'no' }, h('div', { class: 't', text: b.title }), isFolder ? h('div', { class: 'u', text: `${childrenOf(b.id).length} items` }) : h('div', { class: 'u', text: b.url })),
     h('div', { class: 'acts' }, edit, del));
   r.addEventListener('dblclick', () => {
     if (isFolder) {
