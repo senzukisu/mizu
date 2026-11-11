@@ -44,12 +44,20 @@ pub struct Hot {
     pub scripts: ScriptStore,
     /// Per tab: the token and script ids of the current userscript injection.
     pub gm_tokens: HashMap<ViewKey, (String, Vec<String>)>,
+    /// When the current top-level navigation of each tab started (load-time logging).
+    pub nav_started: HashMap<ViewKey, std::time::Instant>,
     /// Per tab: token of the login-capture script on the current page.
     pub pw_tokens: HashMap<ViewKey, String>,
     /// Offer to save passwords (Mizu Passwords enabled).
     pub password_capture: bool,
     /// Picture-in-picture button on videos.
     pub pip_button: bool,
+    /// Keyboard shortcuts in effect (defaults plus the user's changes).
+    pub bindings: crate::shortcuts::Bindings,
+    /// Views recording a new shortcut in Settings: every key goes to the page.
+    pub capturing_keys: std::collections::HashSet<ViewKey>,
+    /// JSON configuration for the picture-in-picture script.
+    pub pip_config: String,
 }
 
 thread_local! {

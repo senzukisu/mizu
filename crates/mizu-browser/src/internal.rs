@@ -74,6 +74,9 @@ impl App {
             "filters_updating": self.filters_updating,
             "download_dir_default": crate::downloads::default_dir().to_string_lossy(),
             "engine_version": mizu_engine::browser_version().unwrap_or_default(),
+            "shortcut_actions": crate::shortcuts::ACTIONS.iter().map(|a| json!({
+                "id": a.id, "group": a.group, "label": a.label, "defaults": a.defaults,
+            })).collect::<Vec<_>>(),
         })
     }
 }
@@ -96,6 +99,9 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 || old.general.language != app.settings.general.language;
             app.persist_settings();
             app.apply_settings_to_surfaces();
+            if old.appearance.zoom_percent != app.settings.appearance.zoom_percent {
+                app.apply_default_zoom(f64::from(old.appearance.zoom_percent) / 100.0);
+            }
             if lists_changed {
                 app.filters_updating = true;
                 crate::shield::rebuild(&app.paths, &app.settings.privacy, app.worker.clone(), true, false);
@@ -350,6 +356,11 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             app.check_for_update(current_rid().map(|r| (key, r)));
             Ok(None)
         }
+        Command::UpdateState => data(json!({
+            "update": app.update,
+            "installed": crate::update::is_installed_copy(),
+            "version": mizu_core::VERSION,
+        })),
         Command::UpdateInstall => {
             app.install_update()?;
             ok()
@@ -451,6 +462,16 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             hot::with(|h| h.scripts.set_sites(&id, rules)).ok_or("unavailable")?.map_err(|e| e.to_string())?;
             let sites = hot::with(|h| h.scripts.get(&id).map(|s| s.sites.clone())).flatten().unwrap_or_default();
             data(json!({ "sites": sites }))
+        }
+        Command::ShortcutCapture { on } => {
+            hot::with(|h| {
+                if on {
+                    h.capturing_keys.insert(key);
+                } else {
+                    h.capturing_keys.remove(&key);
+                }
+            });
+            ok()
         }
         Command::ScriptRemove { id } => {
             hot::with(|h| h.scripts.remove(&id)).ok_or("unavailable")?.map_err(|e| e.to_string())?;

@@ -8,7 +8,7 @@ mod schema;
 mod search;
 
 pub use schema::*;
-pub use search::{SearchEngine, builtin_search_engines};
+pub use search::{SearchEngine, builtin_search_engines, suggest_template};
 
 use std::path::{Path, PathBuf};
 

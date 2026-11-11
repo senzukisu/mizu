@@ -114,7 +114,7 @@ impl Flyout {
             // Toolbar buttons on the right open their panels right-aligned to the button; things
             // anchored on the left (address bar, site info, prompts, tab menu) open left-aligned.
             let x = match self.kind {
-                Some(FlyoutKind::Omnibox | FlyoutKind::SiteInfo | FlyoutKind::Permission | FlyoutKind::TabMenu) => a.left,
+                Some(FlyoutKind::Omnibox | FlyoutKind::SiteInfo | FlyoutKind::Permission | FlyoutKind::TabMenu | FlyoutKind::BookmarkMenu) => a.left,
                 // Anchored to the whole address bar: align with its right end.
                 Some(FlyoutKind::Confirm) => a.left - w / 2,
                 _ => a.right - w,
@@ -175,7 +175,7 @@ pub fn register_class() {
         let name = wide(CLASS);
         let class = WNDCLASSEXW {
             cbSize: size_of::<WNDCLASSEXW>() as u32,
-            style: CS_DROPSHADOW,
+            style: CS_DROPSHADOW | CS_DBLCLKS,
             lpfnWndProc: Some(wndproc),
             hInstance: instance.into(),
             hCursor: LoadCursorW(None, IDC_ARROW).unwrap_or_default(),
@@ -187,6 +187,11 @@ pub fn register_class() {
 }
 
 extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if msg == WM_NCDESTROY {
+        mizu_engine::host::release_window(hwnd);
+    } else if let Some(r) = mizu_engine::host::handle_input(hwnd, msg, wparam, lparam) {
+        return r;
+    }
     // SAFETY: window procedure called by the system with valid arguments.
     unsafe {
         if msg == WM_ACTIVATE && (wparam.0 & 0xffff) == WA_INACTIVE as usize {

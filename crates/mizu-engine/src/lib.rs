@@ -12,6 +12,8 @@
 //! on the UI thread; none of the types here are `Send`.
 
 mod download;
+mod drop_target;
+pub mod host;
 mod environment;
 mod events;
 mod profile;

@@ -14,6 +14,8 @@ pub struct Settings {
     pub performance: PerformanceSettings,
     pub media: MediaSettings,
     pub advanced: AdvancedSettings,
+    /// Customised keyboard shortcuts: action id → combos ("Ctrl+Shift+T"). Missing = default.
+    pub shortcuts: std::collections::BTreeMap<String, Vec<String>>,
 }
 
 impl Settings {
@@ -198,6 +200,8 @@ pub struct SearchSettings {
     pub custom_engines: Vec<SearchEngine>,
     /// Suggest matching history and bookmarks while typing (local only, nothing is sent).
     pub local_suggestions: bool,
+    /// Ask the search engine for query suggestions while typing (never in private windows).
+    pub remote_suggestions: bool,
 }
 
 impl Default for SearchSettings {
@@ -206,6 +210,7 @@ impl Default for SearchSettings {
             engine: "duckduckgo".into(),
             custom_engines: Vec::new(),
             local_suggestions: true,
+            remote_suggestions: true,
         }
     }
 }
@@ -430,8 +435,14 @@ pub enum AutoplayPolicy {
 pub struct MediaSettings {
     /// Requires restart.
     pub autoplay: AutoplayPolicy,
-    /// Show a picture-in-picture button on videos (and enable Alt+Shift+P).
+    /// Show a picture-in-picture button on videos (Alt+Shift+P always works).
     pub pip_button: bool,
+    /// Where the button sits on the video: "top-right" or "top-left".
+    pub pip_position: String,
+    /// Icon-only button.
+    pub pip_compact: bool,
+    /// Previous/next video and 10-second skip buttons in the picture-in-picture window.
+    pub pip_controls: bool,
 }
 
 impl Default for MediaSettings {
@@ -439,6 +450,9 @@ impl Default for MediaSettings {
         Self {
             autoplay: AutoplayPolicy::Default,
             pip_button: true,
+            pip_position: "top-right".into(),
+            pip_compact: false,
+            pip_controls: true,
         }
     }
 }

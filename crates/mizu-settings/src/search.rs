@@ -29,6 +29,21 @@ impl SearchEngine {
     }
 }
 
+/// OpenSearch suggestion endpoint (`["query", ["suggestion", …]]`) of a built-in engine.
+/// Engines without one simply get no remote suggestions; we never ask a different provider.
+pub fn suggest_template(engine_id: &str) -> Option<&'static str> {
+    Some(match engine_id {
+        "duckduckgo" => "https://duckduckgo.com/ac/?q={searchTerms}&type=list",
+        "google" => "https://suggestqueries.google.com/complete/search?client=firefox&ie=utf-8&oe=utf-8&q={searchTerms}",
+        "bing" => "https://api.bing.com/osjson.aspx?query={searchTerms}",
+        "brave" => "https://search.brave.com/api/suggest?q={searchTerms}",
+        "ecosia" => "https://ac.ecosia.org/autocomplete?type=list&q={searchTerms}",
+        "yandex" => "https://suggest.yandex.ru/suggest-ff.cgi?part={searchTerms}",
+        "wikipedia" => "https://en.wikipedia.org/w/api.php?action=opensearch&format=json&limit=6&search={searchTerms}",
+        _ => return None,
+    })
+}
+
 /// Engines shipped with Mizu. DuckDuckGo is the default because it does not build
 /// search profiles; the others are offered without any commercial arrangement.
 pub fn builtin_search_engines() -> Vec<SearchEngine> {

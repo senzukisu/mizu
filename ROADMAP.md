@@ -89,14 +89,25 @@ passes Windows App Certification, and a week of dogfooding produces no crash rep
   blocking rules from DevTools into Mizu Shield.
 - Extension toolbar buttons and popups, once the engine exposes action UI (otherwise through a Mizu-hosted popup surface).
 
-## 0.7.0 — "Rivers": cross-platform
+## 0.7.0 — "Rivers": Linux, macOS and mobile
 
-- **Linux** (WebKitGTK or CEF) and **macOS** (WKWebView or CEF) builds behind the `mizu-engine` trait. Only the engine
-  and windowing layers are platform specific; the UI, storage, privacy, scripts and tabs crates are already portable.
-- Decision point: evaluate CEF as a single engine on all platforms (needs codec licensing for H.264/AAC
-  in our own builds) against the native engines (which differ in features).
+WebView2 exists only on Windows, so each platform gets its own engine behind the `mizu-engine` interface:
 
-**Done when:** feature parity tables in docs/ARCHITECTURE.md are green for the core feature set on all three platforms.
+| Platform | Engine | Notes |
+|---|---|---|
+| macOS | WKWebView | System engine with H.264/AAC; content blocking via WebKit content rules plus our cosmetic and scriptlet layer |
+| Linux | WebKitGTK (or CEF) | WebKitGTK ships with distributions; CEF only if extension support is required there |
+| Android | Android System WebView | Mobile UI around the same HTML interface; Shield, passwords and scripts reuse the same crates |
+| iOS / iPadOS | WKWebView | Apple requires WebKit on iOS (outside the EU) |
+
+- What is already portable: the interface (HTML/CSS/JS in `assets/ui`), storage, settings, Mizu Shield's filter
+  engine, passwords (with each platform's keychain instead of DPAPI), userscripts and the tab model.
+- What is platform specific: the engine adapter, windowing and input, the installer and the updater.
+- **Mobile** needs its own layout: bottom address bar, tab grid, gestures. It shares settings and features with desktop.
+- Extensions will differ by engine. Chromium extensions remain Windows-first; on WebKit platforms userscripts and
+  Shield cover the most common needs.
+
+**Done when:** the feature parity table in docs/ARCHITECTURE.md is green for the core feature set on every platform.
 
 ## 1.0.0 — "Ocean": stable
 
@@ -117,4 +128,4 @@ passes Windows App Certification, and a week of dogfooding produces no crash rep
 | **Reading mode** | Yes, around 0.6, as a document-start reader view with Mizu typography. |
 | **Split view (two tabs side by side)** | Yes, around 0.3/0.4. The engine supports multiple visible views per window. |
 | **More interface languages** | Yes. Translations are a single dictionary file; contributions are welcome. |
-| **Mobile** | Not before 1.0. |
+| **Mobile** | Planned in 0.7 together with Linux and macOS (see above). |

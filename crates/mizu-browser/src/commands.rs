@@ -348,10 +348,19 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             let private = app.window(window).is_some_and(|w| w.private);
             let items = crate::omnibox::suggest(&app.settings, app.storage_for(private), &text);
             let anchor = app.window(window).map(|w| w.omnibox_anchor).unwrap_or_default();
+            let wants_remote = app.settings.search.remote_suggestions
+                && !private
+                && items.first().is_some_and(|s| s.kind == "search");
             let data = json!({ "items": items, "selected": 0, "width": anchor.width });
             if let Some(w) = app.window_mut(window) {
                 w.suggestions = items;
+                w.omnibox_query = text.clone();
                 w.post_chrome(&Event::Suggestions { items: data["items"].clone() }.to_json());
+            }
+            if wants_remote {
+                if let Some(template) = mizu_settings::suggest_template(&app.settings.search.active_engine().id) {
+                    crate::omnibox::fetch_remote(window, text.trim(), template, app.worker.clone());
+                }
             }
             if data["items"].as_array().is_some_and(|a| !a.is_empty()) {
                 app.show_flyout(window, FlyoutKind::Omnibox, anchor, data, None);
@@ -427,12 +436,25 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             if let Some(w) = app.window_mut(window) {
                 w.flyout.hide();
             }
+            let kind = app.pending_confirm.take().filter(|(w, _)| *w == window).map(|(_, k)| k);
             if accepted {
-                if dont_ask_again {
-                    app.settings.general.confirm_close_multiple_tabs = false;
-                    app.persist_settings();
+                match kind.unwrap_or(crate::app::ConfirmKind::CloseWindow) {
+                    crate::app::ConfirmKind::CloseWindow => {
+                        if dont_ask_again {
+                            app.settings.general.confirm_close_multiple_tabs = false;
+                            app.persist_settings();
+                        }
+                        app.close_window(window);
+                    }
+                    crate::app::ConfirmKind::InstallUpdate => {
+                        if let Err(e) = app.install_update() {
+                            app.toast_all(&e);
+                        }
+                    }
+                    crate::app::ConfirmKind::DownloadUpdate => {
+                        app.open_tab(window, crate::update::RELEASES_URL.to_owned(), crate::tabs::OpenOptions::foreground());
+                    }
                 }
-                app.close_window(window);
             }
             ok()
         }
@@ -479,6 +501,19 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
                 "count": count,
                 "closed": app.window(window).map(|w| w.strip.closed_tabs().count()).unwrap_or(0),
             })
+        }
+        FlyoutKind::BookmarkMenu => {
+            let b = tab_id.and_then(|id| app.storage.bookmark(id as i64).ok());
+            match b {
+                Some(b) => json!({
+                    "id": b.id,
+                    "title": b.title,
+                    "url": b.url,
+                    "folder": b.kind == mizu_storage::BookmarkKind::Folder,
+                    "private": private,
+                }),
+                None => Value::Null,
+            }
         }
         FlyoutKind::Shield | FlyoutKind::SiteInfo => {
             let url = app.current_url(window).unwrap_or_default();

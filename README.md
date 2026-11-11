@@ -28,7 +28,8 @@
 - **Tabs your way.** A classic tab strip, or **vertical tabs** in a sidebar you can resize and collapse. Drag to reorder, pin, duplicate, mute, and reopen closed tabs (Ctrl+Shift+T).
 - **Sessions.** Your tabs come back after a restart or a crash. Restored tabs load only when you open them, and new tabs open instantly from a pre-warmed view.
 - **New tab page.** Your bookmarks appear as shortcuts, and the "+" tile adds one. You can switch search engines right from the search box.
-- **Picture in picture.** Hover any video for a "PiP" button, or press Alt+Shift+P. It works even on sites that hide their own button.
+- **Picture in picture.** Hover any video for a "PiP" button, or press Alt+Shift+P. It works even on sites that hide their own button, and the floating window has previous/next video buttons.
+- **Search suggestions** from your search engine while you type (optional, never in private windows).
 - **Downloads.** Speed, time left, pause and resume, retry, open, and "show in folder".
 
 ### Privacy & security
@@ -53,6 +54,7 @@
   - light, dark or system, with five palettes (Mizu, Washi, Matcha, Sumi, Sakura) and any accent colour;
   - a density setting, a soft or crisp style, and Mica translucency;
   - motion that respects "reduce motion".
+- **Keyboard shortcuts** you can change in Settings → Shortcuts.
 - **Languages:** English and Russian, chosen automatically from Windows.
 
 ### Always up to date

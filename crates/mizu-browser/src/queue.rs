@@ -34,8 +34,38 @@ pub enum Queued {
     Outside(Box<dyn FnOnce()>),
 }
 
+impl Queued {
+    /// Short description for slow-work diagnostics.
+    pub fn label(&self) -> String {
+        match self {
+            Self::View(_, e) => {
+                let s = format!("{e:?}");
+                format!("view {}", s.split(['(', ' ', '{']).next().unwrap_or(""))
+            }
+            Self::Message { json, .. } => {
+                let cmd = json.split("\"cmd\":\"").nth(1).and_then(|r| r.split('"').next()).unwrap_or("?");
+                format!("ui {cmd}")
+            }
+            Self::NewWindow(..) => "new window".into(),
+            Self::Permission(..) => "permission".into(),
+            Self::Download(..) => "download".into(),
+            Self::DownloadUpdate(..) => "download update".into(),
+            Self::Shortcut(_, s) => format!("shortcut {s:?}"),
+            Self::InstallScript { .. } => "install script".into(),
+            Self::ShowBlocked { .. } => "show blocked".into(),
+            Self::WithApp(_) => "with app".into(),
+            Self::Outside(_) => "outside".into(),
+        }
+    }
+}
+
 /// Results from worker threads.
 pub enum WorkerResult {
+    SearchSuggestions {
+        window: mizu_core::ids::WindowId,
+        query: String,
+        items: Vec<String>,
+    },
     BlockerReady(std::sync::Arc<mizu_privacy::ContentBlocker>, u64),
     FiltersUpdated,
     ScriptsFetched {

@@ -14,8 +14,11 @@ const open = (url, disposition = 'new_tab') => {
 // Measure synchronously: the flyout window is hidden until it knows its size, and hidden
 // web views do not run requestAnimationFrame callbacks.
 function reportSize() {
+  // The popup's current size caps an inline-block root; content wider than that (the
+  // suggestions list follows the address bar width) shows up in scrollWidth.
   const r = root.getBoundingClientRect();
-  mizu.send('flyout_size', { width: Math.ceil(r.width), height: Math.ceil(r.height) });
+  const width = Math.max(r.width, root.scrollWidth);
+  mizu.send('flyout_size', { width: Math.ceil(width), height: Math.ceil(r.height) });
 }
 
 function item(iconName, label, onClick, opts = {}) {
@@ -92,6 +95,27 @@ function renderTabMenu(d) {
     d.count > 1 ? item(null, 'Close tabs to the right', () => mizu.send('close_tabs_right', { id })) : null,
     d.closed ? item('history', 'Reopen closed tab', () => mizu.send('reopen_closed_tab'), { kbd: 'Ctrl+Shift+T' }) : null,
   );
+}
+
+// ── Bookmarks bar item menu ──────────────────────────────────
+function renderBookmarkMenu(d) {
+  const open = (disposition) => mizu.send('open_url', { url: d.url, disposition });
+  const remove = () => mizu.request('bookmark_delete', { id: d.id }).catch(() => {});
+  if (d.folder) {
+    return h('div', { class: 'menu', style: { width: '240px' } },
+      item('bookmark', 'Open bookmarks', () => mizu.send('open_url', { url: 'mizu://bookmarks/', disposition: 'new_tab' })),
+      sep(),
+      item('trash', 'Delete folder', remove, { danger: true }));
+  }
+  return h('div', { class: 'menu', style: { width: '250px' } },
+    item('external', 'Open in new tab', () => open('background')),
+    item('window', 'Open in new window', () => open('new_window')),
+    d.private ? null : item('private', 'Open in private window', () => open('private_window')),
+    sep(),
+    item('copy', 'Copy link', () => navigator.clipboard.writeText(d.url).catch(() => {})),
+    item('edit', 'Edit in bookmarks…', () => mizu.send('open_url', { url: 'mizu://bookmarks/', disposition: 'new_tab' })),
+    sep(),
+    item('trash', 'Delete', remove, { danger: true }));
 }
 
 // ── Downloads ────────────────────────────────────────────────
@@ -241,7 +265,8 @@ function renderBookmark(d) {
 }
 
 // ── Omnibox suggestions ──────────────────────────────────────
-const SUG_ICONS = { navigate: 'globe', search: 'search', history: 'history', bookmark: 'star', internal: 'drop' };
+const SUG_ICONS = {
+  suggest: 'search', navigate: 'globe', search: 'search', history: 'history', bookmark: 'star', internal: 'drop' };
 function renderOmnibox(d) {
   const box = h('div', { class: 'omni', style: { width: `${Math.max(320, Math.round(d.width || 560)) - 12}px` } });
   (d.items || []).forEach((s, i) => {
@@ -328,15 +353,15 @@ function renderLogins(d) {
 // ── Confirmation (closing many tabs) ─────────────────────────
 function renderConfirm(d) {
   const skip = h('input', { type: 'checkbox' });
-  const cancel = h('button', { class: 'btn', text: 'Cancel' });
+  const cancel = h('button', { class: 'btn', text: d.cancel || 'Cancel' });
   cancel.addEventListener('click', () => mizu.send('confirm_response', { accepted: false }));
-  const ok = h('button', { class: 'btn danger', text: d.confirm || 'OK' });
+  const ok = h('button', { class: d.primary ? 'btn primary' : 'btn danger', text: d.confirm || 'OK' });
   ok.addEventListener('click', () => mizu.send('confirm_response', { accepted: true, dont_ask_again: skip.checked }));
   setTimeout(() => ok.focus(), 30);
   return h(
     'div',
     { class: 'confirm' },
-    h('div', { class: 'q' }, h('div', { class: 'ic' }, icon('tabs', { size: 20 })), h('div', null, h('div', { class: 'ct', text: d.title }), h('div', { class: 'muted', text: d.message }))),
+    h('div', { class: 'q' }, h('div', { class: 'ic' }, icon(d.icon || 'tabs', { size: 20 })), h('div', null, h('div', { class: 'ct', text: d.title }), h('div', { class: 'muted', text: d.message }))),
     d.can_skip ? h('label', { class: 'check' }, skip, "Don't ask again") : null,
     h('div', { class: 'footer' }, cancel, ok),
   );
@@ -348,6 +373,7 @@ const RENDERERS = {
   logins: renderLogins,
   menu: renderMenu,
   tab_menu: renderTabMenu,
+  bookmark_menu: renderBookmarkMenu,
   downloads: renderDownloads,
   shield: renderShield,
   site_info: renderSiteInfo,

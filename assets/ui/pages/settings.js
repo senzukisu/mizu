@@ -17,6 +17,7 @@ const CATEGORIES = [
   ['tabs', 'Tabs', 'tabs'],
   ['performance', 'Performance', 'gauge'],
   ['media', 'Media', 'media'],
+  ['shortcuts', 'Shortcuts', 'keyboard'],
   ['advanced', 'Advanced', 'code'],
 ];
 
@@ -111,9 +112,9 @@ function general() {
       setting('Home page', 'Used by the Home button and on startup.', home),
       toggle('Offer to restore tabs after a crash', 'If Mizu didn\'t close normally, your tabs come back.', () => g.restore_after_crash, (v) => (g.restore_after_crash = v)),
       toggle('Confirm before closing many tabs', null, () => g.confirm_close_multiple_tabs, (v) => (g.confirm_close_multiple_tabs = v)),
-      toggle('Update Mizu automatically', 'Downloads signed updates in the background and installs them when you restart.', () => g.auto_update, (v) => (g.auto_update = v)),
       toggle('Open windows maximized', 'Mizu starts full-size instead of in a smaller window.', () => g.start_maximized, (v) => (g.start_maximized = v)),
     ),
+    updatesCard(g),
   ];
 }
 
@@ -232,6 +233,7 @@ function search() {
         sr.engine = v;
         save();
       })),
+      toggle('Search suggestions', 'Shows popular queries from your search engine while you type. What you type is sent to that engine; never in private windows.', () => sr.remote_suggestions, (v) => (sr.remote_suggestions = v)),
       toggle('Suggest from history and bookmarks', 'Suggestions are computed on this device; nothing you type is sent anywhere until you press Enter.', () => sr.local_suggestions, (v) => (sr.local_suggestions = v)),
     ),
     card('Custom search engines', null, list, h('div', { class: 'setting' }, h('div', { class: 'txt' }), add)),
@@ -472,7 +474,14 @@ function media() {
       })),
     ),
     card('Picture in picture', null,
-      toggle('Picture-in-picture button on videos', 'Hover a video to pop it out into a floating window that stays on top. Shortcut: Alt+Shift+P. Works even where a site hides its own button.', () => m.pip_button, (v) => (m.pip_button = v)),
+      toggle('Picture-in-picture button on videos', 'Hover a video to pop it out into a floating window that stays on top. Works even where a site hides its own button.', () => m.pip_button, (v) => (m.pip_button = v)),
+      setting('Button position', null, seg([['top-right', 'Top right'], ['top-left', 'Top left']], m.pip_position || 'top-right', (v) => {
+        m.pip_position = v;
+        save();
+      })),
+      toggle('Compact button', 'Show only the icon, without the "PiP" label.', () => m.pip_compact, (v) => (m.pip_compact = v)),
+      toggle('Video switching in the floating window', "Adds previous/next video and 10-second skip buttons. On YouTube they use the player's own playlist; elsewhere they switch between the videos on the page.", () => m.pip_controls, (v) => (m.pip_controls = v)),
+      setting('Keyboard shortcut', 'Pops out the playing video on any page, even with the button turned off. Reload open pages to apply changes.', h('span', { class: 'kbd-combo' }, h('kbd', { text: 'Alt' }), h('span', { class: 'kbd-plus', text: '+' }), h('kbd', { text: 'Shift' }), h('span', { class: 'kbd-plus', text: '+' }), h('kbd', { text: 'P' }))),
     ),
     card('Codecs', 'See which video and audio formats this system can decode, and whether hardware acceleration is available.', h('div', { class: 'setting' }, h('div', { class: 'txt' }), diag)),
   ];
@@ -504,7 +513,225 @@ function advanced() {
   ];
 }
 
-const RENDER = { general, appearance, search, privacy, security, downloads, tabs, performance, media, advanced };
+// ── Updates (shown in General) ───────────────────────────────
+function updateText(u, installed) {
+  switch (u && u.state) {
+    case 'checking':
+      return 'Checking for updates…';
+    case 'up_to_date':
+      return 'Mizu is up to date.';
+    case 'ready':
+      return `Mizu ${u.version} is downloaded and verified. Restart to install it.`;
+    case 'available':
+      return `Mizu ${u.version} is available. This copy is not installed with MizuSetup, so download it from the releases page.`;
+    case 'failed':
+      return `Could not check for updates: ${u.error}`;
+    default:
+      return installed ? 'Updates are signed by Onibi Lab and installed automatically.' : 'Portable copy: updates are announced here; install Mizu with MizuSetup for automatic updates.';
+  }
+}
+
+function updatesCard(g) {
+  const status = h('div', { class: 'd', text: '' });
+  const version = h('div', { class: 't', text: 'Mizu' });
+  const check = h('button', { class: 'btn' }, icon('reload'), h('span', { text: 'Check for updates' }));
+  const install = h('button', { class: 'btn primary' }, icon('upload'), h('span', { text: 'Update' }));
+  let installed = false;
+  const show = (u) => {
+    status.textContent = i18n.tr(updateText(u, installed));
+    status.classList.toggle('warn', !!u && u.state === 'failed');
+    check.disabled = !!u && u.state === 'checking';
+    const ready = !!u && u.state === 'ready';
+    const available = !!u && u.state === 'available';
+    install.hidden = !ready && !available;
+    install.lastChild.textContent = i18n.tr(available ? 'Download' : 'Update');
+    install.onclick = () => {
+      if (available) mizu.send('open_url', { url: 'https://github.com/senzukisu/mizu/releases/latest', disposition: 'new_tab' });
+      else mizu.request('update_install').catch((e) => showToast(e.message));
+    };
+  };
+  check.addEventListener('click', () => {
+    show({ state: 'checking' });
+    mizu.request('update_check').then(show).catch((e) => show({ state: 'failed', error: e.message }));
+  });
+  install.hidden = true;
+  mizu.request('update_state').then((r) => {
+    installed = r.installed;
+    version.textContent = `Mizu ${r.version}`;
+    show(r.update);
+  }).catch(() => show(null));
+  return card('Updates', null,
+    h('div', { class: 'setting' }, h('div', { class: 'txt' }, version, status), h('div', { class: 'upd-btns' }, check, install)),
+    toggle('Update Mizu automatically', 'Checks for new versions when Mizu starts and every few hours, then asks before installing.', () => g.auto_update, (v) => (g.auto_update = v)),
+  );
+}
+
+// ── Keyboard shortcuts ───────────────────────────────────────
+// Shortcuts the engine or the page handles; shown for reference, not editable.
+const FIXED_SHORTCUTS = [
+  ['Go to tab 1–9', ['Ctrl+1…9']],
+  ['Find on page', ['Ctrl+F']],
+  ['Print', ['Ctrl+P']],
+  ['Zoom in / out', ['Ctrl+Plus', 'Ctrl+Minus']],
+  ['Reset zoom', ['Ctrl+0']],
+  ['Picture in picture', ['Alt+Shift+P']],
+  ['Developer tools', ['F12']],
+];
+
+// KeyboardEvent.code → the key names the browser understands.
+function keyName(e) {
+  const c = e.code;
+  if (/^Key[A-Z]$/.test(c)) return c.slice(3);
+  if (/^Digit[0-9]$/.test(c)) return c.slice(5);
+  if (/^Numpad[0-9]$/.test(c)) return c.slice(6);
+  if (/^F([1-9]|1[0-9]|2[0-4])$/.test(c)) return c;
+  const map = {
+    ArrowLeft: 'Left', ArrowRight: 'Right', ArrowUp: 'Up', ArrowDown: 'Down', PageUp: 'PgUp', PageDown: 'PgDn',
+    Home: 'Home', End: 'End', Insert: 'Insert', Delete: 'Delete', Tab: 'Tab', Space: 'Space', Enter: 'Enter',
+    Backspace: 'Backspace', Equal: 'Plus', NumpadAdd: 'Plus', Minus: 'Minus', NumpadSubtract: 'Minus',
+    Comma: 'Comma', Period: 'Period', Slash: 'Slash',
+  };
+  return map[c] || null;
+}
+
+function comboFromEvent(e) {
+  const k = keyName(e);
+  if (!k) return null;
+  const parts = [];
+  if (e.ctrlKey) parts.push('Ctrl');
+  if (e.altKey) parts.push('Alt');
+  if (e.shiftKey) parts.push('Shift');
+  parts.push(k);
+  return parts.join('+');
+}
+
+const sameCombo = (a, b) => a.toLowerCase() === b.toLowerCase();
+
+function keys(combo) {
+  const parts = combo.split('+');
+  const out = [];
+  parts.forEach((k, i) => {
+    if (i) out.push(h('span', { class: 'kbd-plus', text: '+' }));
+    out.push(h('kbd', { translate: 'no', text: k === 'Plus' ? '+' : k === 'Minus' ? '−' : k }));
+  });
+  return h('span', { class: 'kbd-combo' }, ...out);
+}
+
+function shortcuts() {
+  const actions = payload.shortcut_actions || [];
+  s.shortcuts = s.shortcuts || {};
+  const effective = (a) => s.shortcuts[a.id] ?? a.defaults;
+  const search = h('input', { type: 'search', placeholder: 'Search shortcuts', class: 'kbd-search' });
+  let stopCapture = null;
+
+  const rowFor = (a) => {
+    const list = h('div', { class: 'kbd-list' });
+    const edit = h('button', { class: 'icon-btn', title: 'Change' }, icon('edit'));
+    const reset = h('button', { class: 'icon-btn', title: 'Reset' }, icon('reload'));
+    const row = h('div', { class: 'setting kbd-row' }, h('div', { class: 'txt' }, h('div', { class: 't', text: a.label })), list, h('div', { class: 'kbd-acts' }, edit, reset));
+    const draw = () => {
+      const combos = effective(a);
+      list.replaceChildren(...(combos.length ? combos.map(keys) : [h('span', { class: 'muted', text: 'Not set' })]));
+      reset.hidden = !(a.id in s.shortcuts);
+      row.classList.toggle('custom', a.id in s.shortcuts);
+      row._text = `${a.label} ${i18n.tr(a.label)} ${combos.join(' ')}`.toLowerCase();
+    };
+    reset.addEventListener('click', () => {
+      delete s.shortcuts[a.id];
+      save();
+      redrawAll();
+    });
+    edit.addEventListener('click', () => {
+      if (stopCapture) stopCapture();
+      row.classList.add('capturing');
+      list.replaceChildren(h('span', { class: 'kbd-wait', text: 'Press a key combination… (Esc to cancel)' }));
+      mizu.send('shortcut_capture', { on: true });
+      const onKey = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
+        if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+          stop();
+          return;
+        }
+        const combo = comboFromEvent(e);
+        const fkey = /^F\d+$/.test(keyName(e) || '');
+        if (!combo || (!e.ctrlKey && !e.altKey && !fkey)) {
+          showToast('Use Ctrl or Alt with a key, or a function key (F1–F24)');
+          return;
+        }
+        // A combination belongs to one action: take it away from any other.
+        for (const other of actions) {
+          if (other.id !== a.id && effective(other).some((c) => sameCombo(c, combo))) {
+            s.shortcuts[other.id] = effective(other).filter((c) => !sameCombo(c, combo));
+            showToast(i18n.tr('Removed from "{0}"').replace('{0}', i18n.tr(other.label)));
+          }
+        }
+        s.shortcuts[a.id] = [combo];
+        stop();
+        save();
+        redrawAll();
+      };
+      const stop = () => {
+        window.removeEventListener('keydown', onKey, true);
+        mizu.send('shortcut_capture', { on: false });
+        row.classList.remove('capturing');
+        stopCapture = null;
+        draw();
+      };
+      stopCapture = stop;
+      window.addEventListener('keydown', onKey, true);
+    });
+    row._draw = draw;
+    draw();
+    return row;
+  };
+
+  const groups = [...new Set(actions.map((a) => a.group))];
+  const rows = [];
+  const cards = groups.map((g) => {
+    const els = actions.filter((a) => a.group === g).map(rowFor);
+    rows.push(...els);
+    const c = card(g, null, ...els);
+    c._rows = els;
+    return c;
+  });
+  const fixedRows = FIXED_SHORTCUTS.map(([label, combos]) => {
+    const row = h('div', { class: 'setting kbd-row' }, h('div', { class: 'txt' }, h('div', { class: 't', text: label })), h('div', { class: 'kbd-list' }, ...combos.map(keys)));
+    row._text = `${label} ${i18n.tr(label)} ${combos.join(' ')}`.toLowerCase();
+    return row;
+  });
+  const fixed = card('Page', 'These are handled by the web engine and cannot be changed.', ...fixedRows);
+  fixed._rows = fixedRows;
+  cards.push(fixed);
+  const redrawAll = () => rows.forEach((r) => r._draw());
+
+  search.addEventListener('input', () => {
+    const q = search.value.trim().toLowerCase();
+    for (const c of cards) {
+      let any = false;
+      for (const r of c._rows) {
+        r.hidden = !!q && !r._text.includes(q);
+        any = any || !r.hidden;
+      }
+      c.hidden = !any;
+    }
+  });
+  const resetAll = h('button', { class: 'btn' }, icon('reload'), h('span', { text: 'Reset all shortcuts' }));
+  resetAll.addEventListener('click', () => {
+    s.shortcuts = {};
+    save();
+    redrawAll();
+    showToast('Shortcuts reset');
+  });
+  return [
+    h('p', { class: 'muted kbd-note', text: 'Click the pencil next to an action and press the new keys. Changes apply immediately in every window.' }),
+    h('div', { class: 'kbd-top' }, search, resetAll),
+    ...cards,
+  ];
+}
+
+const RENDER = { general, appearance, search, privacy, security, downloads, tabs, performance, media, shortcuts, advanced };
 
 // ── Layout ───────────────────────────────────────────────────
 const nav = h('nav', { class: 'set-nav' });

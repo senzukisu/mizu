@@ -144,6 +144,7 @@ pub enum Command {
     NewtabData,
     UpdateCheck,
     UpdateInstall,
+    UpdateState,
     ChooseDownloadFolder,
     RestoreSession,
     BlockedProceed { url: String },
@@ -191,6 +192,8 @@ pub enum Command {
         username: Option<String>,
     },
     ScriptToggle { id: String, enabled: bool },
+    /// Settings page is recording a shortcut: let every key reach it.
+    ShortcutCapture { on: bool },
     ScriptSites {
         id: String,
         #[serde(default)]
@@ -249,6 +252,8 @@ pub enum WindowAction {
 pub enum FlyoutKind {
     Menu,
     TabMenu,
+    /// Right-click menu of a bookmarks bar item (`tab_id` carries the bookmark id).
+    BookmarkMenu,
     Downloads,
     Shield,
     Bookmark,

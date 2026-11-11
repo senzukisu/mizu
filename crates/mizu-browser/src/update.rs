@@ -66,6 +66,8 @@ fn installed_location() -> Option<String> {
     Some(String::from_utf16_lossy(&buf[..len])).filter(|s| !s.is_empty())
 }
 
+pub const RELEASES_URL: &str = "https://github.com/senzukisu/mizu/releases/latest";
+
 fn run(sender: WorkerSender, reply: Option<(ViewKey, u64)>) {
     std::thread::Builder::new()
         .name("mizu-update".into())
@@ -111,7 +113,6 @@ impl App {
             Ok(Outcome::Available { version, notes }) => UpdateState::Available { version, notes },
             Ok(Outcome::Ready { version, notes, path }) => {
                 tracing::info!(version, "update downloaded and verified");
-                self.toast_all(&format!("Mizu {version} is ready — restart to update"));
                 UpdateState::Ready { version, notes, path }
             }
             Err(error) => {
@@ -124,7 +125,51 @@ impl App {
         }
         if let Some((key, rid)) = reply {
             crate::commands::reply(key, rid, serde_json::to_value(&self.update).unwrap_or_default());
+        } else {
+            self.offer_update();
         }
+    }
+
+    /// After an automatic check: asks once per version "Update now?" in the main window
+    /// (a portable copy is offered the download page instead).
+    fn offer_update(&mut self) {
+        let (version, kind) = match &self.update {
+            UpdateState::Ready { version, .. } => (version.clone(), crate::app::ConfirmKind::InstallUpdate),
+            UpdateState::Available { version, .. } => (version.clone(), crate::app::ConfirmKind::DownloadUpdate),
+            _ => return,
+        };
+        if self.update_prompted.as_deref() == Some(version.as_str()) {
+            return;
+        }
+        let Some(id) = self.main_window(false) else { return };
+        let busy = self.window(id).is_none_or(|w| !w.shown || !w.flyout.ready || w.flyout.kind.is_some());
+        if busy {
+            // Another panel is open: the toolbar's update button still offers it.
+            self.toast_all(&format!("Mizu {version} is ready — restart to update"));
+            self.update_prompted = Some(version);
+            return;
+        }
+        self.update_prompted = Some(version.clone());
+        let data = if kind == crate::app::ConfirmKind::InstallUpdate {
+            serde_json::json!({
+                "title": format!("Update to Mizu {version}?"),
+                "message": "The new version is downloaded and verified. Mizu restarts and your tabs come back.",
+                "confirm": "Update now",
+                "cancel": "Later",
+                "icon": "upload",
+                "primary": true,
+            })
+        } else {
+            serde_json::json!({
+                "title": format!("Mizu {version} is available"),
+                "message": "This copy is not installed with MizuSetup, so it cannot update itself. Download the new version from the releases page.",
+                "confirm": "Download",
+                "cancel": "Later",
+                "icon": "upload",
+                "primary": true,
+            })
+        };
+        self.show_confirm(id, kind, data);
     }
 
     /// Runs the verified installer silently and closes Mizu; the installer relaunches it.

@@ -55,9 +55,22 @@ mizu.exe (UI thread, single-threaded COM apartment)
 msedgewebview2.exe processes (managed by WebView2): browser, GPU, network, utility, sandboxed renderers per site
 ```
 
-The browser UI is HTML too, but it runs in dedicated views that only ever load embedded `mizu://` assets. Web content
-is a native child window that HTML cannot overlap, so menus and suggestion lists live in a separate popup window (the
-*flyout*). That window is created once per browser window and reused, so menus open instantly.
+The browser UI is HTML too, but it runs in dedicated views that only ever load embedded `mizu://` assets. Menus and
+suggestion lists live in a separate popup window (the *flyout*), created once per browser window and reused, so menus
+open instantly.
+
+### Visual hosting
+
+Views are *composition controllers*. Each view draws into a DirectComposition visual inside our own window
+(`mizu-engine::host`); no engine-process window is a child of Mizu's windows. With classic HWND hosting, Windows
+coupled our UI thread to the busy engine process, and Mizu froze for seconds with many loading tabs. Because of that,
+Mizu forwards input itself:
+- mouse, wheel and capture go to the view under the pointer (`host::handle_input`);
+- the cursor comes from the view (`CursorChanged`);
+- files dragged in go through an OLE drop target (`drop_target.rs`);
+- CSS `app-region: drag` in the browser UI answers `WM_NCHITTEST` through `GetNonClientRegionAtPoint`.
+
+Keyboard focus stays with the engine.
 
 With vertical tabs, the same chrome document runs a second time in sidebar mode, to the left of the content. Both
 views receive the same coalesced state. The sidebar width is a setting (160–520 px) that you change by dragging its edge.

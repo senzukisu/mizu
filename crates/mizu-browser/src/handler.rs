@@ -3,7 +3,6 @@
 
 use crate::hot::{self, Role};
 use crate::queue::{self, Queued};
-use crate::shortcuts;
 use base64::Engine as _;
 use mizu_core::internal::is_internal_url;
 use mizu_engine::*;
@@ -60,6 +59,8 @@ impl ViewHandler for Dispatcher {
 
     fn on_navigation_starting(&self, key: ViewKey, req: &NavigationRequest) -> NavigationDecision {
         let uri = req.uri.as_str();
+        // A shortcut being recorded in Settings ends when the page goes away.
+        hot::with(|h| h.capturing_keys.remove(&key));
         match hot::role(key) {
             Some(Role::Chrome(_)) => {
                 return if uri == CHROME_URL || uri == SIDEBAR_URL { NavigationDecision::Allow } else { NavigationDecision::Cancel };
@@ -120,16 +121,23 @@ impl ViewHandler for Dispatcher {
                 return NavigationDecision::Cancel;
             }
 
+            let t_script = std::time::Instant::now();
             let script = hot::with(|h| {
                 h.top_urls.insert(key, uri.to_owned());
                 if !req.redirect {
                     h.page_blocked.insert(key, 0);
+                    h.nav_started.insert(key, std::time::Instant::now());
                 }
                 crate::scripts::document_script(h, key, uri)
             })
             .flatten();
+            let len = script.as_ref().map_or(0, String::len);
             if let Some(v) = hot::view(key) {
                 v.set_document_script(script);
+            }
+            let ms = t_script.elapsed().as_millis();
+            if ms >= 20 {
+                tracing::warn!(host = %host_of(uri), ms, script_kb = len / 1024, "slow document script");
             }
             return NavigationDecision::Allow;
         }
@@ -159,76 +167,13 @@ impl ViewHandler for Dispatcher {
     }
 
     fn on_resource_request(&self, key: ViewKey, req: &ResourceRequest) -> ResourceDecision {
-        let uri = req.uri.as_str();
-
-        // ── Internal assets ──
-        if is_internal_url(uri) {
-            let permitted = match hot::role(key) {
-                Some(Role::Chrome(_) | Role::Flyout(_)) => true,
-                Some(Role::Tab { .. }) => {
-                    hot::with(|h| h.top_urls.get(&key).is_some_and(|u| is_internal_url(u))).unwrap_or(false)
-                }
-                None => false,
-            };
-            let asset = permitted.then(|| mizu_ui::assets::resolve(uri)).flatten();
-            return match asset {
-                Some(a) => ResourceDecision::Respond {
-                    status: 200,
-                    mime: a.mime.to_owned(),
-                    body: if a.mime.starts_with("text/html") { themed_html(key, a.body) } else { a.body.to_vec() },
-                    extra_headers: format!(
-                        "Content-Security-Policy: {}\r\nX-Content-Type-Options: nosniff\r\nCache-Control: no-store\r\n",
-                        mizu_ui::assets::CSP
-                    ),
-                },
-                None => ResourceDecision::Block,
-            };
+        let started = std::time::Instant::now();
+        let decision = resource_decision(key, req);
+        let ms = started.elapsed().as_millis();
+        if ms >= 10 {
+            tracing::warn!(ms, kind = req.resource_type, "slow request check");
         }
-
-        if !matches!(hot::role(key), Some(Role::Tab { .. })) {
-            return ResourceDecision::Continue;
-        }
-
-        let decision = hot::with(|h| {
-            let source = h.top_urls.get(&key).cloned().unwrap_or_default();
-            let gpc = h.global_privacy_control;
-            let mut verdict = Verdict::Allow;
-            if let (true, Some(blocker)) = (h.content_blocking, h.blocker.as_ref()) {
-                if !is_internal_url(&source) && !crate::shield::allowlisted(&h.allowlist, &source) {
-                    // The main document was already checked at navigation start.
-                    let rtype = if req.resource_type == "document" {
-                        if uri == source { "" } else { "subdocument" }
-                    } else {
-                        req.resource_type
-                    };
-                    if !rtype.is_empty() {
-                        verdict = blocker.check(uri, &source, rtype);
-                    }
-                }
-            }
-            if verdict.is_blocking() {
-                h.stats.record(uri);
-                h.stats_dirty = true;
-                *h.page_blocked.entry(key).or_default() += 1;
-            }
-            (verdict, gpc)
-        });
-        let Some((verdict, gpc)) = decision else { return ResourceDecision::Continue };
-        match verdict {
-            Verdict::Block => ResourceDecision::Block,
-            Verdict::Redirect(data_url) => match decode_data_url(&data_url) {
-                Some((mime, body)) => ResourceDecision::Respond {
-                    status: 200,
-                    mime,
-                    body,
-                    extra_headers: String::new(),
-                },
-                None => ResourceDecision::Block,
-            },
-            Verdict::Rewrite(u) => ResourceDecision::Rewrite(u),
-            Verdict::Allow if gpc => ResourceDecision::ContinueWithHeaders(vec![("Sec-GPC".into(), "1".into())]),
-            Verdict::Allow => ResourceDecision::Continue,
-        }
+        decision
     }
 
     fn on_new_window(&self, key: ViewKey, request: NewWindowRequest) {
@@ -257,7 +202,15 @@ impl ViewHandler for Dispatcher {
 
     fn on_accelerator(&self, key: ViewKey, vk: u32, ctrl: bool, shift: bool, alt: bool) -> bool {
         let chrome = matches!(hot::role(key), Some(Role::Chrome(_) | Role::Flyout(_)));
-        match shortcuts::map(vk, ctrl, shift, alt, chrome) {
+        let found = hot::with(|h| {
+            if h.capturing_keys.contains(&key) {
+                None
+            } else {
+                h.bindings.lookup(vk, ctrl, shift, alt, chrome)
+            }
+        })
+        .flatten();
+        match found {
             Some(s) => {
                 queue::push(Queued::Shortcut(key, s));
                 true
@@ -298,5 +251,79 @@ mod tests {
         assert!(allowed_other_scheme("chrome-extension://abc/options.html"));
         assert!(!allowed_other_scheme("edge://settings"));
         assert!(!allowed_other_scheme("chrome://flags"));
+    }
+}
+
+fn resource_decision(key: ViewKey, req: &ResourceRequest) -> ResourceDecision {
+    let uri = req.uri.as_str();
+
+
+    // ── Internal assets ──
+    if is_internal_url(uri) {
+        let permitted = match hot::role(key) {
+            Some(Role::Chrome(_) | Role::Flyout(_)) => true,
+            Some(Role::Tab { .. }) => {
+                hot::with(|h| h.top_urls.get(&key).is_some_and(|u| is_internal_url(u))).unwrap_or(false)
+            }
+            None => false,
+        };
+        let asset = permitted.then(|| mizu_ui::assets::resolve(uri)).flatten();
+        return match asset {
+            Some(a) => ResourceDecision::Respond {
+                status: 200,
+                mime: a.mime.to_owned(),
+                body: if a.mime.starts_with("text/html") { themed_html(key, a.body) } else { a.body.to_vec() },
+                extra_headers: format!(
+                    "Content-Security-Policy: {}\r\nX-Content-Type-Options: nosniff\r\nCache-Control: no-store\r\n",
+                    mizu_ui::assets::CSP
+                ),
+            },
+            None => ResourceDecision::Block,
+        };
+    }
+
+    if !matches!(hot::role(key), Some(Role::Tab { .. })) {
+        return ResourceDecision::Continue;
+    }
+
+    let decision = hot::with(|h| {
+        let source = h.top_urls.get(&key).cloned().unwrap_or_default();
+        let gpc = h.global_privacy_control;
+        let mut verdict = Verdict::Allow;
+        if let (true, Some(blocker)) = (h.content_blocking, h.blocker.as_ref()) {
+            if !is_internal_url(&source) && !crate::shield::allowlisted(&h.allowlist, &source) {
+                // The main document was already checked at navigation start.
+                let rtype = if req.resource_type == "document" {
+                    if uri == source { "" } else { "subdocument" }
+                } else {
+                    req.resource_type
+                };
+                if !rtype.is_empty() {
+                    verdict = blocker.check(uri, &source, rtype);
+                }
+            }
+        }
+        if verdict.is_blocking() {
+            h.stats.record(uri);
+            h.stats_dirty = true;
+            *h.page_blocked.entry(key).or_default() += 1;
+        }
+        (verdict, gpc)
+    });
+    let Some((verdict, gpc)) = decision else { return ResourceDecision::Continue };
+    match verdict {
+        Verdict::Block => ResourceDecision::Block,
+        Verdict::Redirect(data_url) => match decode_data_url(&data_url) {
+            Some((mime, body)) => ResourceDecision::Respond {
+                status: 200,
+                mime,
+                body,
+                extra_headers: String::new(),
+            },
+            None => ResourceDecision::Block,
+        },
+        Verdict::Rewrite(u) => ResourceDecision::Rewrite(u),
+        Verdict::Allow if gpc => ResourceDecision::ContinueWithHeaders(vec![("Sec-GPC".into(), "1".into())]),
+        Verdict::Allow => ResourceDecision::Continue,
     }
 }

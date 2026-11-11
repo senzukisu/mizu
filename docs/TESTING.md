@@ -64,9 +64,17 @@ Use a fresh profile: `MIZU_USER_DATA=%TEMP%\mizu-test`.
 22. **Vertical tabs.** Switch the layout in Settings → Appearance, then:
     - resize the sidebar and collapse it;
     - check that "New tab" stays under the last tab.
-23. **Picture in picture.** Hover a video and press PiP, then try Alt+Shift+P.
-24. **Language.** Switch to Russian in Settings → General and check every page and menu is translated.
-25. **Installer and update.**
+23. **Picture in picture.** Hover a video on YouTube and press PiP, then try Alt+Shift+P.
+    - In the floating window, check the previous/next video buttons and the 10-second skips.
+    - Check that the button position and compact button settings work.
+24. **Many tabs.** Open 30+ heavy tabs quickly and check that:
+    - the window stays responsive and Explorer is unaffected;
+    - the strip scrolls sideways without shaking;
+    - closing tabs is smooth.
+25. **Shortcuts.** Change "New tab" in Settings → Shortcuts. Check that the new keys work, the old ones don't, then reset.
+26. **Search suggestions.** Type a query and check the engine's suggestions appear; check that none appear in a private window.
+27. **Language.** Switch to Russian in Settings → General and check every page and menu is translated.
+28. **Installer and update.**
     1. Install with MizuSetup into a custom folder and start Mizu from the Start menu.
     2. Check that Default apps lists Mizu, then uninstall.
     3. Publish a test release with a higher version and check that "Restart to update" installs it.

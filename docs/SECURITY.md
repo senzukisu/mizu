@@ -108,6 +108,14 @@ The profile lives under `%LOCALAPPDATA%`, which is protected by Windows user ACL
 - Uninstall deletes only `mizu.exe`, `uninstall.exe` and their temporary copies, then the folder if it is empty, so a
   folder chosen by mistake never loses other files. Browsing data is deleted only when the user ticks the option.
 
+## Search suggestions
+
+- With **Search suggestions** on, what you type in the address bar is sent to the selected search engine's
+  suggestion service (and nowhere else), after a 120 ms pause in typing.
+- Text that looks like an address is never sent, and private windows never send anything.
+- Engines without a public suggestion service get no remote suggestions. Mizu never asks a different provider.
+- History and bookmark suggestions are computed locally.
+
 ## Telemetry
 
 None. Crash dumps produced by the engine stay on the machine (custom crash reporting is enabled, so nothing is

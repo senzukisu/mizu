@@ -104,6 +104,8 @@ pub struct BrowserWindow {
     pub flyout: Flyout,
     pub fullscreen: FullscreenState,
     pub suggestions: Vec<crate::omnibox::Suggestion>,
+    /// Text the suggestions were made for (remote results for older text are dropped).
+    pub omnibox_query: String,
     pub state_dirty: bool,
     pub closing: bool,
     /// The native window is shown once the browser UI has loaded (no empty frame on start).
@@ -282,7 +284,7 @@ pub fn register_class() {
         let icon = LoadIconW(Some(instance.into()), windows_core::PCWSTR(1 as _)).unwrap_or_default();
         let class = WNDCLASSEXW {
             cbSize: size_of::<WNDCLASSEXW>() as u32,
-            style: CS_HREDRAW | CS_VREDRAW,
+            style: CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS,
             lpfnWndProc: Some(wndproc),
             hInstance: instance.into(),
             hIcon: icon,
@@ -369,9 +371,17 @@ fn frame_brush(rgb: [u8; 3]) -> HBRUSH {
 
 extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     let id = window_id(hwnd);
+    // Views are visually hosted: mouse input arrives here and goes to the view under it.
+    if let Some(r) = mizu_engine::host::handle_input(hwnd, msg, wparam, lparam) {
+        return r;
+    }
     // SAFETY: window procedure called by the system with valid arguments.
     unsafe {
         match msg {
+            WM_NCDESTROY => {
+                mizu_engine::host::release_window(hwnd);
+                return DefWindowProcW(hwnd, msg, wparam, lparam);
+            }
             WM_NCCALCSIZE if wparam.0 != 0 => {
                 // Remove the title bar but keep the system resize borders on the other edges.
                 let params = &mut *(lparam.0 as *mut NCCALCSIZE_PARAMS);
@@ -387,15 +397,19 @@ extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM)
             }
             WM_NCHITTEST => {
                 let r = DefWindowProcW(hwnd, msg, wparam, lparam);
-                if r.0 as u32 == HTCLIENT && !IsZoomed(hwnd).as_bool() {
+                if r.0 as u32 == HTCLIENT {
                     let mut pt = POINT {
                         x: (lparam.0 & 0xffff) as i16 as i32,
                         y: ((lparam.0 >> 16) & 0xffff) as i16 as i32,
                     };
                     let _ = ScreenToClient(hwnd, &mut pt);
                     let border = (TOP_RESIZE_BORDER * dpi_scale(hwnd)).round() as i32;
-                    if pt.y < border {
+                    if pt.y < border && !IsZoomed(hwnd).as_bool() {
                         return LRESULT(HTTOP as isize);
+                    }
+                    // `app-region: drag` areas of the browser UI move the window.
+                    if let Some(ht) = mizu_engine::host::non_client_region(hwnd, pt) {
+                        return LRESULT(ht as isize);
                     }
                 }
                 return r;

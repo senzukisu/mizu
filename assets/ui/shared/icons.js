@@ -71,6 +71,7 @@ const ICONS = {
   export: [['path', { d: 'M12 15V4' }], ['path', { d: 'M7.5 8.5L12 4l4.5 4.5' }], ['path', { d: 'M4.5 15.5v3a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-3' }]],
   tabs: [['rect', { x: 3.5, y: 6.5, width: 17, height: 13, rx: 2 }], ['path', { d: 'M3.5 10.5h17M8 6.5V4.5h8v2' }]],
   gauge: [['path', { d: 'M4.5 16a7.5 7.5 0 1 1 15 0' }], ['path', { d: 'M12 16l3.5-4.5' }]],
+  keyboard: [['rect', { x: 2.5, y: 6, width: 19, height: 12, rx: 2.5 }], ['path', { d: 'M6 9.5h.01M9.5 9.5h.01M13 9.5h.01M16.5 9.5h.01M6 12.5h.01M18 12.5h.01M9.5 12.5h5M8 15h8' }]],
   sliders: [['path', { d: 'M5 7h9M18 7h1M5 17h1M10 17h9' }], ['circle', { cx: 16, cy: 7, r: 2 }], ['circle', { cx: 8, cy: 17, r: 2 }]],
 };
 

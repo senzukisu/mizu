@@ -1378,3 +1378,85 @@ pre.code {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── Settings: updates and shortcuts ─────────────────────────── */
+.upd-btns {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.kbd-note {
+  margin: -6px 0 14px;
+}
+.kbd-top {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.kbd-search {
+  flex: 1;
+  min-width: 0;
+}
+.kbd-acts {
+  display: flex;
+  gap: 2px;
+  flex: none;
+  width: 68px;
+  justify-content: flex-end;
+}
+.kbd-row.custom .t::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 2px;
+}
+.kbd-row.capturing {
+  background: var(--accent-soft);
+  border-radius: var(--r-md);
+}
+.kbd-wait {
+  color: var(--accent);
+  font-weight: 600;
+  animation: kbd-pulse 1.2s ease-in-out infinite;
+}
+@keyframes kbd-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+.kbd-row {
+  min-height: 52px;
+}
+.kbd-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.kbd-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.kbd-plus {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 600 12px/1 var(--font);
+  white-space: nowrap;
+}

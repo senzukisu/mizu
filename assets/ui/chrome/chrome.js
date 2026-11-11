@@ -274,7 +274,7 @@ function ghostOut(el) {
   el.classList.add('ghost');
   el.classList.remove('active');
   Object.assign(el.style, {
-    left: `${r.left - strip.left}px`,
+    left: `${r.left - strip.left + (VERTICAL ? 0 : els.tabs.scrollLeft)}px`,
     top: VERTICAL ? `${r.top - strip.top + els.tabs.scrollTop}px` : '',
     bottom: VERTICAL ? 'auto' : '',
     width: `${r.width}px`,
@@ -349,13 +349,52 @@ function renderTabs() {
     update();
   }
   rendered = true;
+  if (!VERTICAL) {
+    updateStripOverflow();
+    const active = state.active;
+    if (active !== lastActiveTab) {
+      lastActiveTab = active;
+      requestAnimationFrame(revealActiveTab);
+    }
+  }
 }
 let rendered = false;
+let lastActiveTab = null;
 
 // Narrow-tab layout follows the strip's size without forcing layout on every state update.
+// The outer size does not depend on the padding `narrow` removes, and the gap between the
+// two thresholds keeps a tab from flipping back and forth (that made the strip shake).
 const narrowObserver = new ResizeObserver((entries) => {
-  for (const e of entries) e.target.classList.toggle('narrow', e.contentRect.width < 60);
+  for (const e of entries) {
+    const w = e.borderBoxSize?.[0]?.inlineSize ?? e.target.offsetWidth;
+    const narrow = e.target.classList.contains('narrow');
+    if (!narrow && w < 76) e.target.classList.add('narrow');
+    else if (narrow && w > 88) e.target.classList.remove('narrow');
+  }
 });
+
+// Too many tabs to fit: the strip scrolls sideways (wheel or touchpad) with faded edges.
+function updateStripOverflow() {
+  const t = els.tabs;
+  const over = t.scrollWidth > t.clientWidth + 1;
+  t.classList.toggle('overflow', over);
+  t.classList.toggle('at-start', t.scrollLeft <= 1);
+  t.classList.toggle('at-end', t.scrollLeft + t.clientWidth >= t.scrollWidth - 1);
+}
+function revealActiveTab() {
+  if (VERTICAL) return;
+  const a = els.tabs.querySelector('.tab.active');
+  if (a && els.tabs.scrollWidth > els.tabs.clientWidth) a.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: motionMs(1) ? 'smooth' : 'auto' });
+}
+if (!VERTICAL) {
+  els.tabs.addEventListener('wheel', (e) => {
+    if (els.tabs.scrollWidth <= els.tabs.clientWidth) return;
+    e.preventDefault();
+    els.tabs.scrollLeft += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  }, { passive: false });
+  els.tabs.addEventListener('scroll', updateStripOverflow, { passive: true });
+  new ResizeObserver(updateStripOverflow).observe(els.tabs);
+}
 const observeTab = (el) => narrowObserver.observe(el);
 
 // Drag to reorder (within the strip). Pinned and unpinned tabs stay in their own groups;
@@ -575,19 +614,18 @@ function renderDownloads() {
 }
 
 function renderBookmarks() {
-  const show = !state.private && settings?.appearance?.show_bookmarks_bar !== false;
+  const items = state.bookmarks || [];
+  // The bar appears with the first bookmark on it; an empty bar is just wasted space.
+  const show = !state.private && settings?.appearance?.show_bookmarks_bar !== false && items.length > 0;
+  const changed = els.bookmarks.hidden === show;
   els.bookmarks.hidden = !show;
   els.toolbar.classList.toggle('no-bookmarks', !show);
+  if (changed) reportMetrics();
   if (!show) return;
-  const items = state.bookmarks || [];
   const sig = JSON.stringify(items);
   if (els.bookmarks._sig === sig) return;
   els.bookmarks._sig = sig;
   els.bookmarks.replaceChildren();
-  if (!items.length) {
-    els.bookmarks.append(h('span', { class: 'bm-empty', text: 'Bookmark pages with Ctrl+D or the star to see them here.' }));
-    return;
-  }
   for (const b of items) {
     const isFolder = b.kind === 'folder';
     const el = h('button', { class: 'bm', translate: 'no', title: isFolder ? b.title : `${b.title}\n${b.url}` }, icon(isFolder ? 'folder' : 'bookmark'), h('span', { text: b.title || b.url }));
@@ -597,6 +635,10 @@ function renderBookmarks() {
     });
     el.addEventListener('auxclick', (e) => {
       if (e.button === 1 && !isFolder) mizu.send('open_url', { url: b.url, disposition: 'background' });
+    });
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      mizu.send('show_flyout', { kind: 'bookmark_menu', anchor: { x: e.clientX, y: e.clientY, width: 1, height: 1 }, tab_id: b.id });
     });
     els.bookmarks.append(el);
   }

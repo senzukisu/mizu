@@ -25,6 +25,15 @@ cargo run
 MIZU_USER_DATA="$TEMP/mizu-dev" MIZU_LOG=mizu=debug cargo run
 ```
 
+Пока копия Mizu запущена из `target\debug`, cargo не может её заменить. Для проверки рядом собирайте в другую папку:
+
+```bash
+CARGO_TARGET_DIR=target/vh cargo run
+```
+
+Журнал предупреждает о долгой работе UI-потока (`slow UI-thread work`, дольше 50 мс) и медленных страницах
+(`slow page load`, дольше 8 с).
+
 Журналы пишутся в `<папка данных>/logs/mizu.ГГГГ-ММ-ДД.log`. Второй запуск передаёт адреса уже работающему экземпляру,
 это удобно для проверки: `cargo run -- https://example.com`.
 

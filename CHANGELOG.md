@@ -3,6 +3,29 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **Mizu no longer freezes with many tabs.** Web views are now hosted visually (DirectComposition):
+  - there are no engine windows inside Mizu's window any more, so a busy engine can't block the interface;
+  - opening, closing and switching tabs stays smooth while pages load.
+- A hidden window could loop on focus at startup and stall Explorer.
+- The tab strip no longer shakes near its minimum width. With many tabs it scrolls sideways (wheel or touchpad) and fades at the edges.
+- The picture-in-picture button now appears on YouTube and other sites that use Trusted Types.
+- Changing the default page zoom now applies to open tabs.
+- Address bar suggestions span the full width of the address bar.
+
+### Added
+- **Customisable keyboard shortcuts** in Settings → Shortcuts. Each action can be re-recorded or reset, and conflicts are resolved automatically.
+- **Search suggestions** from the selected search engine (DuckDuckGo, Google, Bing, Brave, Ecosia, Yandex, Wikipedia). There is a separate switch, and they are never used in private windows.
+- Picture in picture:
+  - previous/next video and 10-second skip buttons in the floating window;
+  - settings for the button position and an icon-only button.
+- Settings → General → Updates: "Check for updates" and "Update" buttons. Mizu asks before installing a new version it finds at startup.
+- A bookmarks bar context menu (open in a new tab, window or private window; copy the link; delete). The bar appears only when it has bookmarks.
+- "Open password manager" in Settings → Security, and a bigger close confirmation.
+- Installer and uninstaller in Mizu's style, with a choice of install folder.
+
 ## [0.1.0] — 2026-11-10
 
 The first public release.

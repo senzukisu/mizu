@@ -288,6 +288,26 @@ impl App {
         }
     }
 
+    /// The default zoom changed: tabs still at the old default (not zoomed by hand) and the
+    /// pre-created spare views follow it.
+    pub fn apply_default_zoom(&mut self, old: f64) {
+        let new = f64::from(self.settings.appearance.zoom_percent) / 100.0;
+        for w in &mut self.windows {
+            for state in w.tabs.values_mut() {
+                if let Some(v) = &state.view {
+                    if (state.zoom - old).abs() < 0.005 {
+                        v.set_zoom(new);
+                        state.zoom = new;
+                    }
+                }
+            }
+            if let Some(v) = &w.spare {
+                v.set_zoom(new);
+            }
+            w.state_dirty = true;
+        }
+    }
+
     pub fn close_tab(&mut self, window: WindowId, tab: TabId) {
         let Some(w) = self.window_mut(window) else { return };
         let Some(state) = w.tabs.remove(&tab) else { return };
@@ -394,6 +414,15 @@ impl App {
                 }
                 ViewEvent::NavigationCompleted { success, http_status, .. } => {
                     state.loading = false;
+                    if let Some(started) = hot::with(|h| h.nav_started.remove(&tab.0)).flatten() {
+                        let ms = started.elapsed().as_millis();
+                        let host = w.strip.get(tab).and_then(|t| mizu_core::omnibox::host_of(&t.url)).unwrap_or_default();
+                        if ms >= 8000 {
+                            tracing::warn!(host, ms, success, "slow page load");
+                        } else {
+                            tracing::info!(host, ms, success, "page loaded");
+                        }
+                    }
                     state.http_status = http_status;
                     let url = w.strip.get(tab).map(|t| t.url.clone()).unwrap_or_default();
                     let title = w.strip.get(tab).map(|t| t.title.clone()).unwrap_or_default();

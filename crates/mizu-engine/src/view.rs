@@ -38,6 +38,8 @@ struct Inner {
     /// Bumped on every `set_document_script` so late completions can be discarded.
     doc_script_gen: Cell<u64>,
     closed: Cell<bool>,
+    /// Window whose composition tree shows this view.
+    parent: HWND,
 }
 
 /// Handle to a web view. Cheap to clone; all clones refer to the same view.
@@ -62,9 +64,23 @@ impl View {
     ) {
         let engine_rc = engine.clone();
         engine.create_controller(parent, config.profile, move |result| {
-            let view = result.and_then(|controller| {
+            let view = result.and_then(|comp| {
+                let controller: ICoreWebView2Controller = comp.cast()?;
                 // SAFETY: getter on a freshly created controller.
                 let core = unsafe { controller.CoreWebView2()? };
+                crate::host::register(parent, config.key, &comp, config.chrome)?;
+                let key = config.key;
+                let mut token = 0i64;
+                // SAFETY: registering an event handler on the UI thread.
+                unsafe {
+                    comp.add_CursorChanged(
+                        &CursorChangedEventHandler::create(Box::new(move |_, _| {
+                            crate::host::cursor_changed(parent, key);
+                            Ok(())
+                        })),
+                        &mut token,
+                    )?;
+                }
                 let view = View {
                     inner: Rc::new(Inner {
                         engine: engine_rc,
@@ -74,6 +90,7 @@ impl View {
                         doc_script: RefCell::new(None),
                         doc_script_gen: Cell::new(0),
                         closed: Cell::new(false),
+                        parent,
                     }),
                 };
                 view.configure(&config)?;
@@ -682,6 +699,7 @@ impl View {
         unsafe {
             let _ = self.inner.controller.SetBounds(rect);
         }
+        crate::host::set_bounds(self.inner.parent, self.inner.key, rect);
     }
 
     pub fn set_visible(&self, visible: bool) {
@@ -689,6 +707,7 @@ impl View {
         unsafe {
             let _ = self.inner.controller.SetIsVisible(visible);
         }
+        crate::host::set_visible(self.inner.parent, self.inner.key, visible);
     }
 
     pub fn focus(&self) {
@@ -852,6 +871,7 @@ impl View {
         if self.inner.closed.replace(true) {
             return;
         }
+        crate::host::unregister(self.inner.parent, self.inner.key);
         // SAFETY: COM call on the UI thread; the view is not used afterwards.
         unsafe {
             let _ = self.inner.controller.Close();

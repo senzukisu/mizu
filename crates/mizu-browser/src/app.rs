@@ -69,6 +69,10 @@ pub struct App {
     /// Links from the last install request that could not be fetched (url, error).
     pub pending_failures: Vec<(String, String)>,
     pub update: crate::update::UpdateState,
+    /// Version the user was already asked about this session ("Update now?").
+    pub update_prompted: Option<String>,
+    /// What the open confirmation flyout is asking.
+    pub pending_confirm: Option<(WindowId, ConfirmKind)>,
     /// Login captured on a page, waiting for "Save password?".
     pub pending_password: Option<crate::passwords::PendingPassword>,
     /// Tab that asked to install a userscript (shows the install page when fetched).
@@ -214,9 +218,13 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         stats_dirty: false,
         scripts: mizu_userscripts::ScriptStore::open(&paths.root.join("scripts")),
         gm_tokens: HashMap::new(),
+        nav_started: HashMap::new(),
         pw_tokens: HashMap::new(),
         password_capture: settings.privacy.password_manager,
         pip_button: settings.media.pip_button,
+        pip_config: crate::scripts::pip_config(&settings.media),
+        bindings: crate::shortcuts::Bindings::build(&settings.shortcuts),
+        capturing_keys: Default::default(),
     });
 
     window::register_class();
@@ -240,6 +248,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         pending_failures: Vec::new(),
         pending_password: None,
         update: crate::update::UpdateState::Idle,
+        update_prompted: None,
+        pending_confirm: None,
         script_install_tab: None,
         crashed_last_time,
         previous_session,
@@ -264,7 +274,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
             SetTimer(Some(app.msg_hwnd), TIMER_SLEEP, 60_000, None);
             SetTimer(Some(app.msg_hwnd), TIMER_STATS, 15_000, None);
             SetTimer(Some(app.msg_hwnd), TIMER_SCRIPTS, 60_000, None);
-            SetTimer(Some(app.msg_hwnd), TIMER_UPDATE, 90_000, None);
+            // Soon after start, so a new version is offered when Mizu is opened.
+            SetTimer(Some(app.msg_hwnd), TIMER_UPDATE, 12_000, None);
         }
     });
     Ok(())
@@ -325,7 +336,16 @@ fn pump() {
         match item {
             Queued::Outside(f) => f(),
             other => {
-                if with(|app| app.handle(other)).is_none() {
+                // Everything here runs on the UI thread, which also answers every network
+                // request of every tab: long work shows up as slow page loads.
+                let label = other.label();
+                let started = std::time::Instant::now();
+                let handled = with(|app| app.handle(other)).is_some();
+                let ms = started.elapsed().as_millis();
+                if ms >= 50 {
+                    tracing::warn!(item = %label, ms, "slow UI-thread work");
+                }
+                if !handled {
                     tracing::debug!("queued item dropped: state unavailable");
                 }
             }
@@ -448,6 +468,7 @@ impl App {
                 crate::extensions::finish_store_install(self, key, rid, result);
             }
             WorkerResult::Update { result, reply } => self.finish_update_check(result, reply),
+            WorkerResult::SearchSuggestions { window, query, items } => self.merge_search_suggestions(window, &query, items),
             WorkerResult::MediaReport(report, token) => {
                 if let Some((key, rid)) = self.media_waiters.remove(&token) {
                     crate::commands::reply(key, rid, serde_json::to_value(&*report).unwrap_or_default());
@@ -646,6 +667,7 @@ impl App {
             flyout,
             fullscreen: Default::default(),
             suggestions: Vec::new(),
+            omnibox_query: String::new(),
             state_dirty: true,
             closing: false,
             shown: false,
@@ -910,7 +932,6 @@ impl App {
             self.close_window(id);
             return;
         }
-        let width = crate::win::client_rect(w.hwnd).right as f64 / crate::win::dpi_scale(w.hwnd);
         let restore = !w.private && self.settings.general.startup == mizu_settings::StartupBehavior::RestoreSession;
         let data = serde_json::json!({
             "title": format!("Close {count} tabs?"),
@@ -924,7 +945,15 @@ impl App {
             "confirm": "Close Mizu",
             "can_skip": true,
         });
+        self.show_confirm(id, ConfirmKind::CloseWindow, data);
+    }
+
+    /// Shows the centred confirmation flyout in window `id`.
+    pub fn show_confirm(&mut self, id: WindowId, kind: ConfirmKind, data: serde_json::Value) {
+        let Some(w) = self.window(id) else { return };
+        let width = crate::win::client_rect(w.hwnd).right as f64 / crate::win::dpi_scale(w.hwnd);
         let anchor = mizu_ui::Anchor { x: width / 2.0, y: 60.0, width: 0.0, height: 0.0 };
+        self.pending_confirm = Some((id, kind));
         self.show_flyout(id, mizu_ui::protocol::FlyoutKind::Confirm, anchor, data, None);
     }
 
@@ -1066,6 +1095,8 @@ impl App {
             h.theme_attrs = crate::theme::html_attrs(&self.settings);
             h.password_capture = self.settings.privacy.password_manager;
             h.pip_button = self.settings.media.pip_button;
+            h.pip_config = crate::scripts::pip_config(&self.settings.media);
+            h.bindings = crate::shortcuts::Bindings::build(&self.settings.shortcuts);
             h.allowlist = self.settings.privacy.allowlist.iter().map(|x| crate::shield::normalize_host(x)).collect();
         });
     }
@@ -1117,4 +1148,14 @@ impl App {
             let _ = std::fs::write(self.paths.root.join("clear-on-start"), b"1");
         }
     }
+}
+
+/// What a confirmation flyout is asking.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfirmKind {
+    CloseWindow,
+    /// "Mizu X is ready. Update now?" (installs and restarts).
+    InstallUpdate,
+    /// Portable copy: "Mizu X is available" (opens the releases page).
+    DownloadUpdate,
 }

@@ -5,7 +5,7 @@ use std::sync::mpsc;
 use webview2_com::Microsoft::Web::WebView2::Win32::*;
 use webview2_com::{
     CoreWebView2CustomSchemeRegistration, CoreWebView2EnvironmentOptions,
-    CreateCoreWebView2ControllerCompletedHandler, CreateCoreWebView2EnvironmentCompletedHandler,
+    CreateCoreWebView2CompositionControllerCompletedHandler, CreateCoreWebView2EnvironmentCompletedHandler,
 };
 use windows::Win32::Foundation::HWND;
 use windows::Win32::System::Com::IStream;
@@ -110,14 +110,14 @@ impl Engine {
         Ok(Self { env })
     }
 
-    /// Asynchronously creates a controller hosted in `parent`.
+    /// Asynchronously creates a visually hosted (composition) controller for `parent`.
     pub(crate) fn create_controller(
         &self,
         parent: HWND,
         profile: ProfileKind,
-        done: impl FnOnce(Result<ICoreWebView2Controller>) + 'static,
+        done: impl FnOnce(Result<ICoreWebView2CompositionController>) + 'static,
     ) {
-        let handler = CreateCoreWebView2ControllerCompletedHandler::create(Box::new(move |hr, controller| {
+        let handler = CreateCoreWebView2CompositionControllerCompletedHandler::create(Box::new(move |hr, controller| {
             done(hr.map_err(EngineError::from).and_then(|_| {
                 controller.ok_or_else(|| EngineError::WebView2("no controller".into()))
             }));
@@ -134,7 +134,7 @@ impl Engine {
                 };
                 opts.SetProfileName(&HSTRING::from(name))?;
                 opts.SetIsInPrivateModeEnabled(private)?;
-                env10.CreateCoreWebView2ControllerWithOptions(parent, &opts, &handler)
+                env10.CreateCoreWebView2CompositionControllerWithOptions(parent, &opts, &handler)
             }
         })();
         if let Err(e) = result {

@@ -10,24 +10,44 @@ use std::hash::{BuildHasher, Hasher};
 /// Picture-in-picture: a small button over videos (in a closed shadow root so pages cannot
 /// style or script it) and Alt+Shift+P. Clicking or pressing keys is a real user gesture, which
 /// the Picture-in-Picture API requires. `disablePictureInPicture` is overridden, like Firefox.
-const PIP_SCRIPT: &str = r#"(()=>{if(!document.pictureInPictureEnabled&&!('requestPictureInPicture' in HTMLVideoElement.prototype))return;
-let host,btn,target=null,hideT=0;
-const SVG='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><rect x="12" y="11.5" width="7" height="5.5" rx="1.2" fill="currentColor" stroke="none"/></svg>';
-function ui(){if(host)return;host=document.createElement('mizu-pip');const root=host.attachShadow({mode:'closed'});
-root.innerHTML='<style>:host{all:initial;position:fixed;z-index:2147483647;display:none}button{all:initial;display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(20,26,34,.82);color:#fff;font:600 12px/1 "Segoe UI",system-ui,sans-serif;cursor:pointer;backdrop-filter:blur(8px);box-shadow:0 2px 10px rgba(0,0,0,.35);opacity:.92;transition:opacity .15s,transform .15s}button:hover{opacity:1;transform:scale(1.04)}</style><button title="Picture in picture (Alt+Shift+P)">'+SVG+'<span>PiP</span></button>';
-btn=root.querySelector('button');btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();toggle(target);},true);
-host.addEventListener('mouseenter',()=>clearTimeout(hideT));host.addEventListener('mouseleave',()=>hide(600));
-(document.documentElement||document).appendChild(host);}
-function hide(ms){clearTimeout(hideT);hideT=setTimeout(()=>{if(host)host.style.display='none';},ms);}
-function place(v){const r=v.getBoundingClientRect();if(r.width<200||r.height<120){hide(0);return;}ui();clearTimeout(hideT);target=v;
-host.style.display='block';host.style.top=Math.max(8,r.top+12)+'px';host.style.left=Math.max(8,r.right-84)+'px';}
+const PIP_SCRIPT: &str = r#"(()=>{const C=__MIZU_PIP__;if(!('requestPictureInPicture' in HTMLVideoElement.prototype))return;
+let host=null,btn=null,target=null,hideT=0,raf=0,px=0,py=0;
+const NS='http://www.w3.org/2000/svg';
+// Built with DOM calls only: sites with Trusted Types (YouTube) forbid innerHTML.
+function icon(){const s=document.createElementNS(NS,'svg');const set=(e,a)=>{for(const k in a)e.setAttribute(k,a[k]);return e;};
+set(s,{viewBox:'0 0 24 24',width:'16',height:'16',fill:'none',stroke:'currentColor','stroke-width':'1.8','stroke-linejoin':'round'});
+s.append(set(document.createElementNS(NS,'rect'),{x:'2.5',y:'4.5',width:'19',height:'15',rx:'2.5'}),set(document.createElementNS(NS,'rect'),{x:'12',y:'11.5',width:'7',height:'5.5',rx:'1.2',fill:'currentColor',stroke:'none'}));return s;}
+function ui(){if(host&&host.isConnected)return;host=document.createElement('mizu-pip');const root=host.attachShadow({mode:'closed'});
+const st=document.createElement('style');st.textContent=':host{all:initial;position:fixed;z-index:2147483647;display:none}button{all:initial;display:flex;align-items:center;gap:6px;padding:'+(C.compact?'7px':'6px 11px 6px 9px')+';border-radius:999px;background:rgba(18,24,32,.84);color:#fff;font:600 12px/1 "Segoe UI",system-ui,sans-serif;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 2px 12px rgba(0,0,0,.4);opacity:.94;transition:opacity .15s,transform .15s}button:hover{opacity:1;transform:scale(1.06)}';
+btn=document.createElement('button');btn.title='Picture in picture (Alt+Shift+P)';btn.append(icon());
+if(!C.compact){const t=document.createElement('span');t.textContent='PiP';btn.append(t);}
+btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();toggle(target);},true);
+for(const ev of ['mousedown','mouseup','pointerdown','pointerup','dblclick'])btn.addEventListener(ev,e=>e.stopPropagation(),true);
+host.addEventListener('mouseenter',()=>clearTimeout(hideT));
+root.append(st,btn);(document.body||document.documentElement).appendChild(host);}
+function hide(ms){clearTimeout(hideT);hideT=setTimeout(()=>{if(host)host.style.display='none';target=null;},ms);}
+function place(v){const r=v.getBoundingClientRect();if(r.width<200||r.height<120){hide(0);return;}ui();clearTimeout(hideT);target=v;host.style.display='block';
+const w=btn.offsetWidth||64;host.style.top=Math.max(8,r.top+12)+'px';host.style.left=(C.position==='top-left'?Math.max(8,r.left+12):Math.max(8,r.right-w-12))+'px';}
 async function toggle(v){try{if(document.pictureInPictureElement){await document.exitPictureInPicture();return;}if(!v)return;
 v.disablePictureInPicture=false;v.removeAttribute('disablepictureinpicture');await v.requestPictureInPicture();}catch(e){console.warn('[Mizu PiP]',e);}}
 function best(){const vs=[...document.querySelectorAll('video')].filter(v=>v.readyState>0);vs.sort((a,b)=>(!b.paused)-(!a.paused)||b.clientWidth*b.clientHeight-a.clientWidth*a.clientHeight);return vs[0];}
-document.addEventListener('mouseover',e=>{const v=e.target&&e.target.closest?e.target.closest('video'):null;
-const under=v||[...document.querySelectorAll('video')].find(x=>{const r=x.getBoundingClientRect();return e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;});
-if(under)place(under);else if(target&&!(e.target===host))hide(900);},true);
-document.addEventListener('keydown',e=>{if(e.altKey&&e.shiftKey&&(e.code==='KeyP')){e.preventDefault();toggle(best());}},true);
+// Players cover the video with their own controls, so look underneath the pointer.
+function videoAt(x,y){for(const el of document.elementsFromPoint(x,y)){if(el.tagName==='VIDEO')return el;if(host&&el===host)return target;}
+return [...document.querySelectorAll('video')].find(v=>{const r=v.getBoundingClientRect();return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;})||null;}
+function check(){raf=0;const v=videoAt(px,py);if(v)place(v);else if(target)hide(700);}
+if(C.button){document.addEventListener('mousemove',e=>{px=e.clientX;py=e.clientY;if(!raf)raf=requestAnimationFrame(check);},{capture:true,passive:true});
+document.addEventListener('scroll',()=>{if(host&&host.style.display!=='none')hide(0);},{capture:true,passive:true});}
+document.addEventListener('keydown',e=>{if(e.altKey&&e.shiftKey&&e.code==='KeyP'){e.preventDefault();toggle(best());}},true);
+// Buttons in the picture-in-picture window: previous/next video and 10-second skips.
+function clickFirst(sels){for(const s of sels){const el=document.querySelector(s);if(el&&el.offsetParent!==null&&!el.disabled&&el.getAttribute('aria-disabled')!=='true'){el.click();return true;}}return false;}
+function otherVideo(v,dir){const vs=[...document.querySelectorAll('video')].filter(x=>x.readyState>0&&x!==v);if(!vs.length)return null;const all=[...document.querySelectorAll('video')];const i=all.indexOf(v);
+const after=all.filter((x,j)=>vs.includes(x)&&(dir>0?j>i:j<i));return (dir>0?after[0]:after[after.length-1])||null;}
+async function switchTo(v,dir){const sels=dir>0?['.ytp-next-button','[aria-label="Next"]','[aria-label="Next video"]','[data-testid="next-button"]','button[title^="Next"]']:['.ytp-prev-button','[aria-label="Previous"]','[aria-label="Previous video"]','[data-testid="previous-button"]','button[title^="Previous"]'];
+if(clickFirst(sels))return;const o=otherVideo(v,dir);if(o){try{await o.requestPictureInPicture();o.play().catch(()=>{});}catch(e){console.warn('[Mizu PiP]',e);}}else if(dir<0){v.currentTime=0;}}
+function controls(v){if(!C.controls||!('mediaSession' in navigator))return;const ms=navigator.mediaSession;const set=(a,f)=>{try{ms.setActionHandler(a,f);}catch(_){}};
+set('previoustrack',()=>switchTo(v,-1));set('nexttrack',()=>switchTo(v,1));
+set('seekbackward',d=>{v.currentTime=Math.max(0,v.currentTime-((d&&d.seekOffset)||10));});set('seekforward',d=>{v.currentTime=Math.min(v.duration||1e9,v.currentTime+((d&&d.seekOffset)||10));});}
+document.addEventListener('enterpictureinpicture',e=>controls(e.target),true);
 })();"#;
 
 /// Unpredictable token for the userscript message channel (SipHash with OS-random keys).
@@ -81,9 +101,8 @@ pub fn document_script(h: &mut Hot, key: ViewKey, uri: &str) -> Option<String> {
         }
     }
 
-    if h.pip_button {
-        parts.push(PIP_SCRIPT.to_owned());
-    }
+    // The shortcut always works; the hover button follows the settings.
+    parts.push(PIP_SCRIPT.replace("__MIZU_PIP__", &h.pip_config));
 
     // Mizu Passwords: notice submitted logins (never in private windows).
     if h.password_capture && !h.private.contains(&key) {
@@ -300,4 +319,10 @@ mod tests {
         assert_ne!(random_token(), random_token());
         assert_eq!(random_token().len(), 32);
     }
+}
+
+/// Settings the picture-in-picture script reads (`__MIZU_PIP__`).
+pub fn pip_config(m: &mizu_settings::MediaSettings) -> String {
+    let position = if m.pip_position == "top-left" { "top-left" } else { "top-right" };
+    serde_json::json!({ "button": m.pip_button, "position": position, "compact": m.pip_compact, "controls": m.pip_controls }).to_string()
 }

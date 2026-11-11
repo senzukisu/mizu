@@ -24,6 +24,14 @@ Use a throwaway profile while developing so your real data is never touched:
 MIZU_USER_DATA="$TEMP/mizu-dev" MIZU_LOG=mizu=debug cargo run
 ```
 
+While a copy of Mizu runs from `target\debug`, cargo can't replace it. Build into another folder to test side by side:
+
+```bash
+CARGO_TARGET_DIR=target/vh cargo run
+```
+
+The log warns about slow UI-thread work (`slow UI-thread work`, over 50 ms) and slow pages (`slow page load`, over 8 s).
+
 Logs are written to `<user data>/logs/mizu.YYYY-MM-DD.log`. A second launch forwards its URLs to the running
 instance, which is handy for testing: `cargo run -- https://example.com`.
 
