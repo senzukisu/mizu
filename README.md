@@ -18,7 +18,7 @@
 
 *水 (mizu) means "water" in Japanese: clear, calm, and quick to take the shape of what you need.*
 
-> **0.1.0 is the first release.** Mizu is ready for everyday browsing, but it is young: please
+> **Mizu 0.1 is the first release series.** Mizu is ready for everyday browsing, but it is young: please
 > [report problems](https://github.com/senzukisu/mizu/issues).
 
 ## Features
@@ -71,7 +71,7 @@
 
 ## Install
 
-1. Download **`MizuSetup-0.1.0.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest) and run it.
+1. Download **`MizuSetup-0.1.1.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest) and run it.
 2. Choose the folder, or keep the default, and press **Install**.
    Mizu installs for your Windows account only, so you don't need administrator rights.
 3. Optionally, choose **"Make Mizu the default browser"** at the end of setup.
