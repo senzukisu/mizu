@@ -3,6 +3,14 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.4] — 2026-11-12
+
+### Improved
+- **About Mizu scrolls smoothly.** The animated hero computes its streamlines once per resize and draws them in a
+  single pass. It animates at 30 frames per second, pauses while you scroll and stops when it is off screen.
+  Rendering cost on that page dropped by about 70% (page process about 15× less).
+- Code clean-up: unused interface leftovers removed, and Clippy reports no warnings.
+
 ## [0.1.3] — 2026-11-12
 
 ### Changed

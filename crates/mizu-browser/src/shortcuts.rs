@@ -250,7 +250,7 @@ impl Bindings {
     /// The customisable table first; tab numbers, Escape, zoom in the browser UI and the
     /// keyboard's browser keys keep their fixed meaning.
     pub fn lookup(&self, vk: u32, ctrl: bool, shift: bool, alt: bool, chrome_surface: bool) -> Option<Shortcut> {
-        let mods = u8::from(ctrl) * CTRL | u8::from(shift) * SHIFT | u8::from(alt) * ALT;
+        let mods = (u8::from(ctrl) * CTRL) | (u8::from(shift) * SHIFT) | (u8::from(alt) * ALT);
         if let Some(s) = self.map.get(&(vk, mods)) {
             return Some(*s);
         }

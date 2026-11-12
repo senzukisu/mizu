@@ -71,7 +71,7 @@
 
 ## Install
 
-1. Download **`MizuSetup-0.1.3.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest) and run it.
+1. Download **`MizuSetup-0.1.4.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest) and run it.
 2. Choose the folder, or keep the default, and press **Install**.
    Mizu installs for your Windows account only, so you don't need administrator rights.
 3. Optionally, choose **"Make Mizu the default browser"** at the end of setup.

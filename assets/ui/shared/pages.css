@@ -1463,6 +1463,7 @@ kbd {
 
 /* ── About: the current ───────────────────────────────────────── */
 .about .about-hero.currents-hero {
+  contain: layout paint;
   min-height: 340px;
   padding: 0;
   text-align: left;

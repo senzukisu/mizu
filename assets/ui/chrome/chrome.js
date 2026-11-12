@@ -685,12 +685,6 @@ function render() {
   if (SIDEBAR) return renderSidebar();
   els.app.classList.toggle('side-tabs', sideLayout);
   placeChromeParts();
-  if (sideLayout) {
-    const active = state.tabs.find((t) => t.id === state.active);
-    const wt = $('win-title');
-    const text = active ? active.title || 'New Tab' : '';
-    if (wt.textContent !== text) wt.textContent = text;
-  }
   document.documentElement.toggleAttribute('data-private', !!state.private);
   const badge = $('private-badge');
   badge.hidden = !state.private;

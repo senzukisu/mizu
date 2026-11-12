@@ -68,14 +68,19 @@ function currentsCanvas() {
   let last = 0;
   let raf = 0;
 
+  // Geometry that only depends on the size: computed on resize, reused by every frame.
+  let geo = null;
+
   const resize = () => {
     const r = canvas.getBoundingClientRect();
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+    if (Math.abs(r.width - w) < 0.5 && Math.abs(r.height - hgt) < 0.5 && geo) return;
     w = r.width;
     hgt = r.height;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(hgt * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    geo = build();
     draw();
   };
 
@@ -96,56 +101,76 @@ function currentsCanvas() {
     return Math.sign(c) * (lo + hi) / 2;
   }
 
-  function draw() {
-    if (!w || !hgt) return;
+  // Solves every streamline once. Per line we keep, for each sample along the current, the
+  // undisturbed offset and how strongly the wake ripples there; frames only add the ripple.
+  function build() {
+    if (!w || !hgt) return null;
     const R = Math.min(w, hgt) * 0.15;
     const cx = w * 0.7;
-    const cy = hgt * 0.5 + Math.sin(t * 0.6) * 2;
+    const cy = hgt * 0.5;
     const a = 0.36; // the current runs diagonally, top-left to bottom-right
     const ca = Math.cos(a);
     const sa = Math.sin(a);
     const L = Math.hypot(w, hgt);
-
+    const step = 6;
+    const du = 6;
+    const lines = [];
+    const span = Math.ceil(L / step);
+    for (let n = -span; n <= span; n++) {
+      const c = (n + 0.5) * step;
+      const near = Math.exp(-Math.abs(c) / (R * 3.5));
+      const us = [];
+      const vs = [];
+      const amps = [];
+      for (let u = -L; u <= L; u += du) {
+        const v = solveV(u, c, R);
+        const x = cx + u * ca - v * sa;
+        const y = cy + u * sa + v * ca;
+        // Keep a margin for the ripple; points far outside the canvas are dropped.
+        if (x < -30 || x > w + 30 || y < -30 || y > hgt + 30) continue;
+        const behind = Math.max(0, Math.min(1, (u - R * 0.5) / (R * 4)));
+        us.push(u);
+        vs.push(v);
+        amps.push(0.5 + behind * near * 9);
+      }
+      if (us.length > 1) lines.push({ c, us: Float32Array.from(us), vs: Float32Array.from(vs), amps: Float32Array.from(amps) });
+    }
     const bg = ctx.createLinearGradient(0, 0, w, hgt);
     bg.addColorStop(0, '#12061f');
     bg.addColorStop(1, '#1d0a33');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, hgt);
-
     const ink = ctx.createLinearGradient(0, 0, w, hgt);
     ink.addColorStop(0, '#6d3fb8');
     ink.addColorStop(0.55, '#a77bff');
     ink.addColorStop(1, '#d6bcff');
+    return { R, cx, cy, ca, sa, L, step, lines, bg, ink };
+  }
+
+  function draw() {
+    if (!geo) return;
+    const { R, cx, cy, ca, sa, L, step, lines, bg, ink } = geo;
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, hgt);
+
+    // All streamlines share one style: one path, one stroke.
     ctx.strokeStyle = ink;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-
-    const step = 6;
     ctx.lineWidth = step * 0.48;
-    const span = Math.ceil(L / step);
-    for (let n = -span; n <= span; n++) {
-      const c = (n + 0.5) * step;
-      ctx.beginPath();
-      let first = true;
-      for (let u = -L; u <= L; u += 4) {
-        let v = solveV(u, c, R);
-        // Downstream the current breaks into slow ripples.
-        const behind = Math.max(0, Math.min(1, (u - R * 0.5) / (R * 4)));
-        const near = Math.exp(-Math.abs(c) / (R * 3.5));
-        v += Math.sin(u * 0.045 - t * 1.6 + c * 0.07) * (0.5 + behind * near * 9);
+    ctx.beginPath();
+    const phase = t * 1.6;
+    for (const ln of lines) {
+      const { c, us, vs, amps } = ln;
+      const cc = c * 0.07 - phase;
+      for (let k = 0; k < us.length; k++) {
+        const u = us[k];
+        const v = vs[k] + Math.sin(u * 0.045 + cc) * amps[k];
         const x = cx + u * ca - v * sa;
         const y = cy + u * sa + v * ca;
-        if (x < -20 || x > w + 20 || y < -20 || y > hgt + 20) {
-          first = true;
-          continue;
-        }
-        if (first) {
-          ctx.moveTo(x, y);
-          first = false;
-        } else ctx.lineTo(x, y);
+        if (k === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
       }
-      ctx.stroke();
     }
+    ctx.stroke();
 
     // The hot line rides the current straight into the drop...
     const ux = ca;
@@ -238,19 +263,38 @@ function currentsCanvas() {
     ctx.fill();
   }
 
+  let onScreen = true;
+  let scrollingUntil = 0;
+  const running = () => !still() && !document.hidden && onScreen && canvas.isConnected;
   const frame = (now) => {
     raf = 0;
-    if (last) t += Math.min(0.05, (now - last) / 1000);
-    last = now;
-    draw();
-    if (!still() && !document.hidden && canvas.isConnected) raf = requestAnimationFrame(frame);
+    if (!running()) return;
+    // Scrolling gets the whole frame budget; the current resumes a moment later.
+    if (now < scrollingUntil) {
+      last = 0;
+      raf = requestAnimationFrame(frame);
+      return;
+    }
+    if (!last || now - last >= 33) {
+      if (last) t += Math.min(0.05, (now - last) / 1000);
+      last = now;
+      draw();
+    }
+    raf = requestAnimationFrame(frame);
   };
   const start = () => {
-    if (!raf && !still()) {
+    if (!raf && running()) {
       last = 0;
       raf = requestAnimationFrame(frame);
     }
   };
+  new IntersectionObserver((entries) => {
+    onScreen = entries.some((e) => e.isIntersecting);
+    if (onScreen) start();
+  }).observe(canvas);
+  document.addEventListener('scroll', () => {
+    scrollingUntil = performance.now() + 180;
+  }, { capture: true, passive: true });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       cancelAnimationFrame(raf);

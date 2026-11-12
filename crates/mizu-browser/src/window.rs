@@ -156,13 +156,6 @@ impl BrowserWindow {
         unsafe { IsZoomed(self.hwnd).as_bool() }
     }
 
-    /// Space above the browser UI. With visual hosting our window procedure sees the top
-    /// resize border itself (WM_NCHITTEST), so the UI can start at the very top; a gap here
-    /// showed the translucent frame as a strip above the toolbar.
-    fn top_inset(&self) -> i32 {
-        0
-    }
-
     /// Width of the vertical tabs sidebar in physical pixels (0 when not shown).
     fn sidebar_px(&self) -> i32 {
         if !self.side_tabs || !self.sidebar_ready || self.fullscreen.active() {
@@ -177,7 +170,7 @@ impl BrowserWindow {
         let rc = win::client_rect(self.hwnd);
         let scale = dpi_scale(self.hwnd);
         let fullscreen = self.fullscreen.active();
-        let top = self.top_inset();
+        let top = 0;
         let chrome_px = if fullscreen { 0 } else { (self.chrome_height * scale).round() as i32 };
         if let Some(chrome) = &self.chrome {
             chrome.set_visible(!fullscreen && self.chrome_ready);
@@ -197,7 +190,7 @@ impl BrowserWindow {
         let rc = win::client_rect(self.hwnd);
         let scale = dpi_scale(self.hwnd);
         let chrome_px = if self.fullscreen.active() { 0 } else { (self.chrome_height * scale).round() as i32 };
-        let top = self.top_inset() + chrome_px;
+        let top = chrome_px;
         RECT { left: self.sidebar_px(), top, right: rc.right, bottom: rc.bottom }
     }
 

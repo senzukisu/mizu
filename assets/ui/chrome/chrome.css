@@ -595,11 +595,6 @@ button {
   height: 14px;
   color: var(--ink-3);
 }
-.bm-empty {
-  color: var(--ink-3);
-  font-size: var(--fs-sm);
-  padding: 0 6px;
-}
 
 .omni-btn.install {
   background: var(--accent);
@@ -618,25 +613,9 @@ button {
 }
 
 /* ── Top chrome when tabs are in the sidebar ─────────────────── */
-#win-title {
-  display: none;
-}
 #app.side-tabs #tabs,
 #app.side-tabs #new-tab {
   display: none;
-}
-#app.side-tabs #win-title {
-  display: block;
-  align-self: center;
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 50%;
-  margin-left: 8px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--ink-2);
-  font-weight: 500;
 }
 
 /* ── Vertical tabs sidebar surface ───────────────────────────── */
