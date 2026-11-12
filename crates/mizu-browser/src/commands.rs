@@ -168,6 +168,21 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             if let Some(w) = app.window(window).filter(|w| w.sidebar_key == key) {
                 anchor.y += w.chrome_height;
             }
+            // Menus and panels toggle: a second click on their button closes them.
+            if kind != FlyoutKind::Omnibox {
+                if let Some(w) = app.window_mut(window) {
+                    if w.flyout.kind == Some(kind) && w.flyout.tab_id == tab_id {
+                        w.flyout.hide();
+                        return ok();
+                    }
+                    if let Some((k, t, at)) = w.flyout.last_closed {
+                        if k == kind && t == tab_id && at.elapsed() < std::time::Duration::from_millis(350) {
+                            w.flyout.last_closed = None;
+                            return ok();
+                        }
+                    }
+                }
+            }
             let data = flyout_data(app, window, kind, tab_id);
             app.show_flyout(window, kind, anchor, data, tab_id);
             ok()

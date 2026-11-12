@@ -156,12 +156,11 @@ impl BrowserWindow {
         unsafe { IsZoomed(self.hwnd).as_bool() }
     }
 
+    /// Space above the browser UI. With visual hosting our window procedure sees the top
+    /// resize border itself (WM_NCHITTEST), so the UI can start at the very top; a gap here
+    /// showed the translucent frame as a strip above the toolbar.
     fn top_inset(&self) -> i32 {
-        if self.is_maximized() || self.fullscreen.active() {
-            0
-        } else {
-            (TOP_RESIZE_BORDER * dpi_scale(self.hwnd)).round() as i32
-        }
+        0
     }
 
     /// Width of the vertical tabs sidebar in physical pixels (0 when not shown).

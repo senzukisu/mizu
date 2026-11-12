@@ -300,7 +300,98 @@ fn new_dest(dest_root: &Path) -> Result<PathBuf, String> {
 fn prepare_archive(bytes: &[u8], dest_root: &Path) -> Result<PathBuf, String> {
     let dest = new_dest(dest_root)?;
     let zip = if bytes.starts_with(b"Cr24") { strip_crx_header(bytes)? } else { bytes };
-    finish_prepare(unzip(zip, &dest), dest)
+    let root = finish_prepare(unzip(zip, &dest), dest)?;
+    // Store packages keep their key in the CRX header, not in manifest.json. Without it an
+    // unpacked extension's id comes from its folder, so a reinstall or update became a "new"
+    // extension and lost its settings. With the key the id is stable (and equals Chrome's).
+    if let Some(key) = crx3_public_key(bytes) {
+        add_manifest_key(&root, &key);
+    }
+    Ok(root)
+}
+
+fn add_manifest_key(root: &Path, public_key: &[u8]) {
+    use base64::Engine as _;
+    let path = root.join("manifest.json");
+    let Some(mut manifest) = read_manifest(&path) else { return };
+    if manifest.get("key").is_some() {
+        return;
+    }
+    manifest["key"] = Value::String(base64::engine::general_purpose::STANDARD.encode(public_key));
+    if let Ok(text) = serde_json::to_string_pretty(&manifest) {
+        let _ = std::fs::write(&path, text);
+    }
+}
+
+/// Reads one protobuf varint.
+fn varint(buf: &[u8], pos: &mut usize) -> Option<u64> {
+    let mut v = 0u64;
+    for shift in (0..64).step_by(7) {
+        let b = *buf.get(*pos)?;
+        *pos += 1;
+        v |= u64::from(b & 0x7f) << shift;
+        if b & 0x80 == 0 {
+            return Some(v);
+        }
+    }
+    None
+}
+
+/// Length-delimited fields of a protobuf message: (field number, bytes).
+fn proto_fields(buf: &[u8]) -> Vec<(u64, &[u8])> {
+    let mut out = Vec::new();
+    let mut pos = 0;
+    while pos < buf.len() {
+        let Some(tag) = varint(buf, &mut pos) else { break };
+        match tag & 7 {
+            0 => {
+                if varint(buf, &mut pos).is_none() {
+                    break;
+                }
+            }
+            2 => {
+                let Some(len) = varint(buf, &mut pos) else { break };
+                let end = pos + len as usize;
+                let Some(data) = buf.get(pos..end) else { break };
+                out.push((tag >> 3, data));
+                pos = end;
+            }
+            5 => pos += 4,
+            1 => pos += 8,
+            _ => break,
+        }
+    }
+    out
+}
+
+/// The developer's public key from a CRX3 header: the RSA key whose hash is the extension id
+/// (`CrxFileHeader.sha256_with_rsa[*].public_key` matched against `signed_header_data.crx_id`).
+fn crx3_public_key(bytes: &[u8]) -> Option<Vec<u8>> {
+    if bytes.len() < 12 || &bytes[..4] != b"Cr24" || u32::from_le_bytes(bytes[4..8].try_into().ok()?) != 3 {
+        return None;
+    }
+    let len = u32::from_le_bytes(bytes[8..12].try_into().ok()?) as usize;
+    let header = bytes.get(12..12 + len)?;
+    let fields = proto_fields(header);
+    let crx_id: Option<Vec<u8>> = fields
+        .iter()
+        .filter(|(f, _)| *f == 10000)
+        .flat_map(|(_, d)| proto_fields(d))
+        .find(|(f, _)| *f == 1)
+        .map(|(_, d)| d.to_vec());
+    let keys: Vec<Vec<u8>> = fields
+        .iter()
+        .filter(|(f, _)| *f == 2)
+        .filter_map(|(_, d)| proto_fields(d).into_iter().find(|(f, _)| *f == 1).map(|(_, k)| k.to_vec()))
+        .collect();
+    let id_of = |key: &[u8]| -> Vec<u8> {
+        let hex = mizu_update::sha256_hex(key);
+        (0..16).filter_map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).ok()).collect()
+    };
+    match crx_id {
+        Some(id) => keys.into_iter().find(|k| id_of(k) == id),
+        None => keys.into_iter().next(),
+    }
 }
 
 fn finish_prepare(result: Result<(), String>, dest: PathBuf) -> Result<PathBuf, String> {
@@ -396,6 +487,39 @@ fn copy_dir(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn finds_the_developer_key_in_a_crx3_header() {
+        fn field(n: u64, data: &[u8]) -> Vec<u8> {
+            let mut out = Vec::new();
+            let mut tag = n << 3 | 2;
+            loop {
+                let b = (tag & 0x7f) as u8;
+                tag >>= 7;
+                if tag == 0 {
+                    out.push(b);
+                    break;
+                }
+                out.push(b | 0x80);
+            }
+            out.push(data.len() as u8);
+            out.extend_from_slice(data);
+            out
+        }
+        let dev_key = b"developer-public-key".to_vec();
+        let store_key = b"store-public-key".to_vec();
+        let hex = mizu_update::sha256_hex(&dev_key);
+        let id: Vec<u8> = (0..16).map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap()).collect();
+        let mut header = field(2, &field(1, &store_key));
+        header.extend(field(2, &field(1, &dev_key)));
+        header.extend(field(10000, &field(1, &id)));
+        let mut crx = b"Cr24".to_vec();
+        crx.extend(3u32.to_le_bytes());
+        crx.extend((header.len() as u32).to_le_bytes());
+        crx.extend(&header);
+        crx.extend(b"PK");
+        assert_eq!(crx3_public_key(&crx), Some(dev_key));
+    }
 
     #[test]
     fn crx_header() {

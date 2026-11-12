@@ -3,6 +3,18 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] — 2026-11-12
+
+### Changed
+- **Vertical tabs use one top row:** back/forward/reload, the address bar, the menu and the window buttons, like other
+  browsers with side tabs. The toolbar is a little lower in both layouts.
+- **About Mizu** opens with an animated "current": violet streamlines flowing around a chrome drop.
+
+### Fixed
+- With translucency on, a strip of the desktop showed above the toolbar.
+- Clicking ⋮ (or any panel button) while its menu is open now closes it instead of reopening it.
+- Extensions installed from the Chrome Web Store keep their store ID, so their settings survive reinstalls and updates.
+
 ## [0.1.2] — 2026-11-11
 
 ### Fixed

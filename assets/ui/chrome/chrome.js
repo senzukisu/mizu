@@ -664,10 +664,27 @@ function renderSidebar() {
   renderTabs();
 }
 
+// With tabs in the sidebar there is no tab strip: the toolbar becomes the title bar, holding
+// the window buttons (one row, like other browsers with vertical tabs).
+let chromePlacement = null;
+function placeChromeParts() {
+  if (chromePlacement === sideLayout) return;
+  chromePlacement = sideLayout;
+  const strip = $('tabstrip');
+  if (sideLayout) {
+    els.toolbar.prepend($('private-badge'));
+    els.toolbar.append($('toast'), $('caption'));
+  } else {
+    strip.prepend($('private-badge'));
+    strip.append($('toast'), $('caption'));
+  }
+}
+
 function render() {
   if (!state) return;
   if (SIDEBAR) return renderSidebar();
   els.app.classList.toggle('side-tabs', sideLayout);
+  placeChromeParts();
   if (sideLayout) {
     const active = state.tabs.find((t) => t.id === state.active);
     const wt = $('win-title');

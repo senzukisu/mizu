@@ -1460,3 +1460,82 @@ kbd {
   font: 600 12px/1 var(--font);
   white-space: nowrap;
 }
+
+/* ── About: the current ───────────────────────────────────────── */
+.about .about-hero.currents-hero {
+  min-height: 340px;
+  padding: 0;
+  text-align: left;
+  background: #12061f;
+  border-color: rgb(199 166 255 / 0.18);
+  color: #f4eeff;
+}
+.currents-hero canvas.currents {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.currents-hero .hero-text {
+  position: relative;
+  min-height: 340px;
+  max-width: 560px;
+  padding: 0 36px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.currents-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, rgb(14 5 26 / 0.92) 0%, rgb(14 5 26 / 0.55) 34%, rgb(14 5 26 / 0) 62%),
+    linear-gradient(90deg, rgb(14 5 26 / 0.6) 0%, rgb(14 5 26 / 0) 45%);
+}
+.currents-hero .hero-text {
+  z-index: 1;
+}
+.currents-hero .about-name {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+}
+.about .currents-hero .about-name img {
+  width: 40px;
+  height: 40px;
+  animation: none;
+  filter: drop-shadow(0 6px 16px rgb(255 90 60 / 0.35));
+}
+.currents-hero .about-name h1 {
+  margin: 0;
+  font-size: 40px;
+}
+.currents-hero .about-name .kanji {
+  color: #ffa630;
+  font-size: 24px;
+}
+.currents-hero .tag {
+  color: #e2d6f7;
+  font-size: 16px;
+  margin: 8px 0 2px;
+}
+.currents-hero .hero-motto {
+  font: italic 500 13px/1.4 var(--font-display);
+  letter-spacing: 0.05em;
+  color: #ff8a5c;
+  margin-bottom: 16px;
+}
+.currents-hero .about-chips {
+  justify-content: flex-start;
+}
+.currents-hero .pill {
+  background: rgb(255 255 255 / 0.1);
+  color: #efe6ff;
+  backdrop-filter: blur(6px);
+}
+.currents-hero .pill.accent {
+  background: linear-gradient(90deg, #ff2d55, #ff8a3c);
+  color: #fff;
+}

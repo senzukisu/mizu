@@ -376,7 +376,7 @@ button {
 
 /* ── Toolbar ─────────────────────────────────────────────────── */
 #toolbar {
-  height: var(--toolbar-h);
+  height: calc(var(--toolbar-h) - 4px);
   display: flex;
   align-items: center;
   gap: 2px;
@@ -907,4 +907,31 @@ body.collapsed .vt-collapse svg.icon {
     opacity: 0;
     transform: scale(0.8);
   }
+}
+
+/* ── One-row chrome with vertical tabs ───────────────────────── */
+#app.side-tabs #tabstrip {
+  display: none;
+}
+#app.side-tabs #toolbar {
+  height: calc(var(--toolbar-h) - 4px);
+  padding-right: 0;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+#app.side-tabs #omnibox,
+#app.side-tabs #toolbar .icon-btn,
+#app.side-tabs #toolbar .update-pill {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+#app.side-tabs #omnibox {
+  margin-right: 10px;
+}
+#app.side-tabs #toolbar #caption {
+  align-self: stretch;
+  margin-left: 6px;
+}
+#app.side-tabs #toolbar #private-badge {
+  margin: 0 6px 0 2px;
 }

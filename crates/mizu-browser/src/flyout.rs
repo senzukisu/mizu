@@ -30,6 +30,9 @@ pub struct Flyout {
     /// Permission prompt currently shown, if any.
     pub prompt_id: Option<u64>,
     visible: bool,
+    /// What was closed last and when: a click on the button that opened a panel first takes
+    /// focus away from it (closing it), and must not open it again right after.
+    pub last_closed: Option<(FlyoutKind, Option<u64>, std::time::Instant)>,
 }
 
 impl Flyout {
@@ -68,6 +71,7 @@ impl Flyout {
             tab_id: None,
             prompt_id: None,
             visible: false,
+            last_closed: None,
         }
     }
 
@@ -143,6 +147,9 @@ impl Flyout {
     pub fn hide(&mut self) {
         if !self.visible && self.kind.is_none() {
             return;
+        }
+        if let Some(k) = self.kind {
+            self.last_closed = Some((k, self.tab_id, std::time::Instant::now()));
         }
         self.kind = None;
         self.tab_id = None;

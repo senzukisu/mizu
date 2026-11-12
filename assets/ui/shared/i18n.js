@@ -536,6 +536,7 @@ const i18n = (() => {
     'Open in new tab': 'Открыть в новой вкладке',
     'Search suggestions': 'Поисковые подсказки',
     'Unload tab': 'Выгрузить вкладку',
+    'Go with the current.': 'Плыви по течению.',
     'Unload other tabs': 'Выгрузить остальные вкладки',
     'Change': 'Изменить',
     'Reset': 'Сбросить',
