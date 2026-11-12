@@ -1,6 +1,6 @@
 # Mizu Roadmap
 
-This is Onibi Lab's plan for Mizu after 0.1.0. It is ordered by value to everyday users and by technical dependency.
+This is Onibi Lab's plan for Mizu after the 0.1 series. It is ordered by value to everyday users and by technical dependency.
 Every item is something the chosen architecture can actually deliver. Anything that depends on a future engine is
 marked as such. Dates are deliberately absent: a release ships when its exit criteria are met.
 
@@ -13,8 +13,12 @@ New features never come at the cost of the first three.
 
 The goal is to make 0.1 something people keep as their default browser.
 
-Already in 0.1.0: a signed auto-updater, a per-user installer, vertical tabs, a password manager with CSV
-import/export, picture in picture, and a Russian translation.
+Already shipped in 0.1.x:
+- signed auto-updates and an installer with a choice of folder;
+- visual hosting, so Mizu stays responsive with many tabs;
+- vertical tabs with a one-row toolbar, and tab unloading;
+- the password manager, userscript site rules and customisable shortcuts;
+- search suggestions, picture in picture with video switching, and the Russian translation.
 
 **Features**
 - Updater hardening: roll back if the new version fails to start, delta updates, and a "beta" channel.
@@ -112,7 +116,8 @@ WebView2 exists only on Windows, so each platform gets its own engine behind the
 ## 1.0.0 — "Ocean": stable
 
 - Stability bar: crash-free sessions ≥ 99.8% in opt-in local statistics; no known data-loss bugs.
-- Accessibility audit (keyboard-only use, screen readers, high contrast) passed.
+- Accessibility audit passed (keyboard-only use, screen readers, high contrast). With visual hosting this needs Mizu's
+  own UI Automation provider for page content.
 - Documented, versioned extension and userscript compatibility guarantees.
 - Long-term engine strategy committed (WebView2, CEF or Servo) with a migration plan.
 
@@ -128,4 +133,3 @@ WebView2 exists only on Windows, so each platform gets its own engine behind the
 | **Reading mode** | Yes, around 0.6, as a document-start reader view with Mizu typography. |
 | **Split view (two tabs side by side)** | Yes, around 0.3/0.4. The engine supports multiple visible views per window. |
 | **More interface languages** | Yes. Translations are a single dictionary file; contributions are welcome. |
-| **Mobile** | Planned in 0.7 together with Linux and macOS (see above). |

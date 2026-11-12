@@ -100,7 +100,7 @@ The profile lives under `%LOCALAPPDATA%`, which is protected by Windows user ACL
 - The release manifest is signed with an Onibi Lab ed25519 key kept offline. Only the public key is in the binary.
 - The installer URL must start with `https://github.com/senzukisu/mizu/releases/download/`, and its SHA-256 must match the
   signed manifest. Nothing runs before both checks pass.
-- The update runs only after the user chooses "Restart to update", as the same user and without elevation.
+- The update runs only after the user agrees ("Update now"), as the same user and without elevation.
 
 ## Installer
 

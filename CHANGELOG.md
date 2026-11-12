@@ -56,16 +56,16 @@ All notable changes to Mizu are documented here. The format follows
 - A bookmarks bar context menu (open in a new tab, window or private window; copy the link; delete). The bar appears only when it has bookmarks.
 - "Open password manager" in Settings → Security, and a bigger close confirmation.
 - Installer and uninstaller in Mizu's style, with a choice of install folder.
+- Per-script site rules in Mizu Scripts: run only on the sites you choose, or never on some sites.
 
 ## [0.1.0] — 2026-11-10
 
 The first public release.
 
 ### Install & update
-- `MizuSetup` installs Mizu for the current user without administrator rights:
-  - a setup window in Mizu's style, where you choose the install folder (default `%LOCALAPPDATA%\Programs\Mizu`);
+- `MizuSetup` installs Mizu for the current user into `%LOCALAPPDATA%\Programs\Mizu` without administrator rights:
   - Start menu and optional desktop shortcuts, and registration as a browser for "Default apps";
-  - an uninstaller in the same style that can also delete your data. It removes only the files setup installed.
+  - an uninstaller that can also delete your data.
 - A portable zip is available as an alternative.
 - Mizu updates itself:
   - it checks GitHub 90 seconds after start, then every 6 hours;
@@ -134,8 +134,7 @@ The first public release.
   - `@match`, `@include`, `@exclude`, `@require`, `@run-at`, and the `GM_*` / `GM.*` API, with per-script storage protected by a per-page token;
   - installs from Greasy Fork, Sleazy Fork, OpenUserJS, GitHub (with a jsDelivr mirror), Gist, GitLab, Codeberg and Bitbucket links;
   - installs several links or files at once, with a preview to choose which scripts to add;
-  - automatic daily updates through `@updateURL` and `@downloadURL`;
-  - per-script site rules: run only on the sites you choose, or never on some sites.
+  - automatic daily updates through `@updateURL` and `@downloadURL`.
 - Chromium MV3 extensions:
   - one-click "Add to Mizu" on Chrome Web Store pages, or paste a store link;
   - install from a `.crx`, `.zip` or unpacked folder;

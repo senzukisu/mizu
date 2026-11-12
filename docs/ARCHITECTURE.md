@@ -2,7 +2,7 @@
 
 ## Engine choice
 
-| Option | Compatibility | Codecs | Updates & security | Footprint | Verdict for 0.1 |
+| Option | Compatibility | Codecs | Updates & security | Footprint | Verdict |
 |---|---|---|---|---|---|
 | **WebView2** (Edge/Chromium) | Current Chromium | **H.264, AAC licensed by Microsoft**; HEVC/AC-3 via system decoders | Evergreen runtime serviced by Windows Update | Runtime shared with the OS (not shipped by us) | **Chosen** |
 | CEF | Current Chromium | Standard builds have **no H.264/AAC**; proprietary builds need our own patent licensing | We must rebuild/ship Chromium (~250 MB) on every security release | Large | Planned evaluation for cross-platform (0.7) |
@@ -28,7 +28,7 @@ crates/
 ├── mizu-engine       the only crate that touches WebView2/COM: Engine, View, Download, events
 ├── mizu-update       signed release manifest: ed25519 verification, SHA-256, version compare; `mizu-sign` tool
 ├── mizu-setup        MizuSetup.exe: per-user installer/uninstaller with the browser embedded
-└── mizu-browser      the application: windows, tabs, flyouts, passwords, updater, wiring, internal page data
+└── mizu-browser      the application: windows, tabs, flyouts, passwords, shortcuts, updater, internal page data
 assets/
 ├── ui/               chrome (tab strip/toolbar/sidebar), flyout (menus/panels), pages (mizu://…), shared design
 │                     system and translations (shared/i18n.js)
@@ -73,7 +73,8 @@ Mizu forwards input itself:
 Keyboard focus stays with the engine.
 
 With vertical tabs, the same chrome document runs a second time in sidebar mode, to the left of the content. Both
-views receive the same coalesced state. The sidebar width is a setting (160–520 px) that you change by dragging its edge.
+views receive the same coalesced state. The top chrome then hides its tab strip, and the toolbar becomes the title bar,
+holding the window buttons. The sidebar width is a setting (160–520 px) that you change by dragging its edge.
 The window is shown only when the chrome view reports it is ready (with a 2 s fallback), so it never flashes empty.
 
 ## Event flow
@@ -150,11 +151,11 @@ engine view is created only when the tab is first shown.
 ## Updates
 
 ```
-TIMER_UPDATE (90 s after start, then every 6 h)
+TIMER_UPDATE (12 s after start, then every 6 h)
   ─► fetch mizu-update.json + .sig from the latest GitHub release
   ─► ed25519 signature check (public key compiled in) ─► is the version newer?
   ─► installed copy? ─► download the installer (URL must be in this repo's releases) ─► SHA-256 check
-  ─► "Restart to update" ─► MizuSetup /S --wait-pid <pid> --relaunch
+  ─► "Update to Mizu X? Update now / Later" ─► MizuSetup /S --wait-pid <pid> --relaunch
      (waits for Mizu to exit, replaces the files, starts Mizu again)
 ```
 

@@ -33,7 +33,8 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
   - Tabs that are playing sound are skipped.
 - **Sleeping tabs.** Background tabs are also suspended automatically after a while (Settings → Tabs).
   Efficiency mode lowers the memory of tabs that have been idle for two minutes (Settings → Performance).
-- **Vertical tabs.** Settings → Appearance → Tab layout → Side.
+- **Vertical tabs.** Settings → Appearance → Tab layout → Side. The top becomes a single row: navigation, the address
+  bar, the menu and the window buttons.
   - Drag the sidebar's edge to resize it; double-click the edge to reset its width.
   - The arrow at the bottom collapses it to icons.
 - **Sessions.** By default Mizu reopens your tabs when it starts. Restored tabs load only when you click them.

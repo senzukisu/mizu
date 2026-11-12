@@ -27,7 +27,7 @@ MIZU_USER_DATA="$TEMP/mizu-dev" MIZU_LOG=mizu=debug cargo run
 While a copy of Mizu runs from `target\debug`, cargo can't replace it. Build into another folder to test side by side:
 
 ```bash
-CARGO_TARGET_DIR=target/vh cargo run
+CARGO_TARGET_DIR=target/alt cargo run
 ```
 
 The log warns about slow UI-thread work (`slow UI-thread work`, over 50 ms) and slow pages (`slow page load`, over 8 s).
@@ -39,6 +39,13 @@ Release build (thin LTO, stripped):
 
 ```bash
 cargo build --release
+```
+
+Build output lives in `target/` and grows large: a debug build is about 6 GB and a release build about 2 GB. Remove
+it whenever you need the space back; the next build simply takes a few minutes longer:
+
+```bash
+cargo clean
 ```
 
 ## Project layout
@@ -76,7 +83,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md). In short:
 
 1. Update the version in:
    - the root `Cargo.toml`;
-   - `crates/mizu-browser/resources/mizu.rc`;
+   - `crates/mizu-browser/resources/mizu.rc` and `mizu.manifest`;
    - `crates/mizu-setup/resources/setup.rc` and `setup.manifest`;
    - `CHANGELOG.md` and `docs/ru/CHANGELOG.md`.
 2. Run `cargo test --workspace` and the manual checklist in [TESTING.md](TESTING.md).

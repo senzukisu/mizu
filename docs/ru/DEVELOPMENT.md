@@ -28,7 +28,7 @@ MIZU_USER_DATA="$TEMP/mizu-dev" MIZU_LOG=mizu=debug cargo run
 Пока копия Mizu запущена из `target\debug`, cargo не может её заменить. Для проверки рядом собирайте в другую папку:
 
 ```bash
-CARGO_TARGET_DIR=target/vh cargo run
+CARGO_TARGET_DIR=target/alt cargo run
 ```
 
 Журнал предупреждает о долгой работе UI-потока (`slow UI-thread work`, дольше 50 мс) и медленных страницах
@@ -41,6 +41,13 @@ CARGO_TARGET_DIR=target/vh cargo run
 
 ```bash
 cargo build --release
+```
+
+Результаты сборки лежат в `target/` и занимают много места: отладочная сборка — около 6 ГБ, релизная — около 2 ГБ.
+Удаляйте папку, когда нужно место; следующая сборка просто займёт на несколько минут больше:
+
+```bash
+cargo clean
 ```
 
 ## Устройство проекта
@@ -84,7 +91,7 @@ cargo build --release
 
 1. Обновите версию в файлах:
    - корневой `Cargo.toml`;
-   - `crates/mizu-browser/resources/mizu.rc`;
+   - `crates/mizu-browser/resources/mizu.rc` и `mizu.manifest`;
    - `crates/mizu-setup/resources/setup.rc` и `setup.manifest`;
    - `CHANGELOG.md` и `docs/ru/CHANGELOG.md`.
 2. Запустите `cargo test --workspace` и пройдите ручной чек-лист из [TESTING.md](TESTING.md).
