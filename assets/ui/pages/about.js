@@ -4,13 +4,27 @@
 const main = document.getElementById('main');
 const REPO = 'https://github.com/senzukisu/mizu';
 
+// What Mizu does, each tile opening the place where it lives.
 const FEATURES = [
-  ['shield-check', 'Mizu Shield', 'uBlock Origin–compatible ad and tracker blocking built into the browser.'],
-  ['key', 'Passwords', 'Logins encrypted with your Windows account, filled from the address bar.'],
-  ['code', 'Mizu Scripts', 'Tampermonkey-style userscripts with automatic updates.'],
-  ['puzzle', 'Extensions', 'Chromium extensions straight from the Chrome Web Store.'],
-  ['media', 'Picture in picture', 'Pop any video out into a floating window.'],
-  ['private', 'Private windows', 'A separate in-memory session that leaves nothing behind.'],
+  ['shield-check', 'Mizu Shield', 'Ads and trackers blocked with uBlock Origin–style filter lists.', 'mizu://shield/'],
+  ['cookie', 'Cookies under control', 'Third-party cookies blocked. See and clear any site\u2019s data from the lock icon.', 'mizu://settings/#privacy'],
+  ['key', 'Passwords', 'Logins encrypted with your Windows account, filled from the address bar.', 'mizu://passwords/'],
+  ['tabs', 'Side tabs', 'Tabs in a sidebar, with pinned sites as icons that remember their page.', 'mizu://settings/#tabs'],
+  ['external', 'Links to apps', 'Steam, Telegram, Zoom and mail links open their app, after asking you.', 'mizu://settings/#privacy'],
+  ['code', 'Mizu Scripts', 'Userscripts per site, with automatic updates.', 'mizu://scripts/'],
+  ['puzzle', 'Extensions', 'Chromium extensions from the Chrome Web Store.', 'mizu://settings/#advanced'],
+  ['media', 'Picture in picture', 'Pop any video into a floating window and switch videos there.', 'mizu://settings/#media'],
+  ['private', 'Private windows', 'A separate in-memory session that leaves nothing behind.', null],
+];
+
+// Highlights of the current release line (the full list is in the changelog).
+const WHATS_NEW = [
+  ['cookie', 'Sign-ins survive a restart', 'With "Continue where I left off", session cookies are kept, so sites stay signed in.'],
+  ['shield', 'Third-party cookies blocked', 'Embedded ads and trackers can no longer set or read cookies.'],
+  ['external', 'Links open apps', 'Mizu asks before a site opens Steam, Telegram, Zoom or your mail app.'],
+  ['pin', 'Pinned tabs in the sidebar', 'A grid of icons: drag a tab up to pin it, down to unpin it.'],
+  ['bookmark', 'Bookmarks bar, Other bookmarks and shortcuts', 'Three separate lists: the bar, Other bookmarks, and the tiles on the new tab.'],
+  ['search', 'Searchable settings', 'Find any setting with Ctrl+F; changes that need a restart offer a button.'],
 ];
 
 function updateText(u, installed) {
@@ -348,7 +362,17 @@ bootPage(() => {
             h('span', { class: 'pill', text: a.vendor })))),
 
         h('div', { class: 'about-grid' },
-          ...FEATURES.map(([ic, title, text]) => h('div', { class: 'about-feature' }, h('div', { class: 'af-icon' }, icon(ic, { size: 20 })), h('div', { class: 'af-title', text: title }), h('div', { class: 'af-text', text }))),
+          ...FEATURES.map(([ic, title, text, url]) => {
+            const tile = h(url ? 'button' : 'div', { class: `about-feature${url ? ' link' : ''}` }, h('div', { class: 'af-icon' }, icon(ic, { size: 20 })), h('div', { class: 'af-title', text: title }), h('div', { class: 'af-text', text }));
+            if (url) tile.addEventListener('click', () => mizu.send('open_url', { url, disposition: 'current' }));
+            return tile;
+          }),
+        ),
+
+        h('section', { class: 'card whats-new', id: 'new' },
+          h('h2', { text: "What's new" }),
+          h('ul', { class: 'wn-list' },
+            ...WHATS_NEW.map(([ic, title, text]) => h('li', null, h('span', { class: 'wn-icon' }, icon(ic, { size: 16 })), h('div', null, h('div', { class: 'wn-title', text: title }), h('div', { class: 'wn-text', text }))))),
         ),
 
         h('section', { class: 'card' },
@@ -372,11 +396,13 @@ bootPage(() => {
           link('code', 'Source code', REPO),
           link('warning', 'Report a problem', `${REPO}/issues`),
           link('file', 'Changelog', `${REPO}/blob/main/CHANGELOG.md`),
-          link('sparkle', 'Roadmap', `${REPO}/blob/main/ROADMAP.md`)),
+          link('sparkle', 'Roadmap', `${REPO}/blob/main/ROADMAP.md`),
+          link('download', 'All releases', `${REPO}/releases`)),
 
         h('p', { class: 'about-credits', text: 'Content blocking: adblock-rust and adblock-resources by Brave Software (MPL-2.0). Filter lists: uBlock Origin, EasyList, Peter Lowe and their contributors. Web engine: Microsoft Edge WebView2.' }),
         h('p', { class: 'about-legal', text: `© ${new Date().getFullYear()} Onibi Lab · Mozilla Public License 2.0` }),
       ),
     );
+    if (location.hash === '#new') requestAnimationFrame(() => document.getElementById('new')?.scrollIntoView({ block: 'start' }));
   });
 });
