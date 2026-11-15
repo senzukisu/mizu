@@ -292,6 +292,9 @@ pub fn builtin_filter_lists() -> Vec<FilterListSubscription> {
 #[serde(default)]
 pub struct PrivacySettings {
     pub tracking_prevention: TrackingPrevention,
+    /// Refuse cookies set or read by sites embedded in another site (ad and tracker
+    /// iframes). Engine-level, so it needs a restart.
+    pub block_third_party_cookies: bool,
     /// Network + cosmetic blocking with the filter lists below.
     pub content_blocking: bool,
     pub filter_lists: Vec<FilterListSubscription>,
@@ -299,6 +302,9 @@ pub struct PrivacySettings {
     pub custom_rules: String,
     /// Sites where content blocking is disabled (hostnames).
     pub allowlist: Vec<String>,
+    /// Sites allowed to open an application without asking: (origin, scheme), e.g.
+    /// ("https://store.steampowered.com", "steam").
+    pub external_apps: Vec<ExternalAppRule>,
     /// Send the Global Privacy Control signal (`Sec-GPC: 1`).
     pub global_privacy_control: bool,
     /// Let the engine offer to save passwords. Off by default: Mizu has no password
@@ -314,10 +320,12 @@ impl Default for PrivacySettings {
     fn default() -> Self {
         Self {
             tracking_prevention: TrackingPrevention::Balanced,
+            block_third_party_cookies: true,
             content_blocking: true,
             filter_lists: builtin_filter_lists(),
             custom_rules: String::new(),
             allowlist: Vec::new(),
+            external_apps: Vec::new(),
             global_privacy_control: true,
             engine_password_saving: false,
             engine_autofill: false,
@@ -477,4 +485,11 @@ impl Default for AdvancedSettings {
             userscript_auto_update: true,
         }
     }
+}
+
+/// A site that may open links of one scheme in its application without asking.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExternalAppRule {
+    pub origin: String,
+    pub scheme: String,
 }

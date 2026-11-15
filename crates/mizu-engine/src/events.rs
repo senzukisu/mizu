@@ -264,9 +264,10 @@ pub trait ViewHandler {
         false
     }
 
-    /// Link to an external application (`mailto:`, `steam:`…). Return `true` to allow the
-    /// engine's own confirmation dialog, `false` to cancel.
-    fn on_external_uri(&self, _key: ViewKey, _uri: &str) -> bool {
+    /// Link to an external application (`mailto:`, `steam:`…) from `origin`. Return `true` to
+    /// let the engine show its own confirmation, `false` to cancel it (the host may then ask
+    /// and launch the application itself).
+    fn on_external_uri(&self, _key: ViewKey, _uri: &str, _origin: &str) -> bool {
         true
     }
 }

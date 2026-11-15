@@ -28,6 +28,8 @@ pub enum Queued {
     Shortcut(ViewKey, crate::shortcuts::Shortcut),
     InstallScript { key: ViewKey, url: String },
     ShowBlocked { key: ViewKey, url: String },
+    /// A page wants to open a link in another application.
+    ExternalUri { key: ViewKey, uri: String, origin: String },
     /// Runs with exclusive access to the browser state.
     WithApp(Box<dyn FnOnce(&mut App)>),
     /// Runs with no state borrowed (modal dialogs, message boxes).
@@ -53,6 +55,7 @@ impl Queued {
             Self::Shortcut(_, s) => format!("shortcut {s:?}"),
             Self::InstallScript { .. } => "install script".into(),
             Self::ShowBlocked { .. } => "show blocked".into(),
+            Self::ExternalUri { .. } => "external uri".into(),
             Self::WithApp(_) => "with app".into(),
             Self::Outside(_) => "outside".into(),
         }

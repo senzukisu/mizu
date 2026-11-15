@@ -95,6 +95,7 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 || old.privacy.custom_rules != app.settings.privacy.custom_rules;
             let restart_needed = old.performance.hardware_acceleration != app.settings.performance.hardware_acceleration
                 || old.media.autoplay != app.settings.media.autoplay
+                || old.privacy.block_third_party_cookies != app.settings.privacy.block_third_party_cookies
                 || old.advanced.extensions != app.settings.advanced.extensions
                 || old.general.language != app.settings.general.language;
             app.persist_settings();
@@ -232,6 +233,38 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             }
             .map_err(storage_err)?;
             ok()
+        }
+
+        Command::SiteCookies | Command::SiteDataClear => {
+            let view = app.window(window).and_then(|w| w.active_view()).ok_or("no page")?;
+            let url = app.current_url(window).unwrap_or_default();
+            if !url.starts_with("http://") && !url.starts_with("https://") {
+                return data(json!({ "cookies": [], "deleted": 0 }));
+            }
+            let rid = current_rid();
+            if matches!(cmd, Command::SiteDataClear) {
+                let origin = mizu_core::omnibox::origin_of(&url).unwrap_or_default();
+                view.clear_origin_storage(&origin);
+                let v = view.clone();
+                view.delete_cookies_for(&url, move |n| {
+                    tracing::info!(n, "cleared site cookies and storage");
+                    v.reload(false);
+                    if let Some(rid) = rid {
+                        reply(key, rid, json!({ "deleted": n }));
+                    }
+                });
+            } else {
+                view.cookies_for(&url, move |list| {
+                    let cookies: Vec<Value> = list
+                        .iter()
+                        .map(|c| json!({ "name": c.name, "domain": c.domain.trim_start_matches('.'), "session": c.session }))
+                        .collect();
+                    if let Some(rid) = rid {
+                        reply(key, rid, json!({ "cookies": cookies }));
+                    }
+                });
+            }
+            Ok(None)
         }
 
         // ── Shield ───────────────────────────────────────────────

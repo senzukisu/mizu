@@ -78,6 +78,8 @@ pub struct App {
     /// Session cookies from the last session, applied before the first page loads.
     pub pending_session_cookies: Option<Vec<mizu_engine::CookieData>>,
     pub saving_session_cookies: bool,
+    /// Link waiting for "Open <app>?": (uri, origin, scheme, private window).
+    pub pending_external: Option<(String, String, String, bool)>,
     /// Tab that asked to install a userscript (shows the install page when fetched).
     pub script_install_tab: Option<ViewKey>,
     pub crashed_last_time: bool,
@@ -117,6 +119,11 @@ fn engine_args(settings: &Settings) -> Vec<String> {
     }
     if settings.media.autoplay == mizu_settings::AutoplayPolicy::RequireInteraction {
         args.push("--autoplay-policy=document-user-activation-required".into());
+    }
+    if settings.privacy.block_third_party_cookies {
+        // Chromium's own third-party cookie blocking (the "phase-out" mode): embedded
+        // sites get no cookies, first-party sign-ins keep working.
+        args.push("--test-third-party-cookie-phaseout".into());
     }
     args
 }
@@ -252,6 +259,7 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         pending_password: None,
         pending_session_cookies: None,
         saving_session_cookies: false,
+        pending_external: None,
         update: crate::update::UpdateState::Idle,
         update_prompted: None,
         pending_confirm: None,
@@ -390,6 +398,7 @@ impl App {
             Queued::Message { key, source, json } => crate::commands::on_message(self, key, &source, &json),
             Queued::NewWindow(key, req) => self.on_new_window_request(key, req),
             Queued::Permission(key, req) => self.on_permission_request(key, req),
+            Queued::ExternalUri { key, uri, origin } => self.on_external_uri(key, uri, origin),
             Queued::Download(key, dl) => self.on_download_starting(key, dl),
             Queued::DownloadUpdate(id, info) => {
                 let private = self.downloads.get(id).is_some_and(|d| d.private);
@@ -1175,4 +1184,6 @@ pub enum ConfirmKind {
     InstallUpdate,
     /// Portable copy: "Mizu X is available" (opens the releases page).
     DownloadUpdate,
+    /// "Open Steam?" for a link to another application (`App::pending_external`).
+    OpenExternal,
 }

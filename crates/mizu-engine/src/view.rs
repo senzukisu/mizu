@@ -560,7 +560,8 @@ impl View {
                     &LaunchingExternalUriSchemeEventHandler::create(Box::new(move |_, args| {
                         let Some(args) = args else { return Ok(()) };
                         let uri = get_string(|p| args.Uri(p));
-                        if !h.on_external_uri(key, &uri) {
+                        let origin = get_string(|p| args.InitiatingOrigin(p));
+                        if !h.on_external_uri(key, &uri, &origin) {
                             args.SetCancel(true)?;
                         }
                         Ok(())
@@ -635,6 +636,22 @@ impl View {
         // SAFETY: COM call on the UI thread.
         unsafe {
             let _ = self.inner.core.NavigateToString(&HSTRING::from(html));
+        }
+    }
+
+    /// Clears local storage, IndexedDB, caches and service workers of one origin.
+    pub fn clear_origin_storage(&self, origin: &str) {
+        let origin = origin.replace(['\\', '"'], "");
+        let params = format!(
+            r#"{{"origin":"{origin}","storageTypes":"local_storage,indexeddb,websql,cache_storage,service_workers,file_systems"}}"#
+        );
+        // SAFETY: COM call on the UI thread.
+        unsafe {
+            let _ = self.inner.core.CallDevToolsProtocolMethod(
+                &HSTRING::from("Storage.clearDataForOrigin"),
+                &HSTRING::from(params),
+                &CallDevToolsProtocolMethodCompletedHandler::create(Box::new(|_, _| Ok(()))),
+            );
         }
     }
 

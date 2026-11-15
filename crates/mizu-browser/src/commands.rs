@@ -482,6 +482,16 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
                             app.toast_all(&e);
                         }
                     }
+                    crate::app::ConfirmKind::OpenExternal => {
+                        if let Some((uri, origin, scheme, private)) = app.pending_external.take() {
+                            if dont_ask_again && !private && !origin.is_empty() {
+                                app.settings.privacy.external_apps.retain(|r| !(r.origin == origin && r.scheme == scheme));
+                                app.settings.privacy.external_apps.push(mizu_settings::ExternalAppRule { origin, scheme });
+                                app.persist_settings();
+                            }
+                            crate::external::launch(&uri);
+                        }
+                    }
                     crate::app::ConfirmKind::DownloadUpdate => {
                         app.open_tab(window, crate::update::RELEASES_URL.to_owned(), crate::tabs::OpenOptions::foreground());
                     }

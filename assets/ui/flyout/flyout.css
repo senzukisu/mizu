@@ -551,3 +551,19 @@ button {
   color: var(--accent);
   font-weight: 600;
 }
+.rows + .rows {
+  margin-top: 6px;
+}
+.cookie-list {
+  max-height: 160px;
+  max-width: 300px;
+  overflow: auto;
+  padding: 2px 0 6px 20px;
+  font-size: var(--fs-xs, 11px);
+  line-height: 1.6;
+}
+.cookie-list > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

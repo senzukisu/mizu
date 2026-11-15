@@ -310,6 +310,13 @@ fn fetch(url: &str) -> Result<String, String> {
     mizu_privacy::fetch_https_text(&url).map_err(|e| e.to_string())
 }
 
+
+/// Settings the picture-in-picture script reads (`__MIZU_PIP__`).
+pub fn pip_config(m: &mizu_settings::MediaSettings) -> String {
+    let position = if m.pip_position == "top-left" { "top-left" } else { "top-right" };
+    serde_json::json!({ "button": m.pip_button, "position": position, "compact": m.pip_compact, "controls": m.pip_controls }).to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -319,10 +326,4 @@ mod tests {
         assert_ne!(random_token(), random_token());
         assert_eq!(random_token().len(), 32);
     }
-}
-
-/// Settings the picture-in-picture script reads (`__MIZU_PIP__`).
-pub fn pip_config(m: &mizu_settings::MediaSettings) -> String {
-    let position = if m.pip_position == "top-left" { "top-left" } else { "top-right" };
-    serde_json::json!({ "button": m.pip_button, "position": position, "compact": m.pip_compact, "controls": m.pip_controls }).to_string()
 }

@@ -325,6 +325,7 @@ function privacy() {
         p.tracking_prevention = v;
         save();
       })),
+      toggle('Block third-party cookies', 'Sites embedded in other sites (ads, trackers, widgets) can't set or read cookies. A rare embedded sign-in may need it off. Requires restart.', () => p.block_third_party_cookies, (v) => (p.block_third_party_cookies = v)),
       toggle('Send Global Privacy Control', 'Tells websites not to sell or share your data (Sec-GPC header). Legally binding in some regions.', () => p.global_privacy_control, (v) => (p.global_privacy_control = v)),
     ),
     card('Filter lists', 'Lists are downloaded over HTTPS directly from their maintainers and refreshed every few days.', filterLists(), h('div', { class: 'setting' }, h('div', { class: 'txt' }), addList, update)),
@@ -339,6 +340,7 @@ function privacy() {
       toggle('Download history', 'Files stay on disk.', () => p.clear_on_exit.downloads, (v) => (p.clear_on_exit.downloads = v)),
     ),
     permissionsCard(),
+    externalAppsCard(),
     card('Passwords', 'Mizu Passwords stores logins encrypted with your Windows account (DPAPI) on this device only.',
       toggle('Offer to save passwords', 'After you sign in, Mizu asks whether to remember the login. Fill it later with the key in the address bar.', () => p.password_manager, (v) => (p.password_manager = v)),
       setting('Saved passwords', 'View, edit, import from other browsers or export.', (() => {
@@ -388,6 +390,33 @@ function permissionsCard() {
     body.append(table);
   });
   return card('Site permissions', null, body);
+}
+
+// Sites allowed to open other applications (Steam, Telegram, Zoom…) without asking.
+function externalAppsCard() {
+  const p = s.privacy;
+  p.external_apps = p.external_apps || [];
+  const body = h('div');
+  const draw = () => {
+    body.replaceChildren();
+    if (!p.external_apps.length) {
+      body.append(h('p', { class: 'note', style: { padding: '0 20px 12px', color: 'var(--ink-3)' }, text: 'When a site wants to open a link in another app (Steam, Telegram, Zoom, email), Mizu asks first. Sites you always allow appear here.' }));
+      return;
+    }
+    const table = h('table', { class: 'grid' }, h('tr', null, h('th', { text: 'Site' }), h('th', { text: 'Opens' }), h('th')));
+    p.external_apps.forEach((r, i) => {
+      const del = h('button', { class: 'icon-btn', title: 'Remove' }, icon('trash'));
+      del.addEventListener('click', () => {
+        p.external_apps.splice(i, 1);
+        save(true);
+        draw();
+      });
+      table.append(h('tr', null, h('td', { translate: 'no', text: r.origin }), h('td', { translate: 'no', text: `${r.scheme}:` }), h('td', null, del)));
+    });
+    body.append(table);
+  };
+  draw();
+  return card('Opening apps from sites', null, body);
 }
 
 function security() {

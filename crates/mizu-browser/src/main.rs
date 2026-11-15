@@ -11,6 +11,7 @@ mod commands;
 mod dialogs;
 mod downloads;
 mod extensions;
+mod external;
 mod flyout;
 mod handler;
 mod hot;

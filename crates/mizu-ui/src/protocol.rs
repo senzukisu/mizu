@@ -139,6 +139,10 @@ pub enum Command {
     ClearData(ClearDataRequest),
     PermissionsGet,
     PermissionSet { origin: String, kind: String, state: String },
+    /// Cookies the active tab's site can read (names and domains, no values).
+    SiteCookies,
+    /// Deletes the active tab's site cookies and storage, then reloads it.
+    SiteDataClear,
     FiltersUpdate {
         #[serde(default)]
         force: bool,

@@ -461,7 +461,7 @@ mod tests {
         assert_eq!(due.len(), 1, "scripts without a remote source are skipped");
         assert_eq!(due[0].check_url, "https://x/u.meta.js");
         assert_eq!(due[0].download_url, "https://x/u.user.js");
-        store.mark_checked(&[id.clone()]);
+        store.mark_checked(std::slice::from_ref(&id));
         assert!(ScriptStore::open(dir.path()).get(&id).unwrap().last_checked > 0);
     }
 

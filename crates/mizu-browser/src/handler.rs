@@ -22,6 +22,16 @@ fn host_of(url: &str) -> String {
 }
 
 /// Schemes a tab may load besides http(s) and internal pages.
+/// Schemes owned by the engine itself; everything else that isn't web or Mizu is an app link.
+fn is_external_app_scheme(uri: &str) -> bool {
+    let Some(scheme) = crate::external::scheme_of(uri) else { return false };
+    !matches!(
+        scheme.as_str(),
+        "http" | "https" | "mizu" | "about" | "data" | "blob" | "file" | "chrome" | "edge" | "devtools" | "view-source"
+            | "chrome-extension" | "extension" | "chrome-untrusted" | "edge-untrusted" | "javascript" | "ws" | "wss"
+    )
+}
+
 fn allowed_other_scheme(uri: &str) -> bool {
     ["about:", "data:", "blob:", "file:", "chrome-extension:", "extension:"]
         .iter()
@@ -153,6 +163,20 @@ impl ViewHandler for Dispatcher {
             return NavigationDecision::Allow;
         }
 
+        // Links to other applications (mailto:, steam:, tg:, zoom: …) go to Mizu's prompt.
+        if is_external_app_scheme(uri) {
+            if crate::external::is_dangerous(uri) {
+                tracing::warn!(uri, "blocked dangerous external protocol");
+            } else {
+                let origin = hot::with(|h| h.top_urls.get(&key).cloned())
+                    .flatten()
+                    .and_then(|u| mizu_core::omnibox::origin_of(&u))
+                    .unwrap_or_default();
+                queue::push(Queued::ExternalUri { key, uri: uri.to_owned(), origin });
+            }
+            return NavigationDecision::Cancel;
+        }
+
         // edge://, chrome:// and unknown schemes expose engine internals not meant for Mizu.
         tracing::info!(uri, "refused navigation to unsupported scheme");
         NavigationDecision::Cancel
@@ -219,40 +243,18 @@ impl ViewHandler for Dispatcher {
         }
     }
 
-    fn on_external_uri(&self, key: ViewKey, uri: &str) -> bool {
-        // Private windows never hand links to other applications silently; the engine shows
-        // its confirmation dialog in all cases, we only veto dangerous schemes.
-        let lower = uri.to_ascii_lowercase();
-        let dangerous = ["ms-msdt:", "search-ms:", "ms-officecmd:", "ms-cxh", "shell:"]
-            .iter()
-            .any(|p| lower.starts_with(p));
-        if dangerous {
+    fn on_external_uri(&self, key: ViewKey, uri: &str, origin: &str) -> bool {
+        // Mizu asks with its own prompt (and remembers "always allow" per site), so the
+        // engine's dialog is always cancelled. Schemes used in attacks are never opened.
+        if crate::external::is_dangerous(uri) {
             tracing::warn!(key, uri, "blocked dangerous external protocol");
+        } else {
+            queue::push(Queued::ExternalUri { key, uri: uri.to_owned(), origin: origin.to_owned() });
         }
-        !dangerous
+        false
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn decodes_data_urls() {
-        let (mime, body) = decode_data_url("data:application/javascript;base64,KGZ1bmN0aW9uKCl7fSkoKTs=").unwrap();
-        assert_eq!(mime, "application/javascript");
-        assert_eq!(body, b"(function(){})();");
-        assert!(decode_data_url("https://x").is_none());
-    }
-
-    #[test]
-    fn schemes() {
-        assert!(allowed_other_scheme("about:blank"));
-        assert!(allowed_other_scheme("chrome-extension://abc/options.html"));
-        assert!(!allowed_other_scheme("edge://settings"));
-        assert!(!allowed_other_scheme("chrome://flags"));
-    }
-}
 
 fn resource_decision(key: ViewKey, req: &ResourceRequest) -> ResourceDecision {
     let uri = req.uri.as_str();
@@ -325,5 +327,26 @@ fn resource_decision(key: ViewKey, req: &ResourceRequest) -> ResourceDecision {
         Verdict::Rewrite(u) => ResourceDecision::Rewrite(u),
         Verdict::Allow if gpc => ResourceDecision::ContinueWithHeaders(vec![("Sec-GPC".into(), "1".into())]),
         Verdict::Allow => ResourceDecision::Continue,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decodes_data_urls() {
+        let (mime, body) = decode_data_url("data:application/javascript;base64,KGZ1bmN0aW9uKCl7fSkoKTs=").unwrap();
+        assert_eq!(mime, "application/javascript");
+        assert_eq!(body, b"(function(){})();");
+        assert!(decode_data_url("https://x").is_none());
+    }
+
+    #[test]
+    fn schemes() {
+        assert!(allowed_other_scheme("about:blank"));
+        assert!(allowed_other_scheme("chrome-extension://abc/options.html"));
+        assert!(!allowed_other_scheme("edge://settings"));
+        assert!(!allowed_other_scheme("chrome://flags"));
     }
 }

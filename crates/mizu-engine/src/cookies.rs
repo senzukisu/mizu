@@ -29,44 +29,71 @@ fn manager(view: &View) -> Option<ICoreWebView2CookieManager> {
     unsafe { wv2.CookieManager().ok() }
 }
 
+fn to_data(c: &ICoreWebView2Cookie) -> CookieData {
+    let mut same = COREWEBVIEW2_COOKIE_SAME_SITE_KIND_LAX;
+    // SAFETY: COM getters on the UI thread.
+    unsafe {
+        let _ = c.SameSite(&mut same);
+        CookieData {
+            name: get_string(|p| c.Name(p)),
+            value: get_string(|p| c.Value(p)),
+            domain: get_string(|p| c.Domain(p)),
+            path: get_string(|p| c.Path(p)),
+            secure: get_bool(|b| c.IsSecure(b)),
+            http_only: get_bool(|b| c.IsHttpOnly(b)),
+            same_site: same.0,
+            session: get_bool(|b| c.IsSession(b)),
+        }
+    }
+}
+
+/// Lists the cookies a request to `uri` would carry (every cookie of the profile when
+/// `uri` is empty) and hands the COM objects to `done` on the UI thread.
+fn get_cookies(view: &View, uri: &str, done: impl FnOnce(&ICoreWebView2CookieManager, Vec<ICoreWebView2Cookie>) + 'static) {
+    let Some(m) = manager(view) else { return };
+    let m2 = m.clone();
+    let handler = GetCookiesCompletedHandler::create(Box::new(move |hr, list| {
+        let mut out = Vec::new();
+        if let (Ok(()), Some(list)) = (hr, list) {
+            let mut n = 0u32;
+            // SAFETY: COM getters on the UI thread.
+            unsafe {
+                let _ = list.Count(&mut n);
+                out.extend((0..n).filter_map(|i| list.GetValueAtIndex(i).ok()));
+            }
+        }
+        done(&m2, out);
+        Ok(())
+    }));
+    // SAFETY: COM call on the UI thread.
+    unsafe {
+        let _ = m.GetCookies(&HSTRING::from(uri), &handler);
+    }
+}
+
 impl View {
     /// All cookies of this view's profile. `done` runs on the UI thread.
     pub fn all_cookies(&self, done: impl FnOnce(Vec<CookieData>) + 'static) {
-        let Some(m) = manager(self) else {
-            done(Vec::new());
-            return;
-        };
-        let handler = GetCookiesCompletedHandler::create(Box::new(move |hr, list| {
-            let mut out = Vec::new();
-            if let (Ok(()), Some(list)) = (hr, list) {
-                let mut n = 0u32;
-                // SAFETY: COM getters on the UI thread.
+        self.cookies_for("", done);
+    }
+
+    /// Cookies a request to `uri` would carry (the site's own and its parent domain's).
+    /// `done` runs on the UI thread; it is not called when the view has no cookie manager.
+    pub fn cookies_for(&self, uri: &str, done: impl FnOnce(Vec<CookieData>) + 'static) {
+        get_cookies(self, uri, move |_, list| done(list.iter().map(to_data).collect()));
+    }
+
+    /// Deletes every cookie a request to `uri` would carry; `done` gets how many.
+    pub fn delete_cookies_for(&self, uri: &str, done: impl FnOnce(usize) + 'static) {
+        get_cookies(self, uri, move |m, list| {
+            for c in &list {
+                // SAFETY: COM call on the UI thread with a cookie of the same manager.
                 unsafe {
-                    let _ = list.Count(&mut n);
-                    for i in 0..n {
-                        let Ok(c) = list.GetValueAtIndex(i) else { continue };
-                        let mut same = COREWEBVIEW2_COOKIE_SAME_SITE_KIND_LAX;
-                        let _ = c.SameSite(&mut same);
-                        out.push(CookieData {
-                            name: get_string(|p| c.Name(p)),
-                            value: get_string(|p| c.Value(p)),
-                            domain: get_string(|p| c.Domain(p)),
-                            path: get_string(|p| c.Path(p)),
-                            secure: get_bool(|b| c.IsSecure(b)),
-                            http_only: get_bool(|b| c.IsHttpOnly(b)),
-                            same_site: same.0,
-                            session: get_bool(|b| c.IsSession(b)),
-                        });
-                    }
+                    let _ = m.DeleteCookie(c);
                 }
             }
-            done(out);
-            Ok(())
-        }));
-        // SAFETY: COM call on the UI thread; an empty URI lists every cookie of the profile.
-        unsafe {
-            let _ = m.GetCookies(&HSTRING::new(), &handler);
-        }
+            done(list.len());
+        });
     }
 
     /// Adds cookies to this view's profile (synchronously, before pages load).

@@ -223,10 +223,40 @@ function renderSiteInfo(d) {
     }
     panel.append(rows);
   }
+  if (!d.private && /^https?:/.test(d.url || '')) panel.append(siteCookies());
   const settings = h('button', { class: 'link', text: 'Site permissions' });
   settings.addEventListener('click', () => open('mizu://settings/#privacy'));
   panel.append(h('div', { class: 'footer' }, settings));
   return panel;
+}
+
+// Cookies the site can read, with one button that signs you out of it (cookies + storage).
+function siteCookies() {
+  const label = h('span', { class: 'k' }, icon('cookie', { size: 14 }), h('span', { style: { marginLeft: '6px' }, text: 'Cookies…' }));
+  const list = h('div', { class: 'cookie-list muted' });
+  const clear = h('button', { class: 'link', text: 'Clear site data' });
+  clear.disabled = true;
+  const box = h('div', { class: 'rows' }, h('div', { class: 'row' }, label, clear), list);
+  let open = false;
+  label.style.cursor = 'pointer';
+  label.addEventListener('click', () => {
+    open = !open;
+    list.style.display = open ? 'block' : 'none';
+    reportSize();
+  });
+  list.style.display = 'none';
+  mizu.request('site_cookies', {}).then((r) => {
+    const cookies = r?.cookies || [];
+    label.lastChild.textContent = cookies.length === 1 ? '1 cookie' : `${cookies.length} cookies`;
+    clear.disabled = false;
+    list.replaceChildren(...cookies.slice(0, 40).map((c) => h('div', { translate: 'no', text: `${c.name} · ${c.domain}${c.session ? ' · session' : ''}` })));
+    reportSize();
+  });
+  clear.addEventListener('click', () => {
+    clear.disabled = true;
+    mizu.request('site_data_clear', {}).then(() => close());
+  });
+  return box;
 }
 
 // ── Bookmark editor ──────────────────────────────────────────
@@ -365,7 +395,7 @@ function renderConfirm(d) {
     'div',
     { class: 'confirm' },
     h('div', { class: 'q' }, h('div', { class: 'ic' }, icon(d.icon || 'tabs', { size: 20 })), h('div', null, h('div', { class: 'ct', text: d.title }), h('div', { class: 'muted', text: d.message }))),
-    d.can_skip ? h('label', { class: 'check' }, skip, "Don't ask again") : null,
+    d.can_skip ? h('label', { class: 'check' }, skip, d.skip_label || "Don't ask again") : null,
     h('div', { class: 'footer' }, cancel, ok),
   );
 }
