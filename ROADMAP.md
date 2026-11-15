@@ -56,6 +56,8 @@ miss most.
 
 **Features**
 - **Cookies:**
+  - cookies and site storage are reliably kept between sessions, so sites remember your sign-ins and their own
+    settings (language, theme, cookie-banner choices, player volume and so on); they are cleared only when you ask;
   - block third-party cookies everywhere or per site;
   - a cookie list per site, with delete;
   - "keep me signed in" exceptions;
