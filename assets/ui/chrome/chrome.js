@@ -879,6 +879,15 @@ mizu.on('focus_omnibox', () => {
   els.address.select();
 });
 mizu.on('toast', (m) => !SIDEBAR && toast(m.message));
+mizu.on('copy_text', (m) => {
+  if (SIDEBAR) return;
+  navigator.clipboard.writeText(m.text).then(
+    () => toast(`Copied: ${m.text}`),
+    () => toast('Could not copy'),
+  );
+  editing = false;
+  els.address.blur();
+});
 
 // ── Find in page ────────────────────────────────────────────
 // A slim row under the toolbar; the engine highlights matches in the page.

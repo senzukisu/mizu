@@ -419,7 +419,17 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
         }
         Command::OmniboxInput { text } => {
             let private = app.window(window).is_some_and(|w| w.private);
-            let items = crate::omnibox::suggest(&app.settings, app.storage_for(private), &text);
+            // Open tabs (other than the one being typed in) of windows of the same kind.
+            let current = app.window(window).and_then(|w| w.active_tab());
+            let open_tabs: Vec<crate::omnibox::OpenTab> = app
+                .windows
+                .iter()
+                .filter(|w| w.private == private && !w.closing)
+                .flat_map(|w| w.strip.tabs().iter().map(move |t| (w.id, t)))
+                .filter(|(_, t)| Some(t.id) != current && !t.url.starts_with("mizu://newtab"))
+                .map(|(w, t)| (w.0, t.id.0, t.title.clone(), t.url.clone()))
+                .collect();
+            let items = crate::omnibox::suggest(&app.settings, app.storage_for(private), &text, &open_tabs);
             let anchor = app.window(window).map(|w| w.omnibox_anchor).unwrap_or_default();
             let wants_remote = app.settings.search.remote_suggestions
                 && !private
@@ -460,7 +470,22 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
         }
         Command::OmniboxCommit { index } => {
             let url = app.window(window).and_then(|w| w.suggestions.get(index)).map(|s| s.url.clone());
-            if let Some(url) = url {
+            if let Some(result) = url.as_deref().and_then(|u| u.strip_prefix("mizu-calc:")) {
+                if let Some(w) = app.window(window) {
+                    w.post_chrome(&Event::CopyText { text: result.to_owned() }.to_json());
+                }
+            } else if let Some(target) = url.as_deref().and_then(|u| u.strip_prefix("mizu-tab:")) {
+                let ids = target.split_once(':').and_then(|(w, t)| Some((w.parse::<u64>().ok()?, t.parse::<u64>().ok()?)));
+                if let Some((w, t)) = ids {
+                    let wid = mizu_core::ids::WindowId(w);
+                    app.activate_tab(wid, TabId(t));
+                    if wid != window {
+                        if let Some(win) = app.window(wid) {
+                            crate::win::bring_to_front(win.hwnd);
+                        }
+                    }
+                }
+            } else if let Some(url) = url {
                 app.navigate_active(window, &url);
             }
             if let Some(w) = app.window_mut(window) {

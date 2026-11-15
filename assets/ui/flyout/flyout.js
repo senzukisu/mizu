@@ -309,11 +309,12 @@ function renderBookmark(d) {
 
 // ── Omnibox suggestions ──────────────────────────────────────
 const SUG_ICONS = {
-  suggest: 'search', navigate: 'globe', search: 'search', history: 'history', bookmark: 'star', internal: 'drop' };
+  suggest: 'search', navigate: 'globe', search: 'search', history: 'history', bookmark: 'star', internal: 'drop', tab: 'tabs', calc: 'sliders' };
 function renderOmnibox(d) {
   const box = h('div', { class: 'omni', style: { width: `${Math.max(320, Math.round(d.width || 560)) - 12}px` } });
   (d.items || []).forEach((s, i) => {
-    const row = h('div', { class: `sug${i === d.selected ? ' sel' : ''}` }, icon(SUG_ICONS[s.kind] || 'globe'), h('span', { class: 't', text: s.title, translate: s.kind === 'internal' ? null : 'no' }), s.display && s.display !== s.title ? h('span', { class: 'd', text: s.display }) : null);
+    const hint = s.kind === 'tab' || s.kind === 'calc';
+    const row = h('div', { class: `sug k-${s.kind}${i === d.selected ? ' sel' : ''}` }, icon(SUG_ICONS[s.kind] || 'globe'), h('span', { class: 't', text: s.title, translate: s.kind === 'internal' ? null : 'no' }), s.display && s.display !== s.title ? h('span', { class: 'd', text: s.kind === 'calc' ? `${s.display} · Enter to copy` : s.display, translate: hint && s.kind !== 'tab' ? 'no' : null }) : null);
     row.addEventListener('mousedown', (e) => e.preventDefault());
     row.addEventListener('click', () => mizu.send('omnibox_commit', { index: i }));
     box.append(row);

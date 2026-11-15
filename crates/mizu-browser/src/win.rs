@@ -129,3 +129,15 @@ pub fn system_prefers_dark() -> bool {
     };
     r.is_ok() && value == 0
 }
+
+/// Restores and activates a browser window (switching to a tab in another window).
+pub fn bring_to_front(hwnd: windows::Win32::Foundation::HWND) {
+    use windows::Win32::UI::WindowsAndMessaging::{IsIconic, SW_RESTORE, SetForegroundWindow, ShowWindow};
+    // SAFETY: plain window calls on a window this process owns.
+    unsafe {
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        }
+        let _ = SetForegroundWindow(hwnd);
+    }
+}

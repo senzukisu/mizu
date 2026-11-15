@@ -373,6 +373,8 @@ pub enum Event {
         #[serde(skip_serializing_if = "Option::is_none")]
         step: Option<bool>,
     },
+    /// Copy text to the clipboard and confirm (the address-bar calculator).
+    CopyText { text: String },
     /// Find in page result: active match (1-based, 0 = none) and total.
     FindResult { active: i32, count: i32 },
     /// A download started; the chrome may open its downloads panel.

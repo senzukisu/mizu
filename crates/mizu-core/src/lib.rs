@@ -3,6 +3,7 @@
 //! This crate is intentionally dependency-light and platform-independent so that
 //! it can be unit-tested without a browser engine.
 
+pub mod calc;
 pub mod ids;
 pub mod internal;
 pub mod omnibox;

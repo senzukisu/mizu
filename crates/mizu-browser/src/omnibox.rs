@@ -9,7 +9,8 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Suggestion {
-    /// `navigate`, `search`, `history`, `bookmark`, `internal`
+    /// `navigate`, `search`, `history`, `bookmark`, `internal`, `tab` (switch to an open
+    /// tab, url `mizu-tab:<window>:<tab>`), `calc` (url `mizu-calc:<result>`)
     pub kind: &'static str,
     pub title: String,
     pub url: String,
@@ -40,7 +41,10 @@ pub fn resolve_input(settings: &Settings, input: &str) -> Option<String> {
     mizu_core::omnibox::resolve(input, &settings.search.active_engine().template)
 }
 
-pub fn suggest(settings: &Settings, storage: Option<&Storage>, input: &str) -> Vec<Suggestion> {
+/// An open tab the address bar can switch to: (window, tab, title, url).
+pub type OpenTab = (u64, u64, String, String);
+
+pub fn suggest(settings: &Settings, storage: Option<&Storage>, input: &str, open_tabs: &[OpenTab]) -> Vec<Suggestion> {
     let text = input.trim();
     let mut out: Vec<Suggestion> = Vec::new();
     if text.is_empty() {
@@ -69,8 +73,27 @@ pub fn suggest(settings: &Settings, storage: Option<&Storage>, input: &str) -> V
         }
     }
 
+    // 1b. Arithmetic: the answer, copied on Enter.
+    if let Some(result) = mizu_core::calc::evaluate(text) {
+        out.insert(0, Suggestion { kind: "calc", title: format!("= {result}"), display: text.to_owned(), url: format!("mizu-calc:{result}") });
+    }
+
     // 2. Internal pages by name.
     let lower = text.to_lowercase();
+
+    // 2b. Tabs that are already open.
+    if lower.chars().count() >= 2 {
+        let mut n = 0;
+        for (w, t, title, url) in open_tabs {
+            if n >= 2 {
+                break;
+            }
+            if title.to_lowercase().contains(&lower) || display_url(url).to_lowercase().contains(&lower) {
+                out.push(Suggestion { kind: "tab", title: if title.is_empty() { display_url(url) } else { title.clone() }, display: "Switch to this tab".into(), url: format!("mizu-tab:{w}:{t}") });
+                n += 1;
+            }
+        }
+    }
     for page in InternalPage::ALL {
         if matches!(page, InternalPage::Blocked) {
             continue;
@@ -116,16 +139,27 @@ mod tests {
         let settings = Settings::default();
         let mut storage = Storage::in_memory().unwrap();
         storage.record_visit("https://example.com/docs", "Example docs").unwrap();
-        let s = suggest(&settings, Some(&storage), "example.com");
+        let s = suggest(&settings, Some(&storage), "example.com", &[]);
         assert_eq!(s[0].kind, "navigate");
         assert!(s.iter().any(|x| x.kind == "history"));
 
-        let s = suggest(&settings, Some(&storage), "rust lifetimes");
+        let s = suggest(&settings, Some(&storage), "rust lifetimes", &[]);
         assert_eq!(s[0].kind, "search");
         assert!(s[0].url.starts_with("https://duckduckgo.com/"));
 
-        let s = suggest(&settings, None, "sett");
+        let s = suggest(&settings, None, "sett", &[]);
         assert!(s.iter().any(|x| x.url == "mizu://settings/"));
+    }
+
+    #[test]
+    fn open_tabs_and_calculator() {
+        let settings = Settings::default();
+        let tabs = vec![(1, 7, "Inbox — Mail".to_owned(), "https://mail.example.com/".to_owned())];
+        let s = suggest(&settings, None, "inbox", &tabs);
+        assert!(s.iter().any(|x| x.kind == "tab" && x.url == "mizu-tab:1:7"));
+        let s = suggest(&settings, None, "2+2*3", &tabs);
+        assert_eq!(s[0].kind, "calc");
+        assert_eq!(s[0].url, "mizu-calc:8");
     }
 
     #[test]

@@ -613,3 +613,13 @@ button {
 .fbadge.k-app { --k: #e5604d; }
 .fbadge.k-code { --k: #43b3c9; }
 .fbadge.k-other { --k: var(--ink-3); }
+
+/* Address bar: calculator answer and "switch to tab". */
+.sug.k-calc .t {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sug.k-tab .d,
+.sug.k-calc .d {
+  color: var(--accent);
+}
