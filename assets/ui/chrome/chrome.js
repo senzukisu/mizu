@@ -459,6 +459,7 @@ function onTabPointerDown(e, el) {
         mizu.send('move_tab', { id, index: target });
       }
     } else {
+      activateNow(id);
       mizu.send('activate_tab', { id });
     }
   };
@@ -680,11 +681,35 @@ function placeChromeParts() {
   }
 }
 
+// Switching tabs should feel instant: draw the clicked tab as active with its address
+// right away; the browser's state (back/forward, bookmark, Shield count) follows a frame later.
+function activateNow(id) {
+  if (!state || state.active === id) return;
+  const t = state.tabs.find((x) => x.id === id);
+  if (!t) return;
+  const url = t.url || '';
+  const security = t.internal ? 'internal' : url.startsWith('https://') ? 'secure' : url.startsWith('http://') ? 'insecure' : url.startsWith('file:') ? 'file' : 'other';
+  state = {
+    ...state,
+    active: id,
+    nav: { url, display: url.startsWith('mizu://newtab') ? '' : url, security, loading: t.loading, zoom: state.nav?.zoom },
+  };
+  render();
+}
+
+let lastActiveRendered = null;
 function render() {
   if (!state) return;
   if (SIDEBAR) return renderSidebar();
   els.app.classList.toggle('side-tabs', sideLayout);
   placeChromeParts();
+  // A different tab is active: whatever was typed belonged to the old one.
+  if (state.active !== lastActiveRendered) {
+    lastActiveRendered = state.active;
+    editing = false;
+    showUrl();
+    if (document.activeElement === els.address) els.address.select();
+  }
   document.documentElement.toggleAttribute('data-private', !!state.private);
   const badge = $('private-badge');
   badge.hidden = !state.private;

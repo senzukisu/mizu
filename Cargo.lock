@@ -702,6 +702,7 @@ dependencies = [
 name = "mizu-engine"
 version = "0.1.4"
 dependencies = [
+ "serde",
  "thiserror 2.0.21",
  "tracing",
  "webview2-com",

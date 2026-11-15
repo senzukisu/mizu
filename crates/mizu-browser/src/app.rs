@@ -75,6 +75,9 @@ pub struct App {
     pub pending_confirm: Option<(WindowId, ConfirmKind)>,
     /// Login captured on a page, waiting for "Save password?".
     pub pending_password: Option<crate::passwords::PendingPassword>,
+    /// Session cookies from the last session, applied before the first page loads.
+    pub pending_session_cookies: Option<Vec<mizu_engine::CookieData>>,
+    pub saving_session_cookies: bool,
     /// Tab that asked to install a userscript (shows the install page when fetched).
     pub script_install_tab: Option<ViewKey>,
     pub crashed_last_time: bool,
@@ -247,6 +250,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         pending_install: Vec::new(),
         pending_failures: Vec::new(),
         pending_password: None,
+        pending_session_cookies: None,
+        saving_session_cookies: false,
         update: crate::update::UpdateState::Idle,
         update_prompted: None,
         pending_confirm: None,
@@ -267,6 +272,7 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
 
     with(|app| {
         crate::shield::rebuild(&app.paths, &app.settings.privacy, app.worker.clone(), true, false);
+        app.load_session_cookies();
         app.open_initial_windows(&args);
         // SAFETY: timers on our message window.
         unsafe {
@@ -284,6 +290,7 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
 pub fn shutdown() {
     let app = APP.with(|a| a.borrow_mut().take());
     if let Some(mut app) = app {
+        let waiter = app.engine.exit_waiter();
         app.reap_views(true);
         app.save_stats();
         app.clear_on_exit();
@@ -292,6 +299,11 @@ pub fn shutdown() {
         }
         let _ = std::fs::remove_file(app.paths.crash_marker());
         drop(app);
+        // Let the engine flush cookies and site storage before the process ends.
+        if let Some(w) = waiter {
+            let clean = w.wait(std::time::Duration::from_secs(4));
+            tracing::info!(clean, "engine shut down");
+        }
     }
 }
 
@@ -961,6 +973,11 @@ impl App {
         let normal_remaining = self.windows.iter().filter(|w| !w.private && w.id != id).count();
         let is_private = self.window(id).is_some_and(|w| w.private);
         if !is_private && normal_remaining == 0 {
+            // Keep session cookies for the restored session; close once they are saved.
+            let view = self.window(id).and_then(|w| w.chrome.clone());
+            if self.save_session_cookies_then(view, move |a| a.close_window(id)) {
+                return;
+            }
             // Last normal window: remember it for "restore session".
             self.save_session();
             self.quitting_session_saved();

@@ -188,6 +188,8 @@ impl App {
                 w.spare_creating = false;
                 match res {
                     Ok(v) => {
+                        app.apply_session_cookies(&v, private);
+                        let Some(w) = app.window_mut(window) else { return };
                         v.set_visible(false);
                         v.set_zoom(zoom);
                         w.spare = Some(v);
@@ -237,6 +239,10 @@ impl App {
                 return;
             }
         };
+        // Cookies kept from the last session go in before this view loads anything.
+        if let Some(private) = self.window(window).map(|w| w.private) {
+            self.apply_session_cookies(&view, private);
+        }
         let settings = self.settings.clone();
         let applied = self.profile_settings_applied;
         let clear_flag = self.paths.root.join("clear-on-start");

@@ -167,3 +167,59 @@ impl Engine {
         get_string(|p| unsafe { self.env.BrowserVersionString(p) })
     }
 }
+
+/// Lets the host wait, at exit, until the engine's browser process has shut down. Chromium
+/// writes cookies and site storage to disk with a delay; leaving before the browser process
+/// exits can lose the last changes (sign-ins, site settings).
+pub struct ExitWaiter {
+    _env: ICoreWebView2Environment,
+    done: std::rc::Rc<std::cell::Cell<bool>>,
+}
+
+impl Engine {
+    /// Call before the last views are closed.
+    pub fn exit_waiter(&self) -> Option<ExitWaiter> {
+        let env5: ICoreWebView2Environment5 = self.env.cast().ok()?;
+        let done = std::rc::Rc::new(std::cell::Cell::new(false));
+        let flag = done.clone();
+        let mut token = 0i64;
+        // SAFETY: registering an event handler on the UI thread.
+        unsafe {
+            env5.add_BrowserProcessExited(
+                &webview2_com::BrowserProcessExitedEventHandler::create(Box::new(move |_, _| {
+                    flag.set(true);
+                    Ok(())
+                })),
+                &mut token,
+            )
+            .ok()?;
+        }
+        Some(ExitWaiter { _env: self.env.clone(), done })
+    }
+}
+
+impl ExitWaiter {
+    /// Pumps messages until the browser process has exited or `timeout` passes.
+    pub fn wait(&self, timeout: std::time::Duration) -> bool {
+        use windows::Win32::UI::WindowsAndMessaging::{
+            DispatchMessageW, MSG, MsgWaitForMultipleObjects, PM_REMOVE, PeekMessageW, QS_ALLINPUT, TranslateMessage,
+        };
+        let start = std::time::Instant::now();
+        while !self.done.get() {
+            let left = timeout.saturating_sub(start.elapsed());
+            if left.is_zero() {
+                return false;
+            }
+            // SAFETY: standard message pumping on the UI thread.
+            unsafe {
+                MsgWaitForMultipleObjects(None, false, left.as_millis().min(100) as u32, QS_ALLINPUT);
+                let mut msg = MSG::default();
+                while PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).as_bool() {
+                    let _ = TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+            }
+        }
+        true
+    }
+}

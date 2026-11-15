@@ -11,6 +11,7 @@
 //! Threading: WebView2 is single-threaded apartment COM. Every call and every callback happens
 //! on the UI thread; none of the types here are `Send`.
 
+mod cookies;
 mod download;
 mod drop_target;
 pub mod host;
@@ -20,8 +21,9 @@ mod profile;
 mod util;
 mod view;
 
+pub use cookies::CookieData;
 pub use download::{Download, DownloadInfo, DownloadStatus};
-pub use environment::{Engine, EngineOptions, ProfileKind, TrackingLevel, browser_version};
+pub use environment::{Engine, EngineOptions, ExitWaiter, ProfileKind, TrackingLevel, browser_version};
 pub use events::{
     NavigationDecision, NavigationRequest, NewWindowRequest, PermissionKind, PermissionRequest,
     ResourceDecision, ResourceRequest, ViewEvent, ViewHandler, ViewKey,

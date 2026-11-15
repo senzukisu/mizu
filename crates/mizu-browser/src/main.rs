@@ -20,6 +20,7 @@ mod passwords;
 mod queue;
 mod scripts;
 mod session;
+mod session_cookies;
 mod shield;
 mod shortcuts;
 mod single_instance;
