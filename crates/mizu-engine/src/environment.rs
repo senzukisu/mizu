@@ -66,6 +66,10 @@ pub struct Engine {
 }
 
 impl Engine {
+    pub(crate) fn environment(&self) -> &ICoreWebView2Environment {
+        &self.env
+    }
+
     /// Creates the environment. Blocks while pumping window messages (startup only).
     pub fn create(options: &EngineOptions) -> Result<Self> {
         if browser_version().is_none() {

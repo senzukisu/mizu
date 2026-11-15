@@ -60,6 +60,17 @@ pub enum Command {
     },
     CloseTab { id: u64 },
     ActivateTab { id: u64 },
+    /// Find in page: search (empty text clears), step through matches, close the bar.
+    Find {
+        text: String,
+        #[serde(default)]
+        case_sensitive: bool,
+    },
+    FindNext {
+        #[serde(default = "yes")]
+        forward: bool,
+    },
+    FindClose,
     MoveTab { id: u64, index: usize },
     PinTab { id: u64, pinned: bool },
     /// Pinned tab: go back to its pinned page, or (`reset`) make the current page its own.
@@ -355,6 +366,13 @@ pub enum Event {
     Downloads { items: Value },
     /// Focus the omnibox (Ctrl+L / F6 / new tab).
     FocusOmnibox,
+    /// Open the find bar and focus it (Ctrl+F); `step` moves through matches (F3).
+    FindShow {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        step: Option<bool>,
+    },
+    /// Find in page result: active match (1-based, 0 = none) and total.
+    FindResult { active: i32, count: i32 },
     /// A download started; the chrome may open its downloads panel.
     DownloadStarted,
     Toast { message: String },
@@ -400,4 +418,8 @@ mod tests {
         let j = Event::Reply { rid: 1, ok: true, data: Value::Null, error: None }.to_json();
         assert_eq!(j, r#"{"type":"reply","rid":1,"ok":true}"#);
     }
+}
+
+fn yes() -> bool {
+    true
 }

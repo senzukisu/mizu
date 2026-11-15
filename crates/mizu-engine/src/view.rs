@@ -105,6 +105,11 @@ impl View {
         self.inner.key
     }
 
+    /// The environment with the Find API factory (Runtime 120+).
+    pub(crate) fn environment15(&self) -> Option<ICoreWebView2Environment15> {
+        self.inner.engine.environment().cast().ok()
+    }
+
     pub(crate) fn core(&self) -> &ICoreWebView2 {
         &self.inner.core
     }

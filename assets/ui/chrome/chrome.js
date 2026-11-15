@@ -813,6 +813,7 @@ function render() {
   placeChromeParts();
   // A different tab is active: whatever was typed belonged to the old one.
   if (state.active !== lastActiveRendered) {
+    if (lastActiveRendered !== null && find?.open) find.hide();
     lastActiveRendered = state.active;
     editing = false;
     showUrl();
@@ -878,6 +879,93 @@ mizu.on('focus_omnibox', () => {
   els.address.select();
 });
 mizu.on('toast', (m) => !SIDEBAR && toast(m.message));
+
+// ── Find in page ────────────────────────────────────────────
+// A slim row under the toolbar; the engine highlights matches in the page.
+const find = (() => {
+  const bar = document.getElementById('findbar');
+  if (!bar) return null;
+  const input = h('input', { type: 'text', spellcheck: 'false', autocomplete: 'off', placeholder: 'Find on page', 'aria-label': 'Find on page' });
+  const count = h('span', { class: 'find-count' });
+  const btn = (ic, title, fn) => {
+    const b = h('button', { class: 'icon-btn find-btn', title }, icon(ic));
+    b.addEventListener('click', fn);
+    return b;
+  };
+  let caseSensitive = false;
+  const caseBtn = h('button', { class: 'find-case', title: 'Match case', 'aria-pressed': 'false', text: 'Aa' });
+  caseBtn.addEventListener('click', () => {
+    caseSensitive = !caseSensitive;
+    caseBtn.classList.toggle('on', caseSensitive);
+    caseBtn.setAttribute('aria-pressed', String(caseSensitive));
+    search();
+    input.focus();
+  });
+  const prev = btn('chevron-down', 'Previous match (Shift+Enter)', () => step(false));
+  prev.classList.add('up');
+  const next = btn('chevron-down', 'Next match (Enter)', () => step(true));
+  const close = btn('close', 'Close (Esc)', () => hide());
+  bar.append(h('div', { class: 'find-box' }, icon('search'), input, count, caseBtn), prev, next, close);
+
+  let timer = 0;
+  let open = false;
+  function search() {
+    clearTimeout(timer);
+    timer = setTimeout(() => mizu.send('find', { text: input.value, case_sensitive: caseSensitive }), 120);
+  }
+  function step(forward) {
+    if (!input.value) return;
+    mizu.send('find_next', { forward });
+  }
+  function show(stepDir) {
+    if (!open) {
+      open = true;
+      bar.hidden = false;
+      reportMetrics();
+      if (input.value) search();
+    } else if (stepDir !== undefined && stepDir !== null) {
+      step(stepDir);
+    }
+    // The toolbar view gets keyboard focus from Windows a moment after this message, so
+    // focus again once it has it.
+    const grab = () => {
+      if (!open) return;
+      input.focus();
+      input.select();
+    };
+    grab();
+    window.addEventListener('focus', grab, { once: true });
+    setTimeout(grab, 60);
+    setTimeout(grab, 200);
+  }
+  function hide() {
+    if (!open) return;
+    open = false;
+    bar.hidden = true;
+    count.textContent = '';
+    bar.classList.remove('none');
+    reportMetrics();
+    mizu.send('find_close');
+  }
+  input.addEventListener('input', search);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      step(!e.shiftKey);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      hide();
+    }
+  });
+  mizu.on('find_show', (m) => !SIDEBAR && show(m.step));
+  mizu.on('find_result', (m) => {
+    if (!open) return;
+    const none = !!input.value && m.count === 0;
+    bar.classList.toggle('none', none);
+    count.textContent = !input.value ? '' : m.count ? `${m.active || 0} / ${m.count}` : 'No matches';
+  });
+  return { hide, get open() { return open; } };
+})();
 mizu.on('download_started', () => !SIDEBAR && flyout('downloads', els.downloads));
 
 window.addEventListener('keydown', (e) => {

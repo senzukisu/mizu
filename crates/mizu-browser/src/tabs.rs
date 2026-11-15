@@ -123,6 +123,7 @@ impl App {
         }
         if let Some(prev) = previous.filter(|p| *p != tab) {
             if let Some(v) = w.tabs.get(&prev).and_then(|t| t.view.clone()) {
+                v.find_stop();
                 v.set_visible(false);
             }
         }

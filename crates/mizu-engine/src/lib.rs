@@ -17,6 +17,7 @@ mod drop_target;
 pub mod host;
 mod environment;
 mod events;
+mod find;
 mod profile;
 mod util;
 mod view;

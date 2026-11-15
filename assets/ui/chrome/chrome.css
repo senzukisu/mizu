@@ -994,3 +994,86 @@ body.collapsed .vt-collapse svg.icon {
 #vt #tabs > .tab.pinned .audio {
   display: none;
 }
+
+/* ── Find in page ─────────────────────────────────────────── */
+#findbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 42px;
+  padding: 0 10px 4px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+#findbar[hidden] {
+  display: none;
+}
+.find-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(420px, 60vw);
+  height: 32px;
+  padding: 0 6px 0 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.find-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+#findbar.none .find-box {
+  border-color: color-mix(in srgb, #e5484d 70%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #e5484d 18%, transparent);
+}
+.find-box svg.icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.find-box input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-ui);
+}
+.find-count {
+  flex: none;
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+#findbar.none .find-count {
+  color: #e5484d;
+}
+.find-case {
+  flex: none;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--ink-3);
+  font: 600 12px/1 var(--font);
+}
+.find-case:hover {
+  color: var(--ink);
+  background: var(--surface-3);
+}
+.find-case.on {
+  color: var(--accent);
+  border-color: var(--accent-line, var(--accent));
+  background: var(--accent-soft);
+}
+.find-btn.up svg.icon {
+  transform: rotate(180deg);
+}

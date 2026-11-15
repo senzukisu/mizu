@@ -28,6 +28,9 @@ pub enum Shortcut {
     ZoomIn,
     ZoomOut,
     ZoomReset,
+    Find,
+    FindNext,
+    FindPrev,
 }
 
 const VK_TAB: u32 = 0x09;
@@ -151,6 +154,9 @@ pub const ACTIONS: &[ActionDef] = &[
     ActionDef { id: "home", group: "Navigation", label: "Home page", action: Shortcut::Home, defaults: &["Alt+Home"] },
     ActionDef { id: "reload", group: "Navigation", label: "Reload page", action: Shortcut::Reload, defaults: &["F5", "Ctrl+R"] },
     ActionDef { id: "hard_reload", group: "Navigation", label: "Reload without cache", action: Shortcut::HardReload, defaults: &["Ctrl+F5", "Shift+F5", "Ctrl+Shift+R"] },
+    ActionDef { id: "find", group: "Navigation", label: "Find on page", action: Shortcut::Find, defaults: &["Ctrl+F"] },
+    ActionDef { id: "find_next", group: "Navigation", label: "Next match", action: Shortcut::FindNext, defaults: &["F3", "Ctrl+G"] },
+    ActionDef { id: "find_prev", group: "Navigation", label: "Previous match", action: Shortcut::FindPrev, defaults: &["Shift+F3", "Ctrl+Shift+G"] },
     ActionDef { id: "address_bar", group: "Navigation", label: "Address bar", action: Shortcut::FocusOmnibox, defaults: &["Ctrl+L", "Alt+D", "F6", "Ctrl+K", "Ctrl+E"] },
     ActionDef { id: "bookmark_page", group: "Mizu", label: "Bookmark this page", action: Shortcut::BookmarkPage, defaults: &["Ctrl+D"] },
     ActionDef { id: "bookmarks_bar", group: "Mizu", label: "Show or hide bookmarks bar", action: Shortcut::ToggleBookmarksBar, defaults: &["Ctrl+Shift+B"] },

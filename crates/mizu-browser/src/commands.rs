@@ -252,6 +252,29 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             app.close_tab(window, tab_id(id));
             ok()
         }
+        Command::Find { text, case_sensitive } => {
+            let posted = app.window(window).map(|w| (w.id, w.active_view()));
+            if let Some((wid, Some(v))) = posted {
+                if text.is_empty() {
+                    v.find_stop();
+                    post_find_result(wid, 0, 0);
+                } else {
+                    v.find_start(&text, case_sensitive, move |active, count| post_find_result(wid, active, count));
+                }
+            }
+            ok()
+        }
+        Command::FindNext { forward } => {
+            with_active_view(app, window, |_, v| v.find_next(forward));
+            ok()
+        }
+        Command::FindClose => {
+            with_active_view(app, window, |_, v| {
+                v.find_stop();
+                v.focus();
+            });
+            ok()
+        }
         Command::ActivateTab { id } => {
             app.activate_tab(window, tab_id(id));
             app.show_next_prompt(window);
@@ -645,6 +668,15 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
     }
 }
 
+/// Sends a find result to the window's chrome (runs from engine callbacks).
+fn post_find_result(window: WindowId, active: i32, count: i32) {
+    queue::with_app(move |a| {
+        if let Some(w) = a.window(window) {
+            w.post_chrome(&Event::FindResult { active, count }.to_json());
+        }
+    });
+}
+
 fn with_active_view(app: &App, window: WindowId, f: impl FnOnce(ViewKey, &mizu_engine::View)) {
     if let Some(w) = app.window(window) {
         if let Some(t) = w.active_tab() {
@@ -850,5 +882,18 @@ pub fn run_shortcut(app: &mut App, window: WindowId, s: Shortcut) {
         Shortcut::ZoomIn => zoom(app, window, 1),
         Shortcut::ZoomOut => zoom(app, window, -1),
         Shortcut::ZoomReset => zoom(app, window, 0),
+        Shortcut::Find | Shortcut::FindNext | Shortcut::FindPrev => {
+            let step = match s {
+                Shortcut::FindNext => Some(true),
+                Shortcut::FindPrev => Some(false),
+                _ => None,
+            };
+            if let Some(w) = app.window(window) {
+                if let Some(c) = &w.chrome {
+                    c.focus();
+                }
+                w.post_chrome(&Event::FindShow { step }.to_json());
+            }
+        }
     }
 }
