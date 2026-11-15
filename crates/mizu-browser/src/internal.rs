@@ -170,8 +170,11 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             mark_all_dirty(app);
             ok()
         }
-        Command::BookmarkMove { id, parent, index } => {
+        Command::BookmarkMove { id, parent, index, remember } => {
             app.storage.move_bookmark(id, parent, index).map_err(storage_err)?;
+            if remember {
+                app.last_bookmark_folder = parent;
+            }
             mark_all_dirty(app);
             ok()
         }

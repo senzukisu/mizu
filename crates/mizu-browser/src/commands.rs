@@ -273,6 +273,25 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             app.session_dirty = true;
             ok()
         }
+        Command::PinnedHome { id, reset } => {
+            let tab = tab_id(id);
+            let home = app.window_mut(window).and_then(|w| {
+                let t = w.strip.get_mut(tab)?;
+                if reset {
+                    t.pinned_url = Some(t.url.clone());
+                    w.state_dirty = true;
+                    None
+                } else {
+                    t.pinned_url.clone()
+                }
+            });
+            if let Some(url) = home {
+                app.activate_tab(window, tab);
+                app.navigate_active(window, &url);
+            }
+            app.session_dirty = true;
+            ok()
+        }
         Command::DiscardTab { id, others } => {
             let targets: Vec<TabId> = match app.window(window) {
                 Some(w) if others => w
@@ -538,6 +557,8 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
             json!({
                 "id": tab_id,
                 "pinned": tab.as_ref().is_some_and(|t| t.pinned),
+                "away": tab.as_ref().is_some_and(mizu_tabs::Tab::away_from_pin),
+                "home": tab.as_ref().and_then(|t| t.pinned_url.clone()),
                 "muted": state.is_some_and(|s| s.muted),
                 "count": count,
                 "closed": app.window(window).map(|w| w.strip.closed_tabs().count()).unwrap_or(0),
@@ -683,7 +704,12 @@ fn toggle_bookmark(app: &mut App, window: WindowId) {
     let existing = app.storage.find_bookmark_by_url(&url).ok().flatten();
     if existing.is_none() {
         let title = if title.is_empty() { url.clone() } else { title };
-        let _ = app.storage.add_bookmark(mizu_storage::BOOKMARKS_BAR_ID, &title, &url);
+        // The remembered folder may have been deleted since; fall back to "Other bookmarks".
+        let folder = app.last_bookmark_folder;
+        if app.storage.add_bookmark(folder, &title, &url).is_err() {
+            app.last_bookmark_folder = mizu_storage::OTHER_BOOKMARKS_ID;
+            let _ = app.storage.add_bookmark(mizu_storage::OTHER_BOOKMARKS_ID, &title, &url);
+        }
     }
     app.bookmarks_bar = None;
     if let Some(w) = app.window_mut(window) {

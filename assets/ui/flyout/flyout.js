@@ -88,6 +88,8 @@ function renderTabMenu(d) {
     item('reload', 'Reload', () => mizu.send('reload_tab', { id }), { kbd: 'Ctrl+R' }),
     item('copy', 'Duplicate', () => mizu.send('duplicate_tab', { id })),
     item('pin', d.pinned ? 'Unpin' : 'Pin', () => mizu.send('pin_tab', { id, pinned: !d.pinned })),
+    d.away ? item('home', 'Back to pinned page', () => mizu.send('pinned_home', { id })) : null,
+    d.away ? item(null, 'Pin this page instead', () => mizu.send('pinned_home', { id, reset: true })) : null,
     item(d.muted ? 'volume' : 'mute', d.muted ? 'Unmute site' : 'Mute tab', () => mizu.send('mute_tab', { id, muted: !d.muted })),
     sep(),
     !d.active && !d.unloaded ? item('pause', 'Unload tab', () => mizu.send('discard_tab', { id })) : null,
@@ -278,7 +280,7 @@ function renderBookmark(d) {
   const save = async () => {
     await mizu.request('bookmark_update', { id: bm.id, title: title.value.trim() || bm.title, url: null });
     const parent = Number(folder.value);
-    if (parent && parent !== bm.parent_id) await mizu.request('bookmark_move', { id: bm.id, parent, index: 1e6 });
+    if (parent && parent !== bm.parent_id) await mizu.request('bookmark_move', { id: bm.id, parent, index: 1e6, remember: true });
     close();
   };
   done.addEventListener('click', save);

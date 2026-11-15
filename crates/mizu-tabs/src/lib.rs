@@ -22,6 +22,19 @@ pub struct Tab {
     pub url: String,
     pub title: String,
     pub pinned: bool,
+    /// The page a pinned tab belongs to. Browsing elsewhere keeps it; "back to pinned
+    /// page" returns there.
+    pub pinned_url: Option<String>,
+}
+
+impl Tab {
+    /// A pinned tab that has been navigated away from its pinned page (another site).
+    pub fn away_from_pin(&self) -> bool {
+        match (&self.pinned_url, self.pinned) {
+            (Some(home), true) => !is_blank(&self.url) && site_of(home) != site_of(&self.url),
+            _ => false,
+        }
+    }
 }
 
 impl Tab {
@@ -36,6 +49,7 @@ impl Tab {
             url: url.into(),
             title: String::new(),
             pinned: false,
+            pinned_url: None,
         }
     }
 }
@@ -192,6 +206,7 @@ impl TabStrip {
         }
         let mut tab = self.tabs.remove(from);
         tab.pinned = pinned;
+        tab.pinned_url = (pinned && !is_blank(&tab.url)).then(|| tab.url.clone());
         // A newly pinned tab goes to the end of the pinned group; an unpinned one to the
         // start of the normal group. Both are the same boundary index.
         let boundary = self.pinned_count();
@@ -206,6 +221,7 @@ impl TabStrip {
         let mut tab = Tab::new(src.url.clone());
         tab.title = src.title.clone();
         tab.pinned = src.pinned;
+        tab.pinned_url = src.pinned_url.clone();
         Some(self.insert(index + 1, tab))
     }
 
@@ -241,6 +257,7 @@ impl TabStrip {
                     url: t.url.clone(),
                     title: t.title.clone(),
                     pinned: t.pinned,
+                    pinned_url: t.pinned_url.clone(),
                 })
                 .collect(),
             active_index: self.active.and_then(|a| self.index_of(a)).unwrap_or(0),
@@ -255,6 +272,9 @@ impl TabStrip {
             let mut tab = Tab::new(t.url.clone());
             tab.title = t.title.clone();
             tab.pinned = t.pinned;
+            if t.pinned {
+                tab.pinned_url = Some(t.pinned_url.clone().unwrap_or_else(|| t.url.clone()));
+            }
             strip.push(tab);
         }
         if let Some(t) = strip.tabs.get(snapshot.active_index).map(|t| t.id) {
@@ -269,6 +289,13 @@ fn is_blank(url: &str) -> bool {
     url.is_empty() || url == "about:blank" || url.starts_with("mizu://newtab")
 }
 
+/// Scheme + host without a leading "www." (a pinned mail tab may wander within its site).
+fn site_of(url: &str) -> &str {
+    let rest = url.split_once("://").map_or(url, |(_, r)| r);
+    let host = rest.split(['/', '?', '#']).next().unwrap_or(rest);
+    host.strip_prefix("www.").unwrap_or(host)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -281,6 +308,22 @@ mod tests {
 
     fn order(s: &TabStrip) -> Vec<String> {
         s.tabs().iter().map(|t| t.url.clone()).collect()
+    }
+
+    #[test]
+    fn pinned_tab_remembers_its_page() {
+        let (mut s, ids) = strip(&["https://mail.example.com/inbox", "b"]);
+        s.set_pinned(ids[0], true);
+        let t = s.get_mut(ids[0]).unwrap();
+        assert_eq!(t.pinned_url.as_deref(), Some("https://mail.example.com/inbox"));
+        t.url = "https://mail.example.com/thread/1".into();
+        assert!(!t.away_from_pin());
+        t.url = "https://news.example.org/".into();
+        assert!(t.away_from_pin());
+        let restored = TabStrip::from_snapshot(&s.snapshot());
+        assert_eq!(restored.tabs()[0].pinned_url.as_deref(), Some("https://mail.example.com/inbox"));
+        s.set_pinned(ids[0], false);
+        assert_eq!(s.get(ids[0]).unwrap().pinned_url, None);
     }
 
     #[test]

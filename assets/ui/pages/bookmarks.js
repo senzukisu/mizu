@@ -3,7 +3,16 @@
 
 const main = document.getElementById('main');
 let all = [];
-let folder = 1; // Bookmarks bar
+// Folder to show: from the address (#2 = Other bookmarks), else the bookmarks bar.
+let folder = Number(location.hash.slice(1)) || 1;
+window.addEventListener('hashchange', () => {
+  const id = Number(location.hash.slice(1));
+  if (id && byId(id)) {
+    folder = id;
+    query = '';
+    render();
+  }
+});
 let query = '';
 
 const tree = h('nav', { class: 'bm-tree' });

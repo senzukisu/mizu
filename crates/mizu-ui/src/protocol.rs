@@ -62,6 +62,12 @@ pub enum Command {
     ActivateTab { id: u64 },
     MoveTab { id: u64, index: usize },
     PinTab { id: u64, pinned: bool },
+    /// Pinned tab: go back to its pinned page, or (`reset`) make the current page its own.
+    PinnedHome {
+        id: u64,
+        #[serde(default)]
+        reset: bool,
+    },
     MuteTab { id: u64, muted: bool },
     /// Closes the page of a background tab to free memory; it reloads when opened.
     /// With `others`, every background tab except `id` that isn't playing sound.
@@ -133,7 +139,14 @@ pub enum Command {
         #[serde(default)]
         url: Option<String>,
     },
-    BookmarkMove { id: i64, parent: i64, index: usize },
+    BookmarkMove {
+        id: i64,
+        parent: i64,
+        index: usize,
+        /// Chosen in the "Bookmark added" panel: new bookmarks go to this folder from now on.
+        #[serde(default)]
+        remember: bool,
+    },
     BookmarkDelete { id: i64 },
     DownloadsGet,
     ClearData(ClearDataRequest),

@@ -126,6 +126,10 @@ button {
     transform var(--t-med) var(--ease),
     opacity var(--t-med);
 }
+.bm-other {
+  flex: none;
+  margin-left: auto;
+}
 .tab.pinned {
   flex: 0 0 44px;
   padding: 0;
@@ -690,11 +694,74 @@ body.sidebar-surface #app {
 }
 #vt #tabs {
   flex: none;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: stretch;
   height: auto;
   overflow: visible;
   gap: 3px;
+}
+#vt #tabs > .tab {
+  flex: 0 0 100%;
+}
+/* Pinned tabs: a grid of icons, four per row. */
+#vt #tabs > .tab.pinned {
+  flex: 0 0 calc((100% - 9px) / 4);
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  background: color-mix(in srgb, var(--surface) 35%, transparent);
+}
+#vt #tabs > .tab.pinned.active {
+  background: var(--surface);
+  border-color: var(--line);
+}
+#vt #tabs > .tab.pinned.away {
+  border-style: dashed;
+}
+#vt #tabs > .tab.dragging {
+  z-index: 5;
+  opacity: 0.92;
+  transition: none;
+}
+#vt #tabs > .tab.drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+#vt #tabs > .tab.drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+#vt #tabs > .tab.pinned.drop-before {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+#vt #tabs > .tab.pinned.drop-after {
+  box-shadow: inset -2px 0 0 var(--accent);
+}
+.vt-pin-zone {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  margin-bottom: 6px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--r-md);
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.vt-pin-zone[hidden] {
+  display: none;
+}
+.vt-pin-zone.over {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.vt-pin-zone svg.icon {
+  width: 15px;
+  height: 15px;
 }
 #vt-list .vt-new {
   flex: none;
@@ -735,16 +802,13 @@ body.sidebar-surface #app {
 #vt .tab.sleeping .fav {
   opacity: 0.8;
 }
-#vt .tab.pinned {
-  padding: 0 6px 0 10px;
-  justify-content: flex-start;
-}
 #vt .tab.pinned .title,
-#vt .tab.pinned .close {
-  display: flex;
+#vt .tab.pinned .close,
+#vt .tab.pinned .audio {
+  display: none;
 }
 #vt .tab.pinned + .tab:not(.pinned) {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 #vt .tab.narrow .close,
 #vt .tab.narrow .fav {
@@ -913,4 +977,9 @@ body.collapsed .vt-collapse svg.icon {
 }
 #app.side-tabs #toolbar #private-badge {
   margin: 0 6px 0 2px;
+}
+#vt #tabs > .tab.pinned .close,
+#vt #tabs > .tab.pinned .title,
+#vt #tabs > .tab.pinned .audio {
+  display: none;
 }

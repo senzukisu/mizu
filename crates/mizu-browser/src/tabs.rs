@@ -511,6 +511,7 @@ impl App {
     pub fn push_window_state(&mut self, id: WindowId) {
         // The bookmarks bar rarely changes; it is cached and invalidated by bookmark edits.
         if self.bookmarks_bar.is_none() {
+            self.bookmarks_other = self.storage.bookmark_children(mizu_storage::OTHER_BOOKMARKS_ID).map(|c| c.len()).unwrap_or(0);
             self.bookmarks_bar = Some(
                 self.storage
                     .bookmark_children(mizu_storage::BOOKMARKS_BAR_ID)
@@ -540,6 +541,7 @@ impl App {
                     "title": if t.title.is_empty() { tab_fallback_title(&t.url) } else { t.title.clone() },
                     "url": t.url,
                     "pinned": t.pinned,
+                    "away": t.away_from_pin(),
                     "loading": s.is_some_and(|s| s.loading),
                     "audible": s.is_some_and(|s| s.audible),
                     "muted": s.is_some_and(|s| s.muted),
@@ -602,6 +604,7 @@ impl App {
             "tabs": tabs,
             "nav": nav,
             "bookmarks": bookmarks,
+            "bookmarks_other": if self.settings.appearance.show_bookmarks_bar { self.bookmarks_other } else { 0 },
             "closed": w.strip.closed_tabs().count(),
             "downloads": { "active": dl_active, "progress": dl_progress, "any": !self.downloads.items.is_empty() },
             "shield": { "session": session_blocked },

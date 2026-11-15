@@ -91,6 +91,11 @@ pub struct App {
     pub media_waiters: HashMap<u64, (ViewKey, u64)>,
     /// Cached bookmarks-bar items for the chrome state (None = needs reload).
     pub bookmarks_bar: Option<Vec<serde_json::Value>>,
+    /// How many items "Other bookmarks" holds (cached with the bar).
+    pub bookmarks_other: usize,
+    /// Folder Ctrl+D saves to: "Other bookmarks" until another folder is picked in the
+    /// "Bookmark added" panel. The bar only gets what you put there.
+    pub last_bookmark_folder: i64,
     /// Last time download progress was pushed to the UI (progress events are throttled).
     last_downloads_push: std::time::Instant,
     pub quitting: bool,
@@ -271,6 +276,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         startup_notice,
         media_waiters: HashMap::new(),
         bookmarks_bar: None,
+        bookmarks_other: 0,
+        last_bookmark_folder: mizu_storage::OTHER_BOOKMARKS_ID,
         last_downloads_push: std::time::Instant::now(),
         quitting: false,
         profile_settings_applied: [false; 2],

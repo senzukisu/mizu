@@ -37,7 +37,8 @@ if (SIDEBAR) {
   const collapse = h('button', { class: 'vt-collapse', title: 'Collapse sidebar' }, icon('chevron-right'));
   collapse.addEventListener('click', () => mizu.send('sidebar_toggle'));
   // Tabs and the "New tab" button scroll together, so the button always sits under the last tab.
-  const list = h('div', { id: 'vt-list' }, els.tabs, newTab);
+  els.pinZone = h('div', { class: 'vt-pin-zone', hidden: true }, icon('pin'), h('span', { text: 'Drop here to pin' }));
+  const list = h('div', { id: 'vt-list' }, els.pinZone, els.tabs, newTab);
   list.addEventListener('dblclick', (e) => {
     if (e.target === list || e.target === els.tabs) mizu.send('new_tab');
   });
@@ -260,18 +261,22 @@ const EASE_OUT = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
 function flip(mutate) {
   const dur = motionMs(220);
   const before = new Map();
-  const pos = (el) => (VERTICAL ? el.getBoundingClientRect().top : el.getBoundingClientRect().left);
+  const pos = (el) => {
+    const r = el.getBoundingClientRect();
+    return [r.left, r.top];
+  };
   if (dur) for (const el of els.tabs.children) if (!el._out) before.set(el, pos(el));
   const follower = VERTICAL && document.querySelector('#vt-list > .vt-new');
   if (dur && follower) before.set(follower, pos(follower));
   mutate();
   if (!dur) return;
-  const axis = VERTICAL ? 'translateY' : 'translateX';
   for (const [el, old] of before) {
     if (!el.isConnected || el._out) continue;
-    const d = old - pos(el);
-    if (Math.abs(d) < 0.5) continue;
-    el.animate([{ transform: `${axis}(${d}px)` }, { transform: `${axis}(0)` }], { duration: dur, easing: EASE_OUT });
+    const now = pos(el);
+    const dx = old[0] - now[0];
+    const dy = old[1] - now[1];
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+    el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: dur, easing: EASE_OUT });
   }
 }
 
@@ -334,6 +339,7 @@ function renderTabs() {
       }
       el.classList.toggle('active', t.id === state.active);
       el.classList.toggle('pinned', !!t.pinned);
+      el.classList.toggle('away', !!t.away);
       el.classList.toggle('sleeping', !!t.sleeping);
       el.setAttribute('aria-selected', t.id === state.active ? 'true' : 'false');
       fillTab(el, t);
@@ -410,6 +416,7 @@ const observeTab = (el) => narrowObserver.observe(el);
 // Drag to reorder (within the strip). Pinned and unpinned tabs stay in their own groups;
 // the browser enforces that too.
 function onTabPointerDown(e, el) {
+  if (VERTICAL) return onSidebarTabPointerDown(e, el);
   if (e.button !== 0) return;
   const id = Number(el.dataset.id);
   const coord = (ev) => (VERTICAL ? ev.clientY : ev.clientX);
@@ -462,6 +469,98 @@ function onTabPointerDown(e, el) {
       activateNow(id);
       mizu.send('activate_tab', { id });
     }
+  };
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+}
+
+// Sidebar: pinned tabs are a grid of icons above the list. Dragging a tab onto the grid
+// (or the "Drop here to pin" zone when there are no pins yet) pins it; dragging a pin into
+// the list unpins it.
+function onSidebarTabPointerDown(e, el) {
+  if (e.button !== 0) return;
+  const id = Number(el.dataset.id);
+  const sx = e.clientX;
+  const sy = e.clientY;
+  const siblings = [...els.tabs.children].filter((c) => !c._out);
+  const from = siblings.indexOf(el);
+  const wasPinned = el.classList.contains('pinned');
+  let rects = [];
+  let dragging = false;
+  let target = from;
+  let pinTarget = wasPinned;
+  let mark = null;
+  el.setPointerCapture(e.pointerId);
+
+  const setMark = (m, cls) => {
+    if (mark) mark.classList.remove('drop-before', 'drop-after');
+    mark = m;
+    if (m) m.classList.add(cls);
+  };
+  const move = (ev) => {
+    const dx = ev.clientX - sx;
+    const dy = ev.clientY - sy;
+    if (!dragging && Math.hypot(dx, dy) < 5) return;
+    if (!dragging) {
+      dragging = true;
+      el.classList.add('dragging');
+      if (!wasPinned && !state.tabs.some((t) => t.pinned)) els.pinZone.hidden = false;
+      rects = siblings.map((s) => s.getBoundingClientRect());
+    }
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    const x = ev.clientX;
+    const y = ev.clientY;
+    if (!els.pinZone.hidden) {
+      const over = y < els.pinZone.getBoundingClientRect().bottom + 4;
+      els.pinZone.classList.toggle('over', over);
+      if (over) {
+        target = 0;
+        pinTarget = true;
+        setMark(null);
+        return;
+      }
+    }
+    let best = -1;
+    let bestD = Infinity;
+    rects.forEach((r, i) => {
+      if (i === from) return;
+      const d = Math.hypot(x - Math.max(r.left, Math.min(x, r.right)), y - Math.max(r.top, Math.min(y, r.bottom)));
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
+    if (best < 0) {
+      target = from;
+      pinTarget = wasPinned;
+      return setMark(null);
+    }
+    const r = rects[best];
+    const pinnedThere = siblings[best].classList.contains('pinned');
+    const after = pinnedThere ? x > r.left + r.width / 2 : y > r.top + r.height / 2;
+    pinTarget = pinnedThere;
+    let index = best + (after ? 1 : 0);
+    if (from < index) index -= 1;
+    target = index;
+    setMark(siblings[best], after ? 'drop-after' : 'drop-before');
+  };
+  const up = () => {
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', up);
+    el.removeEventListener('pointercancel', up);
+    el.style.transform = '';
+    el.classList.remove('dragging');
+    els.pinZone.hidden = true;
+    els.pinZone.classList.remove('over');
+    setMark(null);
+    if (!dragging) {
+      activateNow(id);
+      mizu.send('activate_tab', { id });
+      return;
+    }
+    if (pinTarget !== wasPinned) mizu.send('pin_tab', { id, pinned: pinTarget });
+    if (target !== from || pinTarget !== wasPinned) mizu.send('move_tab', { id, index: target });
   };
   el.addEventListener('pointermove', move);
   el.addEventListener('pointerup', up);
@@ -626,14 +725,15 @@ function renderDownloads() {
 
 function renderBookmarks() {
   const items = state.bookmarks || [];
+  const other = state.bookmarks_other || 0;
   // The bar appears with the first bookmark on it; an empty bar is just wasted space.
-  const show = !state.private && settings?.appearance?.show_bookmarks_bar !== false && items.length > 0;
+  const show = !state.private && settings?.appearance?.show_bookmarks_bar !== false && (items.length > 0 || other > 0);
   const changed = els.bookmarks.hidden === show;
   els.bookmarks.hidden = !show;
   els.toolbar.classList.toggle('no-bookmarks', !show);
   if (changed) reportMetrics();
   if (!show) return;
-  const sig = JSON.stringify(items);
+  const sig = JSON.stringify(items) + other;
   if (els.bookmarks._sig === sig) return;
   els.bookmarks._sig = sig;
   els.bookmarks.replaceChildren();
@@ -641,7 +741,7 @@ function renderBookmarks() {
     const isFolder = b.kind === 'folder';
     const el = h('button', { class: 'bm', translate: 'no', title: isFolder ? b.title : `${b.title}\n${b.url}` }, icon(isFolder ? 'folder' : 'bookmark'), h('span', { text: b.title || b.url }));
     el.addEventListener('click', (e) => {
-      if (isFolder) mizu.send('open_url', { url: 'mizu://bookmarks/', disposition: 'current' });
+      if (isFolder) mizu.send('open_url', { url: `mizu://bookmarks/#${b.id}`, disposition: 'current' });
       else mizu.send('open_url', { url: b.url, disposition: e.ctrlKey ? 'background' : e.shiftKey ? 'new_window' : 'current' });
     });
     el.addEventListener('auxclick', (e) => {
@@ -651,6 +751,12 @@ function renderBookmarks() {
       e.preventDefault();
       mizu.send('show_flyout', { kind: 'bookmark_menu', anchor: { x: e.clientX, y: e.clientY, width: 1, height: 1 }, tab_id: b.id });
     });
+    els.bookmarks.append(el);
+  }
+  if (other > 0) {
+    // Everything not on the bar lives in "Other bookmarks", at the far end like Chrome.
+    const el = h('button', { class: 'bm bm-other', title: 'Other bookmarks' }, icon('folder'), h('span', { text: 'Other bookmarks' }));
+    el.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://bookmarks/#2', disposition: 'current' }));
     els.bookmarks.append(el);
   }
 }
