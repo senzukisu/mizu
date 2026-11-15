@@ -184,6 +184,25 @@ button {
 .dl:hover {
   background: var(--surface-2);
 }
+.dl.openable {
+  cursor: pointer;
+}
+.dl-panel {
+  width: 380px;
+}
+.dl-panel h2 .pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.empty svg.icon {
+  display: block;
+  margin: 0 auto 8px;
+  opacity: 0.6;
+}
 .dl .ficon {
   width: 32px;
   height: 32px;
@@ -567,3 +586,30 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* File type badges (downloads). */
+.fbadge {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font: 700 10px/1 var(--font);
+  letter-spacing: 0.02em;
+  color: var(--k, var(--accent));
+  background: color-mix(in srgb, var(--k, var(--accent)) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--k, var(--accent)) 28%, transparent);
+}
+.fbadge svg.icon {
+  width: 16px;
+  height: 16px;
+}
+.fbadge.k-doc { --k: #4f8ef7; }
+.fbadge.k-arc { --k: #e2a03f; }
+.fbadge.k-img { --k: #3fb68b; }
+.fbadge.k-vid { --k: #d65db1; }
+.fbadge.k-aud { --k: #9b7cf6; }
+.fbadge.k-app { --k: #e5604d; }
+.fbadge.k-code { --k: #43b3c9; }
+.fbadge.k-other { --k: var(--ink-3); }

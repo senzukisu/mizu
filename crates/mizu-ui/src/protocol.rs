@@ -128,6 +128,8 @@ pub enum Command {
     ShieldToggleSite { enabled: bool },
     DownloadAction { id: u64, action: DownloadAction },
     DownloadsClear,
+    /// Opens the folder downloads are saved to.
+    DownloadsOpenFolder,
 
     // ── Data for internal pages ──────────────────────────────
     GetSettings,

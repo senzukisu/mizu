@@ -880,6 +880,38 @@ dialog .actions {
 }
 
 /* ── Downloads ───────────────────────────────────────────────── */
+.dl-day {
+  padding: 14px 20px 6px;
+  font: 600 13px/1.3 var(--font);
+  color: var(--ink-3);
+}
+.dl-day:not(:first-child) {
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+}
+.dl-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px 16px;
+  border-radius: var(--r-lg);
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 500;
+}
+.dl-summary[hidden] {
+  display: none;
+}
+.dl-summary svg.icon {
+  color: var(--accent);
+}
+.page-head .btn svg.icon {
+  width: 15px;
+  height: 15px;
+  margin-right: 6px;
+  vertical-align: -2px;
+}
 .dl-row {
   padding-top: 12px;
   padding-bottom: 12px;
@@ -925,7 +957,8 @@ dialog .actions {
     transform: translateX(340%);
   }
 }
-.u.err {
+.u.err,
+.u .err {
   color: var(--danger) !important;
 }
 
@@ -1700,3 +1733,30 @@ kbd {
   background: linear-gradient(90deg, #ff2d55, #ff8a3c);
   color: #fff;
 }
+
+/* File type badges (downloads). */
+.fbadge {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font: 700 10px/1 var(--font);
+  letter-spacing: 0.02em;
+  color: var(--k, var(--accent));
+  background: color-mix(in srgb, var(--k, var(--accent)) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--k, var(--accent)) 28%, transparent);
+}
+.fbadge svg.icon {
+  width: 16px;
+  height: 16px;
+}
+.fbadge.k-doc { --k: #4f8ef7; }
+.fbadge.k-arc { --k: #e2a03f; }
+.fbadge.k-img { --k: #3fb68b; }
+.fbadge.k-vid { --k: #d65db1; }
+.fbadge.k-aud { --k: #9b7cf6; }
+.fbadge.k-app { --k: #e5604d; }
+.fbadge.k-code { --k: #43b3c9; }
+.fbadge.k-other { --k: var(--ink-3); }

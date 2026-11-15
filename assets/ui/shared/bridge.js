@@ -97,6 +97,23 @@ function formatDuration(sec) {
   return `${Math.floor(sec / 3600)} h ${Math.round((sec % 3600) / 60)} min`;
 }
 
+// File type badge for downloads: the extension on a colour that says what kind of file it is.
+const FILE_KINDS = [
+  ['doc', /^(pdf|docx?|odt|rtf|txt|md|xlsx?|ods|csv|pptx?|odp|epub)$/],
+  ['arc', /^(zip|rar|7z|tar|gz|tgz|bz2|xz|zst|cab|iso)$/],
+  ['img', /^(png|jpe?g|gif|webp|avif|bmp|svg|ico|heic|tiff?)$/],
+  ['vid', /^(mp4|mkv|webm|mov|avi|wmv|m4v|flv)$/],
+  ['aud', /^(mp3|flac|wav|ogg|opus|m4a|aac|wma)$/],
+  ['app', /^(exe|msi|msix|appx|bat|cmd|ps1|apk|dmg|jar)$/],
+  ['code', /^(js|ts|json|html?|css|py|rs|c|cpp|h|java|go|xml|ya?ml|toml|sh)$/],
+];
+function fileBadge(name) {
+  const m = /\.([a-z0-9]{1,8})$/i.exec(name || '');
+  const ext = m ? m[1].toLowerCase() : '';
+  const kind = (FILE_KINDS.find(([, re]) => re.test(ext)) || ['other'])[0];
+  return h('div', { class: `fbadge k-${kind}`, translate: 'no', title: ext ? ext.toUpperCase() : '' }, ext ? ext.slice(0, 4).toUpperCase() : icon('file'));
+}
+
 function hostOf(url) {
   try {
     return new URL(url).hostname.replace(/^www\./, '');

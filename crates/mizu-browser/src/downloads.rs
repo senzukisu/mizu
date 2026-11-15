@@ -22,6 +22,8 @@ pub struct DownloadItem {
     /// Bytes per second (exponentially smoothed).
     pub speed: f64,
     sample: (Instant, i64),
+    /// When the download started (ms since the epoch), for grouping by day.
+    pub started: i64,
 }
 
 #[derive(Default)]
@@ -110,6 +112,7 @@ impl Downloads {
                 private: false,
                 speed: 0.0,
                 sample: (Instant::now(), r.received_bytes),
+                started: r.started_at,
             })
             .collect();
         Self { items, dirty: true, urgent: true }
@@ -140,6 +143,7 @@ impl Downloads {
                 private,
                 speed: 0.0,
                 sample: (Instant::now(), info.received),
+                started: mizu_storage::now_ms(),
             },
         );
         self.dirty = true;
@@ -228,6 +232,7 @@ impl Downloads {
                         "live": i.op.is_some(),
                         "exists": i.state == DownloadState::Completed && Path::new(&i.path).exists(),
                         "private": i.private,
+                        "started": i.started,
                     })
                 })
                 .collect(),

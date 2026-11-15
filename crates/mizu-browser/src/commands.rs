@@ -560,6 +560,12 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             crate::internal::download_action(app, window, id, action);
             ok()
         }
+        Command::DownloadsOpenFolder => {
+            let dir = &app.settings.downloads.directory;
+            let dir = if dir.trim().is_empty() { crate::downloads::default_dir() } else { std::path::PathBuf::from(dir) };
+            crate::win::shell_open(&dir.to_string_lossy());
+            ok()
+        }
         Command::DownloadsClear => {
             let storage = Some(&app.storage);
             app.downloads.clear_finished(storage);

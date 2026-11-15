@@ -168,13 +168,21 @@ function downloadRow(d, compact) {
     meta.append(h('div', { class: `bar${d.total > 0 ? '' : ' indeterminate'}` }, h('div', { style: { width: `${pct}%` } })));
   }
   meta.append(h('div', { class: `status${failed ? ' err' : ''}`, text: downloadStatus(d) }));
-  return h('div', { class: 'dl' }, h('div', { class: 'ficon' }, icon('file')), meta, compact ? acts : acts);
+  const row = h('div', { class: `dl${d.state === 'completed' && d.exists ? ' openable' : ''}`, title: d.state === 'completed' && d.exists ? 'Open' : '' }, fileBadge(d.file || d.url), meta, acts);
+  if (d.state === 'completed' && d.exists) row.addEventListener('click', () => mizu.send('download_action', { id: d.id, action: 'open' }));
+  return row;
 }
 
 function renderDownloads(items) {
   const list = (items || []).slice(0, 7);
-  const panel = h('div', { class: 'panel' }, h('h2', null, h('span', { class: 'grow', text: 'Downloads' })));
-  if (!list.length) panel.append(h('div', { class: 'empty', text: 'Nothing downloaded yet.' }));
+  const folder = h('button', { class: 'icon-btn', title: 'Open downloads folder' }, icon('folder'));
+  folder.addEventListener('click', () => {
+    mizu.send('downloads_open_folder');
+    close();
+  });
+  const active = (items || []).filter((d) => d.state === 'in_progress').length;
+  const panel = h('div', { class: 'panel dl-panel' }, h('h2', null, h('span', { class: 'grow', text: 'Downloads' }), active ? h('span', { class: 'pill', text: `${active} active` }) : null, folder));
+  if (!list.length) panel.append(h('div', { class: 'empty' }, icon('download', { size: 22 }), h('div', { text: 'Nothing downloaded yet.' })));
   for (const d of list) panel.append(downloadRow(d, true));
   const all = h('button', { class: 'link', text: 'All downloads' });
   all.addEventListener('click', () => open('mizu://downloads/'));
