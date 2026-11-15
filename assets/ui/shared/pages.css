@@ -461,7 +461,7 @@ dialog .actions {
 .nt {
   position: relative;
   z-index: 1;
-  max-width: 680px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 14vh 24px 40px;
   display: flex;
@@ -484,6 +484,7 @@ dialog .actions {
 }
 .nt-search {
   width: 100%;
+  max-width: 632px;
   height: 54px;
   display: flex;
   align-items: center;
@@ -1760,3 +1761,140 @@ kbd {
 .fbadge.k-app { --k: #e5604d; }
 .fbadge.k-code { --k: #43b3c9; }
 .fbadge.k-other { --k: var(--ink-3); }
+
+/* ── New tab: backgrounds, customize, tile drag ─────────────── */
+body[data-ntbg='dawn'] {
+  background: radial-gradient(120% 80% at 20% 0%, color-mix(in srgb, #f59e6b 22%, transparent), transparent 60%), radial-gradient(100% 70% at 90% 100%, color-mix(in srgb, #f472b6 16%, transparent), transparent 60%), var(--frame);
+}
+body[data-ntbg='dusk'] {
+  background: radial-gradient(120% 80% at 80% 0%, color-mix(in srgb, #8b5cf6 24%, transparent), transparent 60%), radial-gradient(100% 70% at 10% 100%, color-mix(in srgb, #f43f5e 14%, transparent), transparent 60%), var(--frame);
+}
+body[data-ntbg='aurora'] {
+  background: radial-gradient(120% 70% at 30% 0%, color-mix(in srgb, #34d399 20%, transparent), transparent 60%), radial-gradient(90% 70% at 85% 30%, color-mix(in srgb, #22d3ee 16%, transparent), transparent 60%), var(--frame);
+}
+body[data-ntbg='sea'] {
+  background: radial-gradient(120% 80% at 50% 110%, color-mix(in srgb, #2f7de1 26%, transparent), transparent 60%), radial-gradient(80% 60% at 0% 0%, color-mix(in srgb, #38bdf8 12%, transparent), transparent 60%), var(--frame);
+}
+body[data-ntbg] {
+  background-attachment: fixed;
+}
+.nt-customize {
+  position: fixed;
+  right: 18px;
+  bottom: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--ink-2);
+  font: 500 13px/1 var(--font);
+  backdrop-filter: blur(8px);
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.nt-customize:hover {
+  color: var(--ink);
+  border-color: var(--accent-line, var(--accent));
+}
+.nt-custom {
+  width: 420px;
+  padding: 22px 22px 18px;
+}
+.nt-sub {
+  margin: 6px 0 10px;
+  color: var(--ink-3);
+  font: 600 12px/1.3 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.nt-swatches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.nt-swatch {
+  position: relative;
+  height: 64px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: flex-end;
+  padding: 8px 10px;
+  color: #fff;
+  font: 600 12.5px/1 var(--font);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.45);
+  cursor: pointer;
+  background: var(--surface-2);
+  transition: transform var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast);
+}
+.nt-swatch:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-2);
+}
+.nt-swatch.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.nt-swatch.bg-none {
+  color: var(--ink-2);
+  text-shadow: none;
+}
+.nt-sw-check {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #fff;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity var(--t-fast), transform var(--t-fast);
+}
+.nt-swatch.on .nt-sw-check {
+  opacity: 1;
+  transform: none;
+}
+.nt-swatch.bg-wave { background: radial-gradient(120% 70% at 30% 100%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 70%), #1b2230; }
+.nt-swatch.bg-dawn { background: linear-gradient(135deg, #b8704d, #a5507a); }
+.nt-swatch.bg-dusk { background: linear-gradient(135deg, #6a46c4, #8f2f4f); }
+.nt-swatch.bg-aurora { background: linear-gradient(135deg, #23926e, #1f7f95); }
+.nt-swatch.bg-sea { background: linear-gradient(180deg, #1b2a44, #2a6cc4); }
+.nt-checks {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.nt-check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  font-size: 14px;
+  color: var(--ink);
+}
+.nt-check + .nt-check {
+  border-top: 1px solid var(--line);
+}
+.nt-custom .row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+.nt-tile.dragging {
+  opacity: 0.4;
+}
+.nt-tile.drop {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-md);
+}

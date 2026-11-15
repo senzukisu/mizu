@@ -116,6 +116,26 @@ function tiles() {
       mizu.request('shortcut_delete', { id: s.id }).then(load);
     });
     a.append(h('div', { class: 'nt-tile-acts' }, edit, del));
+    // Drag a tile onto another to put it there.
+    a.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/x-mizu-shortcut', String(s.id));
+      e.dataTransfer.effectAllowed = 'move';
+      a.classList.add('dragging');
+    });
+    a.addEventListener('dragend', () => a.classList.remove('dragging'));
+    a.addEventListener('dragover', (e) => {
+      if (!e.dataTransfer.types.includes('text/x-mizu-shortcut')) return;
+      e.preventDefault();
+      a.classList.add('drop');
+    });
+    a.addEventListener('dragleave', () => a.classList.remove('drop'));
+    a.addEventListener('drop', (e) => {
+      e.preventDefault();
+      a.classList.remove('drop');
+      const id = Number(e.dataTransfer.getData('text/x-mizu-shortcut'));
+      const index = (data.top || []).findIndex((x) => x.id === s.id);
+      if (id && id !== s.id && index >= 0) mizu.request('shortcut_move', { id, index }).then(load);
+    });
     box.append(a);
   }
   if (!info.private) {
@@ -150,7 +170,8 @@ function render() {
       searchForm(),
     );
   } else {
-    content.append(h('div', { class: 'nt-hello' }, clock, date), searchForm());
+    if (data.clock !== false) content.append(h('div', { class: 'nt-hello' }, clock, date));
+    content.append(searchForm());
   }
 
   if (data.crashed && data.restorable > 0) {
@@ -165,6 +186,8 @@ function render() {
 
   if (!isPrivate && data.engines) {
     content.append(tiles());
+  }
+  if (!isPrivate && data.engines && data.shield_stats !== false) {
     const stats = h('a', { class: 'nt-stats', href: '#' }, icon('shield-check', { size: 16 }), h('span', { text: `${Number(data.blocked_lifetime || 0)} ads and trackers blocked by Mizu Shield` }));
     stats.addEventListener('click', (e) => {
       e.preventDefault();
@@ -172,7 +195,49 @@ function render() {
     });
     content.append(stats);
   }
-  main.replaceChildren(content, h('div', { class: 'nt-wave', 'aria-hidden': 'true' }));
+  const bg = data.background || 'wave';
+  document.body.dataset.ntbg = isPrivate ? 'wave' : bg;
+  main.replaceChildren(...[content, bg === 'wave' || isPrivate ? h('div', { class: 'nt-wave', 'aria-hidden': 'true' }) : null, !isPrivate && data.engines ? customizeButton() : null].filter(Boolean));
+}
+
+// Customize: background, clock, Shield counter. Saved right away.
+const BACKGROUNDS = [
+  ['wave', 'Wave'],
+  ['dawn', 'Dawn'],
+  ['dusk', 'Dusk'],
+  ['aurora', 'Aurora'],
+  ['sea', 'Sea'],
+  ['none', 'None'],
+];
+function customizeButton() {
+  const btn = h('button', { class: 'nt-customize', title: 'Customize' }, icon('edit', { size: 15 }), h('span', { text: 'Customize' }));
+  btn.addEventListener('click', () => {
+    const prefs = { background: data.background || 'wave', clock: data.clock !== false, shield_stats: data.shield_stats !== false };
+    const save = () => {
+      Object.assign(data, prefs);
+      mizu.request('newtab_prefs', prefs).then(render);
+    };
+    const swatches = h('div', { class: 'nt-swatches' }, ...BACKGROUNDS.map(([id, label]) => {
+      const b = h('button', { class: `nt-swatch bg-${id}${prefs.background === id ? ' on' : ''}`, title: label }, h('span', { class: 'nt-sw-check' }, icon('check', { size: 12 })), h('span', { class: 'nt-sw-label', text: label }));
+      b.addEventListener('click', () => {
+        prefs.background = id;
+        for (const x of swatches.children) x.classList.toggle('on', x === b);
+        save();
+      });
+      return b;
+    }));
+    const check = (label, key) => h('div', { class: 'nt-check' }, h('span', { text: label }), switchInput(prefs[key], (v) => {
+      prefs[key] = v;
+      save();
+    }, { label }));
+    const done = h('button', { class: 'btn primary', text: 'Done' });
+    const dlg = h('dialog', { class: 'nt-custom' }, h('h3', { text: 'Customize new tab' }), h('div', { class: 'nt-sub', text: 'Background' }), swatches, h('div', { class: 'nt-sub', text: 'Show on the page' }), h('div', { class: 'nt-checks' }, check('Clock and greeting', 'clock'), check('Mizu Shield counter', 'shield_stats')), h('div', { class: 'row' }, done));
+    done.addEventListener('click', () => dlg.close());
+    dlg.addEventListener('close', () => dlg.remove());
+    document.body.append(dlg);
+    dlg.showModal();
+  });
+  return btn;
 }
 
 function load() {
@@ -182,6 +247,7 @@ function load() {
       data = d || {};
       if (!engineId) engineId = data.engine_id;
       render();
+      if (location.hash === '#customize') document.querySelector('.nt-customize')?.click();
     })
     .catch(() => render());
 }

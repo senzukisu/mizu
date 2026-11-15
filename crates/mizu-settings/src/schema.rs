@@ -168,6 +168,10 @@ pub struct AppearanceSettings {
     pub sidebar_collapsed: bool,
     /// Vertical tabs sidebar width in CSS pixels (resizable by dragging its edge).
     pub sidebar_width: u32,
+    /// New tab page background: "wave" (default), "none", "dawn", "dusk", "aurora", "sea".
+    pub newtab_background: String,
+    pub newtab_clock: bool,
+    pub newtab_shield_stats: bool,
 }
 
 impl Default for AppearanceSettings {
@@ -186,6 +190,9 @@ impl Default for AppearanceSettings {
             tab_layout: "top".into(),
             sidebar_collapsed: false,
             sidebar_width: 252,
+            newtab_background: "wave".into(),
+            newtab_clock: true,
+            newtab_shield_stats: true,
         }
     }
 }

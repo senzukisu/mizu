@@ -38,6 +38,18 @@ impl Storage {
         Ok(())
     }
 
+    /// Moves a shortcut to `index` (0-based, clamped) and renumbers the list.
+    pub fn move_shortcut(&self, id: i64, index: usize) -> Result<()> {
+        let mut ids: Vec<i64> = self.shortcuts()?.into_iter().map(|s| s.id).collect();
+        let from = ids.iter().position(|&x| x == id).ok_or(StorageError::NotFound)?;
+        ids.remove(from);
+        ids.insert(index.min(ids.len()), id);
+        for (pos, id) in ids.iter().enumerate() {
+            self.conn().execute("UPDATE shortcuts SET position = ?2 WHERE id = ?1", params![id, pos as i64])?;
+        }
+        Ok(())
+    }
+
     pub fn delete_shortcut(&self, id: i64) -> Result<()> {
         self.conn().execute("DELETE FROM shortcuts WHERE id = ?1", [id])?;
         Ok(())
@@ -57,7 +69,10 @@ mod tests {
         assert!(s.bookmark_children(BOOKMARKS_BAR_ID).unwrap().is_empty());
         s.update_shortcut(id, "Twitch TV", "https://www.twitch.tv/").unwrap();
         assert_eq!(s.shortcuts().unwrap()[0].title, "Twitch TV");
+        let third = s.add_shortcut("Mail", "https://mail.example.com/").unwrap();
+        s.move_shortcut(third, 0).unwrap();
+        assert_eq!(s.shortcuts().unwrap()[0].id, third);
         s.delete_shortcut(id).unwrap();
-        assert_eq!(s.shortcuts().unwrap().len(), 1);
+        assert_eq!(s.shortcuts().unwrap().len(), 2);
     }
 }

@@ -183,6 +183,21 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             app.storage.update_shortcut(id, &title, &url).map_err(storage_err)?;
             ok()
         }
+        Command::ShortcutMove { id, index } => {
+            app.storage.move_shortcut(id, index).map_err(storage_err)?;
+            ok()
+        }
+        Command::NewtabPrefs { background, clock, shield_stats } => {
+            const BACKGROUNDS: &[&str] = &["wave", "none", "dawn", "dusk", "aurora", "sea"];
+            let a = &mut app.settings.appearance;
+            if BACKGROUNDS.contains(&background.as_str()) {
+                a.newtab_background = background;
+            }
+            a.newtab_clock = clock;
+            a.newtab_shield_stats = shield_stats;
+            app.persist_settings();
+            ok()
+        }
         Command::ShortcutDelete { id } => {
             app.storage.delete_shortcut(id).map_err(storage_err)?;
             ok()
@@ -401,6 +416,9 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 "engine": app.settings.search.active_engine().name,
                 "engine_id": app.settings.search.active_engine().id,
                 "engines": engines,
+                "background": app.settings.appearance.newtab_background,
+                "clock": app.settings.appearance.newtab_clock,
+                "shield_stats": app.settings.appearance.newtab_shield_stats,
             }))
         }
         Command::UpdateCheck => {

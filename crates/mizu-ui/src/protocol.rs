@@ -165,6 +165,9 @@ pub enum Command {
     ShortcutAdd { title: String, url: String },
     ShortcutUpdate { id: i64, title: String, url: String },
     ShortcutDelete { id: i64 },
+    ShortcutMove { id: i64, index: usize },
+    /// New tab look, from its Customize panel.
+    NewtabPrefs { background: String, clock: bool, shield_stats: bool },
     DownloadsGet,
     ClearData(ClearDataRequest),
     PermissionsGet,
