@@ -80,6 +80,21 @@ const MIGRATIONS: &[&str] = &[
     CREATE INDEX logins_origin ON logins(origin);
     CREATE TABLE login_never (origin TEXT PRIMARY KEY);
     "#,
+    // 3 – new tab shortcuts get their own list (they used to be the bookmarks bar).
+    // The bar's links are copied once so nobody loses their tiles.
+    r#"
+    CREATE TABLE shortcuts (
+        id         INTEGER PRIMARY KEY,
+        title      TEXT NOT NULL,
+        url        TEXT NOT NULL,
+        position   INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+    );
+    INSERT INTO shortcuts (title, url, position, created_at)
+        SELECT title, url, position, created_at FROM bookmarks
+        WHERE parent_id = 1 AND kind = 'url' AND url IS NOT NULL
+        ORDER BY position LIMIT 24;
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {
@@ -110,5 +125,24 @@ mod tests {
         run(&mut conn).unwrap();
         let v: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
         assert_eq!(v as usize, MIGRATIONS.len());
+    }
+
+    #[test]
+    fn bar_links_become_new_tab_shortcuts_once() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        for sql in &MIGRATIONS[..2] {
+            conn.execute_batch(sql).unwrap();
+        }
+        conn.pragma_update(None, "user_version", 2).unwrap();
+        conn.execute_batch(
+            "INSERT INTO bookmarks (parent_id, kind, title, url, position, created_at) VALUES
+                (1, 'url', 'Twitch', 'https://twitch.tv/', 0, 0),
+                (2, 'url', 'Other', 'https://example.com/', 0, 0);",
+        )
+        .unwrap();
+        run(&mut conn).unwrap();
+        let titles: Vec<String> =
+            conn.prepare("SELECT title FROM shortcuts").unwrap().query_map([], |r| r.get(0)).unwrap().map(Result::unwrap).collect();
+        assert_eq!(titles, ["Twitch"]);
     }
 }

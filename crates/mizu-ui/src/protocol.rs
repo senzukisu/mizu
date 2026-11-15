@@ -148,6 +148,10 @@ pub enum Command {
         remember: bool,
     },
     BookmarkDelete { id: i64 },
+    /// New tab shortcuts (their own list, not bookmarks).
+    ShortcutAdd { title: String, url: String },
+    ShortcutUpdate { id: i64, title: String, url: String },
+    ShortcutDelete { id: i64 },
     DownloadsGet,
     ClearData(ClearDataRequest),
     PermissionsGet,

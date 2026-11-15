@@ -17,12 +17,14 @@ mod logins;
 mod migrations;
 mod permissions;
 mod session;
+mod shortcuts;
 
 pub use bookmarks::{BOOKMARKS_BAR_ID, Bookmark, BookmarkKind, OTHER_BOOKMARKS_ID};
 pub use downloads::{DownloadRecord, DownloadState};
 pub use history::{HistoryEntry, TimeRange};
 pub use logins::Login;
 pub use permissions::{PermissionRecord, PermissionState};
+pub use shortcuts::Shortcut;
 
 use rusqlite::Connection;
 use std::path::{Path, PathBuf};

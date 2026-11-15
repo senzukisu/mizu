@@ -178,6 +178,15 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             mark_all_dirty(app);
             ok()
         }
+        Command::ShortcutAdd { title, url } => data(app.storage.add_shortcut(&title, &url).map_err(storage_err)?),
+        Command::ShortcutUpdate { id, title, url } => {
+            app.storage.update_shortcut(id, &title, &url).map_err(storage_err)?;
+            ok()
+        }
+        Command::ShortcutDelete { id } => {
+            app.storage.delete_shortcut(id).map_err(storage_err)?;
+            ok()
+        }
         Command::BookmarkDelete { id } => {
             app.storage.delete_bookmark(id).map_err(storage_err)?;
             mark_all_dirty(app);
@@ -355,18 +364,14 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             "auto_update": app.settings.general.auto_update,
         })),
         Command::NewtabData => {
-            // Speed dial = bookmarks on the bookmarks bar (folders skipped).
+            // Speed dial: the new tab's own shortcuts (separate from the bookmarks bar).
             let top: Vec<Value> = app
                 .storage
-                .bookmark_children(mizu_storage::BOOKMARKS_BAR_ID)
+                .shortcuts()
                 .unwrap_or_default()
                 .into_iter()
-                .filter(|b| b.kind == mizu_storage::BookmarkKind::Url)
                 .take(24)
-                .map(|b| {
-                    let url = b.url.unwrap_or_default();
-                    json!({ "id": b.id, "url": url, "title": b.title, "host": mizu_core::omnibox::host_of(&url) })
-                })
+                .map(|s| json!({ "id": s.id, "url": s.url, "title": s.title, "host": mizu_core::omnibox::host_of(&s.url) }))
                 .collect();
             let engines: Vec<Value> = app
                 .settings

@@ -1,4 +1,4 @@
-// New tab page: search (with engine switch), bookmark tiles with "+", Shield.
+// New tab page: search (with engine switch), shortcut tiles with "+", Shield.
 'use strict';
 
 const main = document.getElementById('main');
@@ -74,8 +74,8 @@ function tileDialog(tile) {
       if (!/^[a-z][\w+.-]*:/i.test(u)) u = `https://${u}`;
       const name = title.value.trim() || hostOf(u) || u;
       try {
-        if (tile) await mizu.request('bookmark_update', { id: tile.id, title: name, url: u });
-        else await mizu.request('bookmark_add', { parent: 1, title: name, url: u });
+        if (tile) await mizu.request('shortcut_update', { id: tile.id, title: name, url: u });
+        else await mizu.request('shortcut_add', { title: name, url: u });
         dlg.close();
         load();
       } catch (e) {
@@ -113,7 +113,7 @@ function tiles() {
     del.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      mizu.request('bookmark_delete', { id: s.id }).then(load);
+      mizu.request('shortcut_delete', { id: s.id }).then(load);
     });
     a.append(h('div', { class: 'nt-tile-acts' }, edit, del));
     box.append(a);
