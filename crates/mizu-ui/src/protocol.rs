@@ -384,6 +384,10 @@ impl Event {
     }
 }
 
+fn yes() -> bool {
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -418,8 +422,4 @@ mod tests {
         let j = Event::Reply { rid: 1, ok: true, data: Value::Null, error: None }.to_json();
         assert_eq!(j, r#"{"type":"reply","rid":1,"ok":true}"#);
     }
-}
-
-fn yes() -> bool {
-    true
 }
