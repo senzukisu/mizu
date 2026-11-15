@@ -37,8 +37,9 @@
 | | |
 |---|---|
 | **Engine** | Microsoft Edge WebView2 (current Chromium), updated by Windows; hardware video decoding, H.264/AAC, AV1 |
-| **Tabs** | Top strip or a resizable, collapsible sidebar; pin, mute, duplicate, unload; reopen closed tabs; sessions restored after restarts and crashes |
-| **Address bar** | Searches and addresses; suggestions from history, bookmarks and (optionally) your search engine; `@keyword` engines |
+| **Tabs** | Top strip or a resizable, collapsible sidebar with pinned sites as an icon grid; pin, mute, duplicate, unload; reopen closed tabs; sessions (and sign-ins) restored after restarts and crashes |
+| **Address bar** | Searches and addresses; suggestions from history, bookmarks, open tabs and (optionally) your search engine; `@keyword` engines; a calculator; find on page (Ctrl+F) |
+| **Cookies & apps** | Third-party cookies blocked; a site's cookies and "Clear site data" in the lock icon; links to Steam, Telegram, Zoom and mail open their app after asking |
 | **Mizu Shield** | uBlock Origin / EasyList syntax: network rules, `$redirect`, `$removeparam`, element hiding, scriptlets; tracking prevention; Global Privacy Control |
 | **Passwords** | Save-after-sign-in prompt, fill from the address bar, CSV import/export (Chrome, Edge, Firefox, Opera, Brave, Vivaldi, Bitwarden) |
 | **Mizu Scripts** | Tampermonkey-style userscripts from Greasy Fork, GitHub, GitLab and more; automatic updates; run only on the sites you choose |

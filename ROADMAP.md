@@ -13,8 +13,8 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 | Version | Name | Focus | Status |
 |---|---|---|---|
 | 0.1.x | — | First releases: Shield, passwords, scripts, vertical tabs, visual hosting, auto-updates | ✅ Released |
-| **0.2** | Clear Water | Fixes and polish, cookies, opening links in apps, faster loading | 🔜 Next |
-| 0.3 | Currents | Spaces, tab groups, focus mode, quick actions | Planned |
+| 0.2 | Clear Water | Cookies, links to apps, find bar, pinned sidebar tabs, polish | ✅ Released |
+| **0.3** | Currents | Import, spaces and tab groups, faster loading, Shield per site, accessibility | 🔜 Next |
 | 0.4 | Deep Water | Privacy and data: fingerprinting defence, backups | Planned |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
 | 0.6 | Estuary | Built-in tools: PDF, translation, media hub | Planned |
@@ -38,80 +38,68 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 
 ---
 
-## 0.2 — "Clear Water": polish and trust
+## 0.2 — "Clear Water" ✅
 
-**Goal:** make Mizu comfortable as the default browser. Fix what gets in the way every day, and add what people
-miss most.
+Released 2026-11-15. What it brought (details in the [changelog](CHANGELOG.md)):
 
-**Fixes**
-- **The address bar lags when switching tabs.** It must show the new tab's address, security icon and buttons
-  immediately, in the same frame as the tab switch.
-- **Page loading feels slow.** The plan:
-  - start navigation without waiting for the UI;
-  - preconnect to the address being typed;
-  - show a clearer progress bar;
-  - restore background tabs gradually instead of all at once.
-- Text and wording across the interface and both languages: consistent terms, shorter descriptions, no leftover
-  English in the Russian UI.
+- **Cookies:** session cookies survive a restart, third-party cookies blocked by default, a site's cookies in the
+  lock icon with "Clear site data".
+- **Links to apps** (`steam:`, `tg:`, `zoom:`, `mailto:`…) with a prompt, "always allow" per site and a list in
+  Settings.
+- **Find on page** in Mizu's own bar.
+- **Pinned tabs in the sidebar** as an icon grid with drag to pin; pinned tabs remember their page.
+- **Address bar:** calculator, "switch to tab"; the address updates in the same frame as a tab switch.
+- **New tab:** its own shortcuts (separate from the bookmarks bar), drag to reorder, backgrounds, Customize panel.
+- **Settings search**, a restart button, calmer cards; **downloads** grouped by day with file-type badges; a renewed
+  **About Mizu** with "What's new".
 
-**Features**
-- **Cookies:**
-  - cookies and site storage are reliably kept between sessions, so sites remember your sign-ins and their own
-    settings (language, theme, cookie-banner choices, player volume and so on); they are cleared only when you ask;
-  - block third-party cookies everywhere or per site;
-  - a cookie list per site, with delete;
-  - "keep me signed in" exceptions;
-  - optional automatic cleanup of sites you haven't visited in N days.
-- **Open links in apps.**
-  - Links like `steam://`, `zoom://`, `tg://` and `mailto:` open in their program, with a clear prompt and an
-    "always allow for this site" option. Allowed apps can be managed in Settings.
-  - "Open with…" for downloaded files and for media links, for example a video in a player.
-- **Pinned tabs in the sidebar:**
-  - pinned tabs as a compact icon grid at the top of the sidebar;
-  - drag to pin and unpin;
-  - pinned tabs keep their site when you navigate away (one click returns to the pinned address).
-- **Address bar:**
-  - richer suggestions (open tabs, "switch to tab", calculator);
-  - an edit-and-copy friendly URL view;
-  - clearer site information.
-- **New tab page:** rearrange and rename tiles, folders on the page, optional wallpaper, and a quick-settings
-  button.
-- **About Mizu:** release notes for the installed version, links to the guide and changelog, and a lighter
-  animation for slower PCs.
-- **Find bar** in Mizu's style (Ctrl+F) instead of the engine's.
-- **Import from other browsers** (Chrome, Edge, Firefox, Opera, Brave, Vivaldi): bookmarks, history and search
-  engines, with a preview.
-  - Passwords come only from the browsers' own CSV export; Mizu never decrypts other browsers' stores.
-- **Shield:** generic and procedural cosmetic filters, plus a per-site page that gathers zoom, permissions, Shield
-  and cookies.
-- **Accessibility:** screen reader support for visually hosted pages (Mizu's own UI Automation provider).
+Moved to 0.3: import from other browsers, Shield cosmetic filters and the per-site page, the UI Automation provider,
+loading improvements, "Open with…", automatic cookie cleanup, CI, updater rollback and the beta channel, crash reports.
+
+## 0.3 — "Currents": your own browser, organised
+
+**Goal:** move in from another browser in a minute, keep many tasks apart, and feel faster.
+
+**Move in**
+- **Import from other browsers** (Chrome, Edge, Firefox, Opera, Brave, Vivaldi): bookmarks, history, search engines
+  and open tabs, with a preview of what will be imported.
+  - Passwords only from the browsers' own CSV export; Mizu never decrypts other browsers' stores.
+- **"Open with…"** for downloaded files and media links (for example a video in your player).
+
+**Organise**
+- **Spaces:** named tab sets (Work, Study, Play) with a colour and an icon; each restores separately.
+- **Tab groups** in both layouts, and **tree tabs** in the sidebar (tabs opened from a page sit under it).
+- **Split view:** two tabs side by side.
+- **New tab:** folders of shortcuts and your own picture as the background.
+- **Quick actions** in the address bar: `>` commands ("clear cookies for this site", "mute all tabs") and unit
+  conversion. Everything is computed locally.
+
+**Faster**
+- Preconnect to the address being typed, a clearer progress bar, and background tabs restored gradually instead of
+  all at once.
+- A lighter About animation option for slower PCs.
+
+**Privacy**
+- **Shield per site:** one page that gathers a site's zoom, permissions, Shield state, cookies and storage, plus
+  generic and procedural cosmetic filters.
+- **Automatic cookie cleanup** for sites you haven't visited in N days, with "keep me signed in" exceptions.
+
+**Accessibility**
+- Screen reader support for visually hosted pages (Mizu's own UI Automation provider), full keyboard navigation of
+  the sidebar and panels.
 
 **Technical work**
-- Integration tests that drive the real UI, and CI (tests, Clippy, UI script checks).
-- Updater hardening: roll back if a new version fails to start, plus a beta channel.
-- A code-signed installer (Authenticode).
-- Local crash reports, which are never uploaded automatically.
+- CI: tests, Clippy and UI script checks on every push; integration tests that drive the real interface.
+- Updater: roll back if a new version fails to start, and a beta channel.
+- A code-signed installer (Authenticode) and local crash reports (never uploaded automatically).
+- Tree tab model and session format v2 with a tested migration.
 
 **Done when:**
-- switching tabs updates the address bar in the same frame;
-- a cold start to the first page is under 400 ms on a mid-range laptop;
-- the updater survives forced failures (bad signature, interrupted download, failed start);
-- a week of daily use brings no crash reports.
-
-## 0.3 — "Currents": spaces and focus
-
-**Goal:** keep many tasks apart without losing tabs.
-
-- **Spaces:** named tab sets (Work, Study, Play) with their own colour and icon. Each space restores separately.
-- **Tab groups** in both layouts, and **tree tabs** in the sidebar (tabs opened from a page sit under it).
-- **Focus mode:** hides the interface until you hover, and holds back site notifications.
-- **Quick actions** in the address bar: `>` commands ("clear cookies for this site", "mute all tabs"), calculator
-  and unit conversion. Everything is computed locally.
-- **Split view:** two tabs side by side.
-
-**Technical:** a tree tab model and session format v2 with a tested migration.
-
-**Done when:** a 300-tab session restores in under a second, and the migration is verified on real profiles.
+- importing from Chrome and Firefox keeps every bookmark and folder, verified on real profiles;
+- a 300-tab session restores in under a second, and a cold start to the first page is under 400 ms on a mid-range
+  laptop;
+- NVDA and Narrator read pages and the interface;
+- the updater survives forced failures (bad signature, interrupted download, failed start).
 
 ## 0.4 — "Deep Water": privacy and data
 

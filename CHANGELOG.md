@@ -3,6 +3,45 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-11-15 · "Clear Water"
+
+### Added
+- **Cookies you can trust:**
+  - with "Continue where I left off", session cookies are kept (encrypted with your Windows account), so sites stay
+    signed in after a restart;
+  - **third-party cookies are blocked** by default (Settings → Privacy); embedded ads and trackers can no longer set or
+    read cookies;
+  - the lock icon shows a site's cookies, and **Clear site data** removes its cookies and storage, then reloads it.
+- **Links open apps:** `steam:`, `tg:`, `zoom:`, `mailto:` and other app links work. Mizu asks first and can always
+  allow a site; allowed sites are listed in Settings → Privacy. Dangerous schemes stay blocked.
+- **Find on page** (Ctrl+F) in Mizu's own bar: match counter, previous/next (Enter, Shift+Enter, F3), match case, Esc
+  to close.
+- **Pinned tabs in the sidebar:** a grid of icons above the list. Drag a tab up to pin it and down to unpin it. A
+  pinned tab remembers its page: after you browse elsewhere its icon gets a dashed outline, and the tab menu offers
+  "Back to pinned page" or "Pin this page instead".
+- **Address bar:** a calculator (`2+2*3`, `15% * 80`; Enter copies the answer) and "Switch to this tab" for tabs that
+  are already open, including in other windows.
+- **New tab page:** drag tiles to reorder them, and a **Customize** panel with backgrounds (Wave, Dawn, Dusk, Aurora,
+  Sea, None) and switches for the clock and the Shield counter.
+- **Settings:** search across every section (Ctrl+F or /), and a **Restart Mizu** button for changes that need a
+  restart (tabs come back).
+- **Downloads:** coloured file-type badges, grouping by day, a summary of active downloads, and buttons that open the
+  downloads folder.
+- **About Mizu:** feature tiles that open their section, a "What's new" card (`mizu://about/#new`) and a link to all
+  releases.
+
+### Changed
+- **Bookmarks bar, Other bookmarks and new tab shortcuts are three separate lists.** Ctrl+D saves to Other bookmarks
+  (or the folder you last chose), the bar shows only what you put there, and the new tab tiles have their own list.
+  Your existing tiles were copied once, so nothing disappeared.
+- The bookmarks bar no longer appears just to show "Other bookmarks".
+- Settings cards have calmer headings; the language setting is a single row.
+
+### Fixed
+- **The address bar updates immediately when you switch tabs**, in the same frame as the tab.
+- Cookies and site data are flushed properly when Mizu closes.
+- `mailto:` and other app links were refused instead of opening the app.
+
 ## [0.1.4] — 2026-11-12
 
 ### Improved

@@ -37,8 +37,13 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
   bar, the menu and the window buttons.
   - Drag the sidebar's edge to resize it; double-click the edge to reset its width.
   - The arrow at the bottom collapses it to icons.
+  - **Pinned tabs** sit at the top as a grid of icons. Drag a tab up onto the grid to pin it, and down into the list
+    to unpin it.
+  - A pinned tab remembers its page. When you browse to another site its icon gets a dashed outline; right-click it
+    for **Back to pinned page** or **Pin this page instead**.
 - **Sessions.** By default Mizu reopens your tabs when it starts. Restored tabs load only when you click them.
-  After a crash, Mizu offers to restore the session.
+  After a crash, Mizu offers to restore the session. With **Continue where I left off**, sites also stay signed in:
+  Mizu keeps their session cookies, encrypted with your Windows account.
 - **Private windows.** Ctrl+Shift+N opens one.
   - Nothing goes to history.
   - Cookies are separate from normal windows, and everything is erased when the last private window closes.
@@ -52,19 +57,32 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
 - **Search engines.** Change the default in Settings → Search or on the new tab page.
   - A keyword searches once with another engine: `@g rust` (Google), `@w water` (Wikipedia), `@gh mizu` (GitHub).
   - You can add your own engines with their own keywords.
+- **Open tabs.** Type part of a tab's title or address to get **Switch to this tab**, also for tabs in other
+  windows.
+- **Calculator.** Type `2+2*3`, `(1,5+2)^2` or `15% * 80`: the answer is the first suggestion and Enter copies it.
+- **Find on page.** Ctrl+F opens a bar under the toolbar. Enter / Shift+Enter (or F3 / Shift+F3) go to the next or
+  previous match, **Aa** matches case, Esc closes.
 - The **key** icon appears when you have a saved password for the site, and the **star** bookmarks the page.
+- The **lock** shows the connection, the site's permissions and its cookies. **Clear site data** removes the site's
+  cookies and storage (you are signed out of it) and reloads the page.
 
 ## Bookmarks, history and downloads
 
 - **Bookmarks.**
-  - Ctrl+D or the star saves a page; Ctrl+Shift+O opens the manager, where you can drag to reorder and create folders.
-  - The **bookmarks bar** appears as soon as it has a bookmark (Ctrl+Shift+B shows or hides it).
+  - Ctrl+D or the star saves a page to **Other bookmarks**. Pick another folder in the "Bookmark added" panel and new
+    bookmarks go there from then on. Ctrl+Shift+O opens the manager, where you can drag to reorder and create folders.
+  - The **bookmarks bar** shows only what you put on it and appears as soon as it has a bookmark (Ctrl+Shift+B shows
+    or hides it). **Other bookmarks** sits at its right end.
   - Right-click a bookmark on the bar to open it in a new tab, window or private window, copy its link or delete it.
-- **New tab page.** Bookmarks from the bar appear as tiles, and "+" adds one.
+- **New tab page.** Its tiles are a list of their own, separate from bookmarks. "+" adds one, the pencil edits it, and
+  you can drag tiles to reorder them. **Customize** (bottom right) picks a background and shows or hides the clock and
+  the Shield counter.
 - **History.** Ctrl+H. Search, delete single entries, or clear the last hour, day, week, month or everything.
   Settings → Privacy can also clear data when Mizu closes.
 - **Downloads.** Ctrl+J.
   - Each download shows its speed and time left, and can be paused, resumed or retried.
+  - Files are grouped by day, with a badge for their type; click a finished file to open it. The folder button opens
+    your downloads folder.
   - Settings → Downloads chooses the folder or makes Mizu ask every time.
 
 ## Mizu Shield
@@ -164,6 +182,12 @@ Userscripts in the Tampermonkey/Greasemonkey format. Open them from Menu → Scr
   - userscript and update checks;
   - the update manifest on GitHub;
   - search suggestions, if you turn them on.
+- **Third-party cookies** are blocked (Settings → Privacy, needs a restart). Turn it off only if an embedded sign-in
+  stops working.
+- **Links to apps.** When a site wants to open Steam, Telegram, Zoom, your mail app or another program, Mizu asks
+  first. **Always allow** remembers the site; Settings → Privacy → Opening apps from sites lists and removes them.
+- **Settings search.** In Settings, type in the search box (or press Ctrl+F) to find any option. Changes that need a
+  restart show a **Restart Mizu** button; your tabs come back.
 - More detail: [SECURITY](SECURITY.md).
 
 ## Troubleshooting

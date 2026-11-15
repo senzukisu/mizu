@@ -85,6 +85,15 @@ Mizu never opens a downloaded file automatically.
 The profile lives under `%LOCALAPPDATA%`, which is protected by Windows user ACLs. The engine stores cookies
 (encrypted with DPAPI by Chromium) in `engine\`.
 
+- **Session cookies.** Chromium drops cookies without an expiry date on exit. When "Continue where I left off" is on,
+  Mizu saves them to `session-cookies.bin`, encrypted with DPAPI, and adds them back before the first page loads. They
+  are never saved from private windows.
+- **Third-party cookies** are blocked by default with Chromium's own third-party cookie mode, so embedded frames get
+  no cookies.
+- **Links to other apps.** External schemes always go through Mizu's prompt. Schemes known to be abused
+  (`ms-msdt:`, `search-ms:`, `ms-officecmd:`, `ms-cxh:`, `shell:`, `file:`, `javascript:`, `vbscript:`,
+  `ms-appinstaller:`) are never opened. "Always allow" is stored per site and scheme, and never in private windows.
+
 ## Passwords
 
 - Secrets are encrypted with `CryptProtectData` (DPAPI, bound to the Windows user) with additional entropy, and stored
