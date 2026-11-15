@@ -126,9 +126,20 @@ button {
     transform var(--t-med) var(--ease),
     opacity var(--t-med);
 }
+.bm-spacer {
+  flex: 1;
+  min-width: 12px;
+  align-self: center;
+  height: 14px;
+  border-right: 1px solid var(--line);
+  margin-right: 4px;
+}
 .bm-other {
   flex: none;
-  margin-left: auto;
+  color: var(--ink-3);
+}
+.bm-other:hover {
+  color: var(--ink);
 }
 .tab.pinned {
   flex: 0 0 44px;

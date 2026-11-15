@@ -726,8 +726,9 @@ function renderDownloads() {
 function renderBookmarks() {
   const items = state.bookmarks || [];
   const other = state.bookmarks_other || 0;
-  // The bar appears with the first bookmark on it; an empty bar is just wasted space.
-  const show = !state.private && settings?.appearance?.show_bookmarks_bar !== false && (items.length > 0 || other > 0);
+  // The bar appears with the first bookmark on it; a bar holding only "Other bookmarks"
+  // would be a whole empty row (those stay one click away in the bookmarks manager).
+  const show = !state.private && settings?.appearance?.show_bookmarks_bar !== false && items.length > 0;
   const changed = els.bookmarks.hidden === show;
   els.bookmarks.hidden = !show;
   els.toolbar.classList.toggle('no-bookmarks', !show);
@@ -755,6 +756,7 @@ function renderBookmarks() {
   }
   if (other > 0) {
     // Everything not on the bar lives in "Other bookmarks", at the far end like Chrome.
+    els.bookmarks.append(h('div', { class: 'bm-spacer' }));
     const el = h('button', { class: 'bm bm-other', title: 'Other bookmarks' }, icon('folder'), h('span', { text: 'Other bookmarks' }));
     el.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://bookmarks/#2', disposition: 'current' }));
     els.bookmarks.append(el);
