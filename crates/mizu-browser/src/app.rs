@@ -302,6 +302,9 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
     Ok(())
 }
 
+/// Set by "Restart Mizu" in Settings: start a new instance once this one has exited.
+pub static RELAUNCH: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 pub fn shutdown() {
     let app = APP.with(|a| a.borrow_mut().take());
     if let Some(mut app) = app {

@@ -170,6 +170,8 @@ pub enum Command {
     MediaProbe,
     About,
     NewtabData,
+    /// Closes Mizu (saving the session) and starts it again, for settings that need it.
+    RestartBrowser,
     UpdateCheck,
     UpdateInstall,
     UpdateState,

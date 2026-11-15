@@ -113,6 +113,7 @@ fn main() {
         return;
     };
 
+    let profile = args.profile.clone();
     if let Err(e) = app::start(paths, args) {
         win::fatal(&e);
         return;
@@ -128,6 +129,20 @@ fn main() {
     }
     app::shutdown();
     tracing::info!("Mizu exited cleanly");
+    if app::RELAUNCH.load(std::sync::atomic::Ordering::SeqCst) {
+        // Release the single-instance lock first, or the new process would just forward
+        // its launch to this one.
+        drop(_instance);
+        if let Ok(exe) = std::env::current_exe() {
+            let mut cmd = std::process::Command::new(exe);
+            if profile != "Default" {
+                cmd.args(["--profile", &profile]);
+            }
+            if let Err(e) = cmd.spawn() {
+                tracing::warn!(error = %e, "could not restart Mizu");
+            }
+        }
+    }
 }
 
 #[cfg(test)]

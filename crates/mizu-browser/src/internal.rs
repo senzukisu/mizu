@@ -363,6 +363,16 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             "installed": crate::update::is_installed_copy(),
             "auto_update": app.settings.general.auto_update,
         })),
+        Command::RestartBrowser => {
+            tracing::info!("restarting Mizu to apply settings");
+            crate::app::RELAUNCH.store(true, std::sync::atomic::Ordering::SeqCst);
+            app.save_session();
+            let ids: Vec<_> = app.windows.iter().map(|w| w.id).collect();
+            for id in ids {
+                app.close_window(id);
+            }
+            ok()
+        }
         Command::NewtabData => {
             // Speed dial: the new tab's own shortcuts (separate from the bookmarks bar).
             let top: Vec<Value> = app

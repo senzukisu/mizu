@@ -6,6 +6,8 @@ let payload = null;
 let s = null; // working copy of settings
 let current = (location.hash || '#general').slice(1);
 let saveTimer = 0;
+let query = '';
+let restartNeeded = false;
 
 const CATEGORIES = [
   ['general', 'General', 'sliders'],
@@ -35,8 +37,10 @@ function save(immediate) {
           s = structuredClone(p.settings);
           renderContent();
         }
-        if (p.restart_needed) showToast('Saved — restart Mizu to apply this change');
-        else showToast('Saved');
+        if (p.restart_needed) {
+          restartNeeded = true;
+          renderRestartBar();
+        } else showToast('Saved');
         if (current === 'privacy') renderContent();
       })
       .catch((e) => showToast(e.message));
@@ -55,7 +59,7 @@ function stripDerived(obj) {
 
 // ── Control builders ─────────────────────────────────────────
 function setting(title, desc, control) {
-  return h('div', { class: 'setting' }, h('div', { class: 'txt' }, h('div', { class: 't', text: title }), desc ? h('div', { class: 'd', text: desc }) : null), control);
+  return h('div', { class: 'setting', 'data-k': `${title} ${desc || ''}`.toLowerCase() }, h('div', { class: 'txt' }, h('div', { class: 't', text: title }), desc ? h('div', { class: 'd', text: desc }) : null), control);
 }
 function toggle(title, desc, get, set, opts) {
   return setting(title, desc, switchInput(get(), (v) => {
@@ -87,7 +91,7 @@ function select(options, value, onPick) {
   return el;
 }
 function card(title, note, ...rows) {
-  return h('section', { class: 'card' }, title ? h('h2', { text: title }) : null, note ? h('p', { class: 'note', text: note }) : null, ...rows);
+  return h('section', { class: 'card', 'data-k': `${title || ''} ${note || ''}`.toLowerCase() }, title ? h('h2', { text: title }) : null, note ? h('p', { class: 'note', text: note }) : null, ...rows);
 }
 
 // ── Categories ───────────────────────────────────────────────
@@ -103,7 +107,7 @@ function general() {
     save(true);
   });
   return [
-    card('Language', null, setting('Language', 'Interface language. "Automatic" follows Windows.', lang)),
+    card(null, null, setting('Language', 'Interface language. "Automatic" follows Windows.', lang)),
     card('On startup', null,
       setting('When Mizu starts', null, seg([['restore_session', 'Continue where I left off'], ['new_tab', 'New tab'], ['home_page', 'Home page']], g.startup, (v) => {
         g.startup = v;
@@ -325,7 +329,7 @@ function privacy() {
         p.tracking_prevention = v;
         save();
       })),
-      toggle('Block third-party cookies', 'Sites embedded in other sites (ads, trackers, widgets) can't set or read cookies. A rare embedded sign-in may need it off. Requires restart.', () => p.block_third_party_cookies, (v) => (p.block_third_party_cookies = v)),
+      toggle('Block third-party cookies', 'Sites embedded in other sites (ads, trackers, widgets) cannot set or read cookies. A rare embedded sign-in may need it off. Requires restart.', () => p.block_third_party_cookies, (v) => (p.block_third_party_cookies = v)),
       toggle('Send Global Privacy Control', 'Tells websites not to sell or share your data (Sec-GPC header). Legally binding in some regions.', () => p.global_privacy_control, (v) => (p.global_privacy_control = v)),
     ),
     card('Filter lists', 'Lists are downloaded over HTTPS directly from their maintainers and refreshed every few days.', filterLists(), h('div', { class: 'setting' }, h('div', { class: 'txt' }), addList, update)),
@@ -765,12 +769,94 @@ const RENDER = { general, appearance, search, privacy, security, downloads, tabs
 // ── Layout ───────────────────────────────────────────────────
 const nav = h('nav', { class: 'set-nav' });
 const content = h('div', { class: 'set-content' });
+const setSearch = h('input', { type: 'search', class: 'set-search', placeholder: 'Search settings', 'aria-label': 'Search settings' });
+const searchWrap = h('label', { class: 'set-search-wrap' }, icon('search'), setSearch);
+const restartBar = h('div', { class: 'restart-bar', hidden: true });
+
+function renderRestartBar() {
+  restartBar.hidden = !restartNeeded;
+  if (!restartNeeded) return;
+  const btn = h('button', { class: 'btn primary', text: 'Restart Mizu' });
+  btn.addEventListener('click', () => {
+    btn.disabled = true;
+    mizu.request('restart_browser').catch((e) => showToast(e.message));
+  });
+  const later = h('button', { class: 'btn', text: 'Later' });
+  later.addEventListener('click', () => {
+    restartNeeded = false;
+    renderRestartBar();
+  });
+  restartBar.replaceChildren(icon('reload'), h('span', { class: 'grow', text: 'Some changes apply after Mizu restarts. Your tabs will come back.' }), later, btn);
+}
+
+setSearch.addEventListener('input', () => {
+  query = setSearch.value.trim().toLowerCase();
+  renderNav();
+  renderContent();
+});
+setSearch.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && setSearch.value) {
+    e.preventDefault();
+    setSearch.value = '';
+    setSearch.dispatchEvent(new Event('input'));
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey && e.key.toLowerCase() === 'f') || (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName))) {
+    e.preventDefault();
+    setSearch.focus();
+    setSearch.select();
+  }
+});
+
+// Every category, filtered to the rows that mention the query (in English or the
+// interface language). Matching card titles keep their whole card.
+function renderSearch() {
+  const parts = [h('h2', { class: 'set-title', text: 'Search results' })];
+  for (const [id, label] of CATEGORIES) {
+    const nodes = (RENDER[id] || (() => []))();
+    parts.push(h('div', { class: 'set-group', dataset: { cat: id } }, h('h3', { class: 'set-group-title', text: label }), ...nodes));
+  }
+  content.replaceChildren(...parts);
+  content.scrollTop = 0;
+  // Let the translator run first (it reacts to the new nodes as a microtask).
+  setTimeout(() => {
+    let any = false;
+    const words = query.split(/\s+/).filter(Boolean);
+    const hit = (el) => {
+      const text = `${el.dataset.k || ''} ${el.textContent}`.toLowerCase();
+      return words.every((w) => text.includes(w));
+    };
+    for (const group of content.querySelectorAll('.set-group')) {
+      let groupHit = false;
+      for (const c of group.querySelectorAll(':scope > .card')) {
+        const head = c.querySelector(':scope > h2');
+        const cardHit = head && words.every((w) => `${c.dataset.k} ${head.textContent}`.toLowerCase().includes(w));
+        let rowHit = false;
+        for (const row of c.querySelectorAll('.setting')) {
+          const ok = cardHit || hit(row);
+          row.hidden = !ok;
+          rowHit ||= ok;
+        }
+        c.hidden = !(cardHit || rowHit);
+        groupHit ||= !c.hidden;
+      }
+      group.hidden = !groupHit;
+      any ||= groupHit;
+    }
+    if (!any) content.append(h('div', { class: 'empty-state' }, icon('search'), h('div', { text: 'Nothing found. Try another word.' })));
+  }, 0);
+}
 
 function renderNav() {
   nav.replaceChildren();
   for (const [id, label, ic] of CATEGORIES) {
-    const b = h('button', { class: id === current ? 'on' : '' }, icon(ic), h('span', { text: label }));
+    const b = h('button', { class: id === current && !query ? 'on' : '' }, icon(ic), h('span', { text: label }));
     b.addEventListener('click', () => {
+      if (query) {
+        query = '';
+        setSearch.value = '';
+      }
       current = id;
       history.replaceState(null, '', `#${id}`);
       renderNav();
@@ -782,17 +868,25 @@ function renderNav() {
 
 function renderContent() {
   if (!s) return;
+  if (query) return renderSearch();
   const title = CATEGORIES.find((c) => c[0] === current) || CATEGORIES[0];
   content.replaceChildren(h('h2', { class: 'set-title', text: title[1] }), ...(RENDER[title[0]] || general)());
   content.scrollTop = 0;
 }
 
-main.append(h('div', { class: 'set' }, h('aside', null, pageHead('Settings'), nav), content));
+main.append(h('div', { class: 'set' }, h('aside', null, pageHead('Settings'), searchWrap, nav), h('div', { class: 'set-main' }, restartBar, content)));
 
 bootPage(() => {
   mizu.request('get_settings').then((p) => {
     payload = p;
     s = structuredClone(p.settings);
+    // mizu://settings/#q=cookies opens with a search.
+    const q = /^q=(.*)$/.exec(current);
+    if (q) {
+      setSearch.value = decodeURIComponent(q[1]);
+      query = setSearch.value.trim().toLowerCase();
+      current = 'general';
+    }
     if (!RENDER[current]) current = 'general';
     renderNav();
     renderContent();
