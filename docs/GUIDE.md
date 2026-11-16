@@ -75,8 +75,8 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
     or hides it). **Other bookmarks** sits at its right end.
   - Right-click a bookmark on the bar to open it in a new tab, window or private window, copy its link or delete it.
 - **New tab page.** Its tiles are a list of their own, separate from bookmarks. "+" adds one, the pencil edits it, and
-  you can drag tiles to reorder them. **Customize** (bottom right) picks a background and shows or hides the clock and
-  the Shield counter.
+  you can drag tiles to reorder them. **Customize** (bottom right) picks one of 13 backgrounds or your own picture (with a
+  darkening slider) and shows or hides the clock, the tiles and the Shield counter.
 - **History.** Ctrl+H. Search, delete single entries, or clear the last hour, day, week, month or everything.
   Settings → Privacy can also clear data when Mizu closes.
 - **Downloads.** Ctrl+J.

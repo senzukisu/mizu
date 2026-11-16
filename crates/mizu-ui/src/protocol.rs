@@ -167,7 +167,13 @@ pub enum Command {
     ShortcutDelete { id: i64 },
     ShortcutMove { id: i64, index: usize },
     /// New tab look, from its Customize panel.
-    NewtabPrefs { background: String, clock: bool, shield_stats: bool },
+    NewtabPrefs {
+        background: String,
+        clock: bool,
+        shield_stats: bool,
+        #[serde(default = "yes")]
+        shortcuts: bool,
+    },
     DownloadsGet,
     ClearData(ClearDataRequest),
     PermissionsGet,

@@ -128,8 +128,25 @@ const PALETTES = [
   ['matcha', 'Matcha', '#4f8a4b', '#e9efe6'],
   ['sumi', 'Sumi', '#333333', '#eeeeee'],
   ['sakura', 'Sakura', '#d0607b', '#f6ecee'],
+  ['fuji', 'Fuji', '#8a63d2', '#eeebf6'],
+  ['umi', 'Umi', '#14919b', '#e6f1f1'],
+  ['kohaku', 'Kohaku', '#d9822b', '#f6eee2'],
+  ['yoru', 'Yoru', '#5b6cf0', '#e7e9f2'],
 ];
-const ACCENTS = ['#2f7de1', '#0f9fb5', '#2e9d6a', '#7a5af5', '#d0607b', '#e0672b', '#c99a12', '#4b5563'];
+const ACCENTS = [
+  '#2f7de1', '#3b82f6', '#0ea5e9', '#0f9fb5', '#14919b', '#2e9d6a', '#65a30d', '#c99a12',
+  '#d9822b', '#e0672b', '#e5484d', '#d0607b', '#db2777', '#a855f7', '#7a5af5', '#5b6cf0', '#4b5563',
+];
+
+// A small browser drawn with the current tokens, so palette and accent changes show at once.
+function themePreview() {
+  return h('div', { class: 'theme-preview', 'aria-hidden': 'true' },
+    h('div', { class: 'tp-tabs' }, h('span', { class: 'tp-tab on' }, h('i'), h('b')), h('span', { class: 'tp-tab' }, h('i'), h('b'))),
+    h('div', { class: 'tp-bar' }, h('span', { class: 'tp-dot' }), h('span', { class: 'tp-dot' }), h('span', { class: 'tp-url' }, h('i'), h('b')), h('span', { class: 'tp-btn' })),
+    h('div', { class: 'tp-page' },
+      h('div', { class: 'tp-card' }, h('b'), h('i'), h('i', { class: 'short' }), h('span', { class: 'tp-cta' })),
+      h('div', { class: 'tp-side' }, h('span', { class: 'tp-chip on' }), h('span', { class: 'tp-chip' }), h('span', { class: 'tp-toggle' }))));
+}
 
 function appearance() {
   const a = s.appearance;
@@ -145,27 +162,28 @@ function appearance() {
     palettes.append(b);
   }
   const accents = h('div', { class: 'accents' });
+  const setAccent = (c) => {
+    a.accent = c;
+    document.documentElement.style.setProperty('--accent', c);
+    for (const x of accents.querySelectorAll('.acc')) x.classList.toggle('on', x.dataset.c === c.toLowerCase());
+    save(true);
+  };
   for (const c of ACCENTS) {
-    const b = h('button', { class: `acc${a.accent.toLowerCase() === c ? ' on' : ''}`, style: { background: c }, title: c });
-    b.addEventListener('click', () => {
-      a.accent = c;
-      save(true);
-      renderContent();
-    });
+    const b = h('button', { class: `acc${a.accent.toLowerCase() === c ? ' on' : ''}`, style: { background: c }, title: c, dataset: { c } }, icon('check', { size: 14 }));
+    b.addEventListener('click', () => setAccent(c));
     accents.append(b);
   }
   const custom = h('input', { type: 'color', value: a.accent, title: 'Custom colour' });
-  custom.addEventListener('change', () => {
-    a.accent = custom.value;
-    save(true);
-  });
-  accents.append(custom);
+  custom.addEventListener('input', () => document.documentElement.style.setProperty('--accent', custom.value));
+  custom.addEventListener('change', () => setAccent(custom.value));
+  accents.append(h('label', { class: 'acc custom', title: 'Custom colour' }, icon('plus', { size: 14 }), custom));
   const zoom = select([[67, '67%'], [75, '75%'], [80, '80%'], [90, '90%'], [100, '100%'], [110, '110%'], [125, '125%'], [150, '150%']], a.zoom_percent, (v) => {
     a.zoom_percent = Number(v);
     save();
   });
   return [
     card('Theme', null,
+      h('div', { class: 'setting col' }, themePreview()),
       setting('Mode', null, seg([['light', 'Light'], ['dark', 'Dark'], ['system', 'System']], a.theme, (v) => {
         a.theme = v;
         save(true);

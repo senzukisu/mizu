@@ -2,7 +2,7 @@
  *
  * Theme attributes on <html>:
  *   data-theme="light|dark"      resolved by theme.js (System → OS setting)
- *   data-palette="mizu|washi|matcha|sumi|sakura"
+ *   data-palette="mizu|washi|matcha|sumi|sakura|fuji|umi|kohaku|yoru"
  *   data-density="compact|comfortable|spacious"
  *   data-style="soft|crisp"
  *   data-motion="on|off"
@@ -124,6 +124,22 @@
   --frame: #f6ecee; --surface: #fffcfc; --surface-2: #fbf3f4; --surface-3: #f0e1e4; --raised: #fffcfc;
   --ink: #2b1d21; --ink-2: #66505a; --ink-3: #a08c93; --line: #ecdade; --line-2: #dfc6cc; --wave: #f0d3da;
 }
+[data-palette="fuji"] {
+  --frame: #eeebf6; --surface: #fdfcff; --surface-2: #f5f3fb; --surface-3: #e7e2f2; --raised: #fdfcff;
+  --ink: #221d2e; --ink-2: #5a5269; --ink-3: #938aa3; --line: #e0dbec; --line-2: #cec6e0; --wave: #ddd3f2;
+}
+[data-palette="umi"] {
+  --frame: #e6f1f1; --surface: #fbfefe; --surface-2: #f0f7f7; --surface-3: #ddebeb; --raised: #fbfefe;
+  --ink: #142425; --ink-2: #47605f; --ink-3: #7f9796; --line: #d3e4e3; --line-2: #bdd5d4; --wave: #c3e1df;
+}
+[data-palette="kohaku"] {
+  --frame: #f6eee2; --surface: #fffcf6; --surface-2: #faf4ea; --surface-3: #efe4d2; --raised: #fffcf6;
+  --ink: #2c2116; --ink-2: #65543f; --ink-3: #a08d74; --line: #eadcc6; --line-2: #dccab0; --wave: #f1d9b1;
+}
+[data-palette="yoru"] {
+  --frame: #e7e9f2; --surface: #fbfcff; --surface-2: #f2f3f9; --surface-3: #e1e4ef; --raised: #fbfcff;
+  --ink: #151a2b; --ink-2: #4b5270; --ink-3: #858ba6; --line: #d9dcea; --line-2: #c4c8dc; --wave: #cdd3ec;
+}
 
 /* ── Palettes: dark ──────────────────────────────────────────── */
 [data-theme="dark"],
@@ -157,6 +173,22 @@
 [data-theme="dark"][data-palette="sakura"] {
   --frame: #1f171a; --surface: #2a1f23; --surface-2: #31252a; --surface-3: #3c2e34; --raised: #31252a;
   --ink: #f3e6ea; --ink-2: #c4aab3; --ink-3: #8f7780; --line: #3a2b31; --line-2: #4a3840; --wave: #45303a;
+}
+[data-theme="dark"][data-palette="fuji"] {
+  --frame: #17151f; --surface: #211e2c; --surface-2: #272334; --surface-3: #312c41; --raised: #272334;
+  --ink: #ece8f6; --ink-2: #b5acc9; --ink-3: #7f7693; --line: #2e2a3b; --line-2: #3d374e; --wave: #352c4e;
+}
+[data-theme="dark"][data-palette="umi"] {
+  --frame: #0f1a1c; --surface: #172427; --surface-2: #1c2b2f; --surface-3: #243639; --raised: #1c2b2f;
+  --ink: #e0f0ef; --ink-2: #a2bebc; --ink-3: #6d8987; --line: #22333a; --line-2: #2e434a; --wave: #1d3b3e;
+}
+[data-theme="dark"][data-palette="kohaku"] {
+  --frame: #1c1610; --surface: #272017; --surface-2: #2e261b; --surface-3: #393024; --raised: #2e261b;
+  --ink: #f4eadc; --ink-2: #c8b597; --ink-3: #917e62; --line: #372d20; --line-2: #463a2a; --wave: #4a3820;
+}
+[data-theme="dark"][data-palette="yoru"] {
+  --frame: #07080d; --surface: #10121b; --surface-2: #151823; --surface-3: #1d2030; --raised: #151823;
+  --ink: #e9ebf5; --ink-2: #a7acc4; --ink-3: #6f7591; --line: #1b1e2b; --line-2: #272b3c; --wave: #161c34;
 }
 
 /* ── Private windows: deep indigo, always dark ───────────────── */

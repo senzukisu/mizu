@@ -28,6 +28,14 @@ pub fn frame_rgb(settings: &Settings, private: bool) -> [u8; 3] {
         (Palette::Sumi, true) => [0x0e, 0x0e, 0x0f],
         (Palette::Sakura, false) => [0xf6, 0xec, 0xee],
         (Palette::Sakura, true) => [0x1f, 0x17, 0x1a],
+        (Palette::Fuji, false) => [0xee, 0xeb, 0xf6],
+        (Palette::Fuji, true) => [0x17, 0x15, 0x1f],
+        (Palette::Umi, false) => [0xe6, 0xf1, 0xf1],
+        (Palette::Umi, true) => [0x0f, 0x1a, 0x1c],
+        (Palette::Kohaku, false) => [0xf6, 0xee, 0xe2],
+        (Palette::Kohaku, true) => [0x1c, 0x16, 0x10],
+        (Palette::Yoru, false) => [0xe7, 0xe9, 0xf2],
+        (Palette::Yoru, true) => [0x07, 0x08, 0x0d],
     }
 }
 

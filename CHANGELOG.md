@@ -3,6 +3,19 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] — 2026-11-16
+
+### Added
+- **Four new palettes:** Fuji (lavender), Umi (sea teal), Kohaku (amber) and Yoru (deep night, near-black in dark
+  mode), each in light and dark.
+- **More accent colours** (17 plus your own), with a check mark on the chosen one, and a **live preview** of the browser
+  in Settings → Appearance that follows every change.
+- **New tab backgrounds:** Accent (follows your accent colour), Forest, Cherry blossom, Ember, Nebula, Glacier and
+  Graphite, 13 in all.
+- **Your own picture** as the new tab background. It is resized and kept only on this PC; a slider darkens it so the
+  clock and tiles stay readable.
+- The new tab Customize panel can hide the shortcut tiles and links to the colour and theme settings.
+
 ## [0.2.0] — 2026-11-15 · "Clear Water"
 
 ### Added

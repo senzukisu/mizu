@@ -187,14 +187,17 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             app.storage.move_shortcut(id, index).map_err(storage_err)?;
             ok()
         }
-        Command::NewtabPrefs { background, clock, shield_stats } => {
-            const BACKGROUNDS: &[&str] = &["wave", "none", "dawn", "dusk", "aurora", "sea"];
+        Command::NewtabPrefs { background, clock, shield_stats, shortcuts } => {
+            const BACKGROUNDS: &[&str] = &[
+                "wave", "accent", "dawn", "dusk", "aurora", "sea", "forest", "sakura", "ember", "nebula", "glacier", "graphite", "none", "image",
+            ];
             let a = &mut app.settings.appearance;
             if BACKGROUNDS.contains(&background.as_str()) {
                 a.newtab_background = background;
             }
             a.newtab_clock = clock;
             a.newtab_shield_stats = shield_stats;
+            a.newtab_shortcuts = shortcuts;
             app.persist_settings();
             ok()
         }
@@ -419,6 +422,7 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 "background": app.settings.appearance.newtab_background,
                 "clock": app.settings.appearance.newtab_clock,
                 "shield_stats": app.settings.appearance.newtab_shield_stats,
+                "shortcuts": app.settings.appearance.newtab_shortcuts,
             }))
         }
         Command::UpdateCheck => {

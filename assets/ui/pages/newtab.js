@@ -184,7 +184,7 @@ function render() {
     content.append(banner);
   }
 
-  if (!isPrivate && data.engines) {
+  if (!isPrivate && data.engines && data.shortcuts !== false) {
     content.append(tiles());
   }
   if (!isPrivate && data.engines && data.shield_stats !== false) {
@@ -195,49 +195,161 @@ function render() {
     });
     content.append(stats);
   }
-  const bg = data.background || 'wave';
-  document.body.dataset.ntbg = isPrivate ? 'wave' : bg;
+  const bg = isPrivate ? 'wave' : data.background || 'wave';
+  applyBackground(bg);
   main.replaceChildren(...[content, bg === 'wave' || isPrivate ? h('div', { class: 'nt-wave', 'aria-hidden': 'true' }) : null, !isPrivate && data.engines ? customizeButton() : null].filter(Boolean));
 }
 
-// Customize: background, clock, Shield counter. Saved right away.
+// Customize: background (built-in or your picture), what the page shows, a link to the
+// theme. Everything is saved right away.
 const BACKGROUNDS = [
   ['wave', 'Wave'],
+  ['accent', 'Accent'],
   ['dawn', 'Dawn'],
   ['dusk', 'Dusk'],
   ['aurora', 'Aurora'],
   ['sea', 'Sea'],
+  ['forest', 'Forest'],
+  ['sakura', 'Cherry blossom'],
+  ['ember', 'Ember'],
+  ['nebula', 'Nebula'],
+  ['glacier', 'Glacier'],
+  ['graphite', 'Graphite'],
   ['none', 'None'],
 ];
+// Your picture stays in this page's local storage (resized), never in settings files.
+const PIC_KEY = 'mizu.newtab.picture';
+const DIM_KEY = 'mizu.newtab.dim';
+const store = {
+  get(k) {
+    try {
+      return localStorage.getItem(k);
+    } catch {
+      return null;
+    }
+  },
+  set(k, v) {
+    try {
+      if (v === null) localStorage.removeItem(k);
+      else localStorage.setItem(k, v);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+};
+
+function applyBackground(bg) {
+  const pic = bg === 'image' ? store.get(PIC_KEY) : null;
+  document.body.dataset.ntbg = bg === 'image' && !pic ? 'wave' : bg;
+  if (pic) {
+    const dim = Number(store.get(DIM_KEY) ?? 35) / 100;
+    document.body.style.backgroundImage = `linear-gradient(rgb(0 0 0 / ${dim}), rgb(0 0 0 / ${dim})), url("${pic}")`;
+  } else {
+    document.body.style.backgroundImage = '';
+  }
+}
+
+// Shrinks a picked image to at most 2560 px and stores it as JPEG.
+async function pictureFromFile(file) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 2560 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  for (const q of [0.85, 0.7, 0.55]) {
+    const url = canvas.toDataURL('image/jpeg', q);
+    if (url.length < 4_000_000 && store.set(PIC_KEY, url)) return true;
+  }
+  return false;
+}
+
 function customizeButton() {
   const btn = h('button', { class: 'nt-customize', title: 'Customize' }, icon('edit', { size: 15 }), h('span', { text: 'Customize' }));
-  btn.addEventListener('click', () => {
-    const prefs = { background: data.background || 'wave', clock: data.clock !== false, shield_stats: data.shield_stats !== false };
-    const save = () => {
-      Object.assign(data, prefs);
-      mizu.request('newtab_prefs', prefs).then(render);
-    };
-    const swatches = h('div', { class: 'nt-swatches' }, ...BACKGROUNDS.map(([id, label]) => {
-      const b = h('button', { class: `nt-swatch bg-${id}${prefs.background === id ? ' on' : ''}`, title: label }, h('span', { class: 'nt-sw-check' }, icon('check', { size: 12 })), h('span', { class: 'nt-sw-label', text: label }));
-      b.addEventListener('click', () => {
-        prefs.background = id;
-        for (const x of swatches.children) x.classList.toggle('on', x === b);
-        save();
-      });
-      return b;
-    }));
-    const check = (label, key) => h('div', { class: 'nt-check' }, h('span', { text: label }), switchInput(prefs[key], (v) => {
-      prefs[key] = v;
-      save();
-    }, { label }));
-    const done = h('button', { class: 'btn primary', text: 'Done' });
-    const dlg = h('dialog', { class: 'nt-custom' }, h('h3', { text: 'Customize new tab' }), h('div', { class: 'nt-sub', text: 'Background' }), swatches, h('div', { class: 'nt-sub', text: 'Show on the page' }), h('div', { class: 'nt-checks' }, check('Clock and greeting', 'clock'), check('Mizu Shield counter', 'shield_stats')), h('div', { class: 'row' }, done));
-    done.addEventListener('click', () => dlg.close());
-    dlg.addEventListener('close', () => dlg.remove());
-    document.body.append(dlg);
-    dlg.showModal();
-  });
+  btn.addEventListener('click', openCustomize);
   return btn;
+}
+
+function openCustomize() {
+  const prefs = { background: data.background || 'wave', clock: data.clock !== false, shield_stats: data.shield_stats !== false, shortcuts: data.shortcuts !== false };
+  const save = () => {
+    Object.assign(data, prefs);
+    mizu.request('newtab_prefs', prefs).then(render);
+  };
+  const choose = (id) => {
+    prefs.background = id;
+    for (const x of swatches.querySelectorAll('.nt-swatch')) x.classList.toggle('on', x.dataset.bg === id);
+    dimRow.hidden = id !== 'image';
+    save();
+  };
+  const swatch = (id, label, extra) => {
+    const b = h('button', { class: `nt-swatch bg-${id}${prefs.background === id ? ' on' : ''}`, title: label, dataset: { bg: id } }, h('span', { class: 'nt-sw-check' }, icon('check', { size: 12 })), extra || null, h('span', { class: 'nt-sw-label', text: label }));
+    b.addEventListener('click', () => choose(id));
+    return b;
+  };
+
+  // "Your picture": a file picker; the tile shows the picture once there is one.
+  const file = h('input', { type: 'file', accept: 'image/*', hidden: true });
+  const picTile = swatch('image', 'Your picture', h('span', { class: 'nt-sw-plus' }, icon('upload', { size: 16 })));
+  const showPic = () => {
+    const pic = store.get(PIC_KEY);
+    picTile.style.backgroundImage = pic ? `url("${pic}")` : '';
+    picTile.classList.toggle('has-pic', !!pic);
+  };
+  showPic();
+  picTile.addEventListener('click', (e) => {
+    if (!store.get(PIC_KEY) || e.target.closest('.nt-sw-plus')) {
+      e.stopImmediatePropagation();
+      file.click();
+    }
+  }, true);
+  file.addEventListener('change', async () => {
+    const f = file.files?.[0];
+    file.value = '';
+    if (!f) return;
+    if (await pictureFromFile(f).catch(() => false)) {
+      showPic();
+      choose('image');
+    } else {
+      showToast('This picture could not be used');
+    }
+  });
+
+  const swatches = h('div', { class: 'nt-swatches' }, ...BACKGROUNDS.map(([id, label]) => swatch(id, label)), picTile, file);
+
+  const dim = h('input', { type: 'range', min: '0', max: '80', value: store.get(DIM_KEY) ?? '35' });
+  dim.addEventListener('input', () => {
+    store.set(DIM_KEY, dim.value);
+    applyBackground('image');
+  });
+  const removePic = h('button', { class: 'btn ghost', text: 'Remove picture' });
+  removePic.addEventListener('click', () => {
+    store.set(PIC_KEY, null);
+    showPic();
+    choose('wave');
+  });
+  const dimRow = h('div', { class: 'nt-dim' }, h('span', { text: 'Darken picture' }), dim, removePic);
+  dimRow.hidden = prefs.background !== 'image';
+
+  const check = (label, key) => h('div', { class: 'nt-check' }, h('span', { text: label }), switchInput(prefs[key], (v) => {
+    prefs[key] = v;
+    save();
+  }, { label }));
+
+  const theme = h('button', { class: 'btn ghost nt-theme-link' }, icon('sun', { size: 15 }), h('span', { text: 'Colours and theme' }));
+  theme.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://settings/#appearance', disposition: 'current' }));
+  const done = h('button', { class: 'btn primary', text: 'Done', autofocus: true });
+  const dlg = h('dialog', { class: 'nt-custom' },
+    h('h3', { text: 'Customize new tab' }),
+    h('div', { class: 'nt-sub', text: 'Background' }), swatches, dimRow,
+    h('div', { class: 'nt-sub', text: 'Show on the page' }),
+    h('div', { class: 'nt-checks' }, check('Clock and greeting', 'clock'), check('Shortcut tiles', 'shortcuts'), check('Mizu Shield counter', 'shield_stats')),
+    h('div', { class: 'row' }, theme, done));
+  done.addEventListener('click', () => dlg.close());
+  dlg.addEventListener('close', () => dlg.remove());
+  document.body.append(dlg);
+  dlg.showModal();
 }
 
 function load() {
@@ -247,7 +359,7 @@ function load() {
       data = d || {};
       if (!engineId) engineId = data.engine_id;
       render();
-      if (location.hash === '#customize') document.querySelector('.nt-customize')?.click();
+      if (location.hash === '#customize') openCustomize();
     })
     .catch(() => render());
 }
