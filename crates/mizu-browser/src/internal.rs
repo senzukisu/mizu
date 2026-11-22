@@ -187,7 +187,7 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             app.storage.move_shortcut(id, index).map_err(storage_err)?;
             ok()
         }
-        Command::NewtabPrefs { background, clock, shield_stats, shortcuts } => {
+        Command::NewtabPrefs { background, clock, shield_stats, shortcuts, now_playing, recent, notes, tile_size, name } => {
             const BACKGROUNDS: &[&str] = &[
                 "wave", "accent", "dawn", "dusk", "aurora", "sea", "forest", "sakura", "ember", "nebula", "glacier", "graphite", "none", "image",
             ];
@@ -198,6 +198,13 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             a.newtab_clock = clock;
             a.newtab_shield_stats = shield_stats;
             a.newtab_shortcuts = shortcuts;
+            a.newtab_now_playing = now_playing;
+            a.newtab_recent = recent;
+            a.newtab_notes = notes;
+            if ["small", "medium", "large"].contains(&tile_size.as_str()) {
+                a.newtab_tile_size = tile_size;
+            }
+            a.newtab_name = name.trim().chars().take(40).collect();
             app.persist_settings();
             ok()
         }
@@ -423,6 +430,13 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 "clock": app.settings.appearance.newtab_clock,
                 "shield_stats": app.settings.appearance.newtab_shield_stats,
                 "shortcuts": app.settings.appearance.newtab_shortcuts,
+                "now_playing": app.settings.appearance.newtab_now_playing && app.settings.media.media_hub,
+                "recent": app.settings.appearance.newtab_recent,
+                "notes": app.settings.appearance.newtab_notes,
+                "tile_size": app.settings.appearance.newtab_tile_size,
+                "name": app.settings.appearance.newtab_name,
+                "media": app.media.to_json(private),
+                "closed": app.window(window).map(|w| w.strip.closed_tabs().take(6).map(|c| json!({ "url": c.url, "title": c.title })).collect::<Vec<_>>()).unwrap_or_default(),
             }))
         }
         Command::UpdateCheck => {

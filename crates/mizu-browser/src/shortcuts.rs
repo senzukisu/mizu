@@ -31,6 +31,9 @@ pub enum Shortcut {
     Find,
     FindNext,
     FindPrev,
+    MediaToggle,
+    MediaNext,
+    MediaPrev,
 }
 
 const VK_TAB: u32 = 0x09;
@@ -154,6 +157,9 @@ pub const ACTIONS: &[ActionDef] = &[
     ActionDef { id: "home", group: "Navigation", label: "Home page", action: Shortcut::Home, defaults: &["Alt+Home"] },
     ActionDef { id: "reload", group: "Navigation", label: "Reload page", action: Shortcut::Reload, defaults: &["F5", "Ctrl+R"] },
     ActionDef { id: "hard_reload", group: "Navigation", label: "Reload without cache", action: Shortcut::HardReload, defaults: &["Ctrl+F5", "Shift+F5", "Ctrl+Shift+R"] },
+    ActionDef { id: "media_toggle", group: "Media", label: "Play or pause music", action: Shortcut::MediaToggle, defaults: &["Ctrl+Alt+Space"] },
+    ActionDef { id: "media_next", group: "Media", label: "Next track", action: Shortcut::MediaNext, defaults: &["Ctrl+Alt+Right"] },
+    ActionDef { id: "media_prev", group: "Media", label: "Previous track", action: Shortcut::MediaPrev, defaults: &["Ctrl+Alt+Left"] },
     ActionDef { id: "find", group: "Navigation", label: "Find on page", action: Shortcut::Find, defaults: &["Ctrl+F"] },
     ActionDef { id: "find_next", group: "Navigation", label: "Next match", action: Shortcut::FindNext, defaults: &["F3", "Ctrl+G"] },
     ActionDef { id: "find_prev", group: "Navigation", label: "Previous match", action: Shortcut::FindPrev, defaults: &["Shift+F3", "Ctrl+Shift+G"] },
@@ -259,6 +265,13 @@ impl Bindings {
         let mods = (u8::from(ctrl) * CTRL) | (u8::from(shift) * SHIFT) | (u8::from(alt) * ALT);
         if let Some(s) = self.map.get(&(vk, mods)) {
             return Some(*s);
+        }
+        // The keyboard's media keys act on the playing tab while Mizu has focus.
+        match vk {
+            0xB3 => return Some(Shortcut::MediaToggle),
+            0xB0 => return Some(Shortcut::MediaNext),
+            0xB1 => return Some(Shortcut::MediaPrev),
+            _ => {}
         }
         let fixed = map(vk, ctrl, shift, alt, chrome_surface)?;
         let browser_key = matches!(vk, VK_BROWSER_BACK | VK_BROWSER_FORWARD | VK_BROWSER_REFRESH | VK_BROWSER_HOME);

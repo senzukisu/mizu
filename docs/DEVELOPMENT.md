@@ -79,6 +79,16 @@ See [ARCHITECTURE.md](ARCHITECTURE.md). In short:
 - Periodic audit: remove dead code (`cargo clippy -- -W dead_code`) and unused dependencies (`cargo machete` or
   `cargo udeps`).
 
+## Checks before a commit
+
+```bash
+node scripts/check-ui.mjs
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+CI runs the same three on every push (`.github/workflows/ci.yml`).
+
 ## Releasing
 
 1. Update the version in:

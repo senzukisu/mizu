@@ -104,11 +104,18 @@ pub fn document_script(h: &mut Hot, key: ViewKey, uri: &str) -> Option<String> {
     // The shortcut always works; the hover button follows the settings.
     parts.push(PIP_SCRIPT.replace("__MIZU_PIP__", &h.pip_config));
 
+    // Media hub: report what plays, accept play/pause/next/volume from the browser.
+    if h.media_hub {
+        let token = h.media_tokens.entry(key).or_insert_with(random_token).clone();
+        parts.push(crate::media::script(&token, h.site_volumes.get(&origin).copied()));
+    } else {
+        h.media_tokens.remove(&key);
+    }
+
     // Mizu Passwords: notice submitted logins (never in private windows).
     if h.password_capture && !h.private.contains(&key) {
-        let token = random_token();
+        let token = h.pw_tokens.entry(key).or_insert_with(random_token).clone();
         parts.push(crate::passwords::capture_script(&token));
-        h.pw_tokens.insert(key, token);
     } else {
         h.pw_tokens.remove(&key);
     }

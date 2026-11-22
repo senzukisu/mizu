@@ -2232,3 +2232,205 @@ body[data-ntbg='image'] .nt-stats {
   width: 100%;
   max-width: 56px;
 }
+
+/* ── New tab: widgets, tile sizes ─────────────────────────── */
+.nt-np {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(460px, 100%);
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+}
+.nt-np[hidden] {
+  display: none;
+}
+.nt-np.playing {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+.nt-np-art {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--surface-3) center / cover no-repeat;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+.nt-np-meta {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.nt-np-meta .t {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nt-np-meta .d {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nt-np-ctl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.nt-np-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: none;
+  color: var(--ink-2);
+}
+.nt-np-btn:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+.nt-np-btn.main {
+  width: 38px;
+  height: 38px;
+  background: var(--accent);
+  color: #fff;
+}
+.nt-tiles.size-small .nt-tile {
+  width: 88px;
+  padding: 10px 4px 8px;
+  font-size: 12px;
+}
+.nt-tiles.size-small .nt-tile .fav,
+.nt-tiles.size-small .nt-tile .avatar {
+  transform: scale(0.82);
+}
+.nt-tiles.size-large .nt-tile {
+  width: 136px;
+  padding: 20px 10px 14px;
+}
+.nt-tiles.size-large .nt-tile .fav,
+.nt-tiles.size-large .nt-tile .avatar {
+  transform: scale(1.25);
+  margin: 6px 0;
+}
+.nt-widgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+.nt-widget {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+}
+.nt-widget h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font: 600 13px/1.3 var(--font);
+  color: var(--ink-2);
+}
+.nt-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nt-recent-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 13px;
+}
+.nt-recent-row span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nt-recent-row:hover {
+  background: var(--surface-3);
+}
+.nt-recent-row .avatar {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  flex: none;
+}
+.nt-w-empty {
+  color: var(--ink-3);
+  font-size: 13px;
+  padding: 4px 6px;
+}
+.nt-notes {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  border: 0 !important;
+  background: none !important;
+  padding: 2px !important;
+  font: 14px/1.5 var(--font) !important;
+  color: var(--ink);
+  outline: none;
+  box-shadow: none !important;
+}
+.nt-seg {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface-3);
+}
+.nt-seg button {
+  border: 0;
+  background: none;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  font: 500 12.5px/1 var(--font);
+  cursor: pointer;
+}
+.nt-seg button.on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.nt-name {
+  width: 150px;
+  height: 30px !important;
+}
+.nt-custom {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Interface font setting */
+.font-select {
+  width: 260px;
+}
+.font-preview {
+  margin-top: 6px;
+  font-size: 15px;
+  color: var(--ink-2);
+}

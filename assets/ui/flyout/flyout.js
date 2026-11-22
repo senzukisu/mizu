@@ -190,6 +190,63 @@ function renderDownloads(items) {
   return panel;
 }
 
+// ── Music and video ──────────────────────────────────────────
+function fmtTime(s) {
+  s = Math.max(0, Math.floor(s || 0));
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  const ss = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m % 60).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+function mediaCard(m, big) {
+  const send = (action, value) => mizu.send('media_control', { tab: m.tab, action, value });
+  const art = m.artwork
+    ? h('div', { class: 'mh-art', style: { backgroundImage: `url("${m.artwork.replace(/"/g, '%22')}")` } })
+    : h('div', { class: 'mh-art none' }, icon(m.video ? 'media' : 'music', { size: 22 }));
+  const title = m.title || m.page_title || m.site;
+  const sub = [m.artist, m.album].filter(Boolean).join(' — ') || m.site;
+  const btn = (ic, label, action, cls = '') => {
+    const b = h('button', { class: `mh-btn ${cls}`, title: label }, icon(ic, { size: cls.includes('main') ? 18 : 15 }));
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      send(action);
+    });
+    return b;
+  };
+  const vol = h('input', { type: 'range', min: '0', max: '100', value: String(Math.round((m.muted ? 0 : m.volume) * 100)), class: 'mh-vol', title: 'Volume (remembered for this site)' });
+  vol.addEventListener('input', () => send('volume', Number(vol.value) / 100));
+  const go = h('button', { class: 'mh-link', title: 'Go to tab' }, h('span', { translate: 'no', text: m.site }), icon('chevron-right', { size: 12 }));
+  go.addEventListener('click', () => {
+    send('focus');
+    close();
+  });
+  const progress = m.duration > 0 ? h('div', { class: 'mh-progress' }, h('div', { style: { width: `${Math.min(100, (100 * m.position) / m.duration)}%` } })) : null;
+  const time = m.duration > 0 ? h('span', { class: 'mh-time', text: `${fmtTime(m.position)} / ${fmtTime(m.duration)}` }) : null;
+  return h('div', { class: `mh-card${m.playing ? ' playing' : ''}${big ? ' big' : ''}` },
+    art,
+    h('div', { class: 'mh-meta' },
+      h('div', { class: 'mh-title', translate: 'no', text: title, title }),
+      h('div', { class: 'mh-sub', translate: 'no', text: sub }),
+      progress,
+      h('div', { class: 'mh-row' },
+        btn('skip-back', 'Previous', 'prev'),
+        btn(m.playing ? 'pause' : 'play', m.playing ? 'Pause' : 'Play', 'toggle', 'main'),
+        btn('skip-forward', 'Next', 'next'),
+        h('span', { class: 'mh-vol-wrap' }, icon(m.muted || m.volume === 0 ? 'mute' : 'volume', { size: 14 }), vol),
+      ),
+      h('div', { class: 'mh-foot' }, go, time)));
+}
+function renderMedia(d) {
+  const items = d.items || [];
+  const panel = h('div', { class: 'panel mh-panel' }, h('h2', null, icon('music', { size: 18 }), h('span', { class: 'grow', text: 'Music and video' })));
+  if (!items.length) panel.append(h('div', { class: 'empty' }, icon('music', { size: 22 }), h('div', { text: 'Nothing is playing.' })));
+  items.slice(0, 6).forEach((m, i) => panel.append(mediaCard(m, i === 0)));
+  const settings = h('button', { class: 'link', text: 'Media settings' });
+  settings.addEventListener('click', () => open('mizu://settings/#media'));
+  panel.append(h('div', { class: 'footer' }, settings));
+  return panel;
+}
+
 // ── Shield ───────────────────────────────────────────────────
 function renderShield(d) {
   const toggle = h('button', { class: `toggle${d.enabled ? ' on' : ''}`, title: d.enabled ? 'Turn off for this site' : 'Turn on for this site', disabled: !d.global });
@@ -419,6 +476,7 @@ const RENDERERS = {
   tab_menu: renderTabMenu,
   bookmark_menu: renderBookmarkMenu,
   downloads: renderDownloads,
+  media: renderMedia,
   shield: renderShield,
   site_info: renderSiteInfo,
   bookmark: renderBookmark,
@@ -444,6 +502,14 @@ mizu.on('flyout', (m) => {
   void root.offsetWidth;
   root.style.animation = '';
   root.replaceChildren(render(data || {}));
+  reportSize();
+});
+
+mizu.on('media', (m) => {
+  if (kind !== 'media') return;
+  // Keep a slider being dragged: only redraw when the pointer is not on one.
+  if (document.querySelector('.mh-vol:active')) return;
+  root.replaceChildren(renderMedia({ items: m.items }));
   reportSize();
 });
 

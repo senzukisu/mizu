@@ -109,6 +109,11 @@ $('reload').addEventListener('click', (e) => {
 $('home').addEventListener('click', () => mizu.send('home'));
 $('menu').addEventListener('click', () => flyout('menu', $('menu')));
 els.downloads.addEventListener('click', () => flyout('downloads', els.downloads));
+const mediaBtn = document.getElementById('media-btn');
+if (mediaBtn) {
+  mediaBtn.prepend(icon('music'));
+  mediaBtn.addEventListener('click', () => flyout('media', mediaBtn));
+}
 els.shield.addEventListener('click', () => flyout('shield', els.shield));
 els.site.addEventListener('click', () => flyout('site_info', els.site));
 const pwBtn = $('pw-btn');
@@ -714,9 +719,19 @@ function renderUpdate() {
   }
 }
 
+// Music button: shown while any tab has media; three bars dance while something plays.
+function renderMedia() {
+  if (!mediaBtn) return;
+  const m = state.media || {};
+  mediaBtn.hidden = !m.on || !m.count || settings?.appearance?.toolbar_media === false;
+  mediaBtn.classList.toggle('playing', !!m.playing);
+  mediaBtn.title = m.playing ? 'Music and video: playing' : 'Music and video';
+}
+
 function renderDownloads() {
+  renderMedia();
   const d = state.downloads || {};
-  els.downloads.hidden = !d.any;
+  els.downloads.hidden = !d.any && settings?.appearance?.toolbar_downloads !== 'always';
   els.downloads.classList.toggle('active', d.active > 0);
   const p = d.active > 0 && d.progress >= 0 ? d.progress : d.active > 0 ? 0.08 : 0;
   els.ring.style.strokeDashoffset = String(97.4 * (1 - p));
@@ -837,6 +852,11 @@ function applySettings(s) {
   settings = s;
   theme.apply(s, { private: state?.private, translucent: !SIDEBAR });
   $('home').hidden = !s.appearance?.show_home_button;
+  els.star.hidden = s.appearance?.toolbar_star === false;
+  els.shield.hidden = s.appearance?.toolbar_shield === false;
+  if (state) {
+    renderDownloads();
+  }
   const side = s.appearance?.tab_layout === 'side';
   if (!SIDEBAR && side !== sideLayout) {
     sideLayout = side;

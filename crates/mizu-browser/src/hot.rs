@@ -48,6 +48,10 @@ pub struct Hot {
     pub nav_started: HashMap<ViewKey, std::time::Instant>,
     /// Per tab: token of the login-capture script on the current page.
     pub pw_tokens: HashMap<ViewKey, String>,
+    /// Media hub: per-document token of the media script, and remembered site volumes.
+    pub media_tokens: HashMap<ViewKey, String>,
+    pub site_volumes: HashMap<String, u32>,
+    pub media_hub: bool,
     /// Offer to save passwords (Mizu Passwords enabled).
     pub password_capture: bool,
     /// Picture-in-picture button on videos.

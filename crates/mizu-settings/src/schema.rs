@@ -154,6 +154,8 @@ pub enum UiStyle {
     Soft,
     /// Flatter, square-ish controls.
     Crisp,
+    /// Fully rounded, pill-shaped controls.
+    Round,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -179,9 +181,27 @@ pub struct AppearanceSettings {
     /// New tab page background: "wave" (default), a built-in gradient, "none", or "image" (a
     /// picture kept in the new tab page's own local storage).
     pub newtab_background: String,
+    /// Tint the window frame with the accent colour.
+    pub accent_tint: bool,
+    /// Interface font: "" (Mizu standard), "system" (the Windows UI font) or a family name.
+    pub ui_font: String,
+    /// Toolbar buttons that can be hidden.
+    pub toolbar_star: bool,
+    pub toolbar_shield: bool,
+    pub toolbar_media: bool,
+    /// Downloads button: "auto" (once something was downloaded) or "always".
+    pub toolbar_downloads: String,
     pub newtab_clock: bool,
     pub newtab_shield_stats: bool,
     pub newtab_shortcuts: bool,
+    /// Widgets: what is playing, recently closed tabs, a notepad.
+    pub newtab_now_playing: bool,
+    pub newtab_recent: bool,
+    pub newtab_notes: bool,
+    /// Shortcut tiles: "small", "medium" or "large".
+    pub newtab_tile_size: String,
+    /// Name used in the greeting ("Good evening, Sen").
+    pub newtab_name: String,
 }
 
 impl Default for AppearanceSettings {
@@ -201,9 +221,20 @@ impl Default for AppearanceSettings {
             sidebar_collapsed: false,
             sidebar_width: 252,
             newtab_background: "wave".into(),
+            accent_tint: false,
+            ui_font: String::new(),
+            toolbar_star: true,
+            toolbar_shield: true,
+            toolbar_media: true,
+            toolbar_downloads: "auto".into(),
             newtab_clock: true,
             newtab_shield_stats: true,
             newtab_shortcuts: true,
+            newtab_now_playing: true,
+            newtab_recent: false,
+            newtab_notes: false,
+            newtab_tile_size: "medium".into(),
+            newtab_name: String::new(),
         }
     }
 }
@@ -469,6 +500,12 @@ pub struct MediaSettings {
     pub pip_compact: bool,
     /// Previous/next video and 10-second skip buttons in the picture-in-picture window.
     pub pip_controls: bool,
+    /// Media hub: the toolbar's music button and panel, the media keys and the new tab card.
+    pub media_hub: bool,
+    /// When a tab starts playing, pause the others.
+    pub pause_others: bool,
+    /// Volume chosen per site in the media panel, in percent (origins at 100% are absent).
+    pub site_volumes: std::collections::BTreeMap<String, u32>,
 }
 
 impl Default for MediaSettings {
@@ -479,6 +516,9 @@ impl Default for MediaSettings {
             pip_position: "top-right".into(),
             pip_compact: false,
             pip_controls: true,
+            media_hub: true,
+            pause_others: false,
+            site_volumes: std::collections::BTreeMap::new(),
         }
     }
 }

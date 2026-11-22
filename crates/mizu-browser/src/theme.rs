@@ -13,10 +13,29 @@ pub fn is_dark(settings: &Settings) -> bool {
 
 /// Opaque background of the browser frame (matches `--frame` in tokens.css).
 pub fn frame_rgb(settings: &Settings, private: bool) -> [u8; 3] {
-    let dark = is_dark(settings) || private;
     if private {
         return [0x1b, 0x17, 0x26];
     }
+    let base = base_frame_rgb(settings);
+    match (settings.appearance.accent_tint, parse_hex(&settings.appearance.accent)) {
+        // Same mix as tokens.css: 11% accent in light, 9% in dark.
+        (true, Some(acc)) => {
+            let w = if is_dark(settings) { 0.09 } else { 0.11 };
+            let mix = |a: u8, b: u8| (f64::from(a) * w + f64::from(b) * (1.0 - w)).round() as u8;
+            [mix(acc[0], base[0]), mix(acc[1], base[1]), mix(acc[2], base[2])]
+        }
+        _ => base,
+    }
+}
+
+fn parse_hex(s: &str) -> Option<[u8; 3]> {
+    let h = s.strip_prefix('#').filter(|h| h.len() == 6)?;
+    let v = u32::from_str_radix(h, 16).ok()?;
+    Some([(v >> 16) as u8, (v >> 8) as u8, v as u8])
+}
+
+fn base_frame_rgb(settings: &Settings) -> [u8; 3] {
+    let dark = is_dark(settings);
     match (settings.appearance.palette, dark) {
         (Palette::Mizu, false) => [0xe9, 0xef, 0xf5],
         (Palette::Mizu, true) => [0x14, 0x1a, 0x22],
@@ -68,18 +87,34 @@ pub fn ui_language(settings: &Settings) -> &'static str {
     }
 }
 
+/// `--font` override for the chosen interface font, or "" for Mizu's standard font.
+fn font_style(ui_font: &str) -> String {
+    match ui_font.trim() {
+        "" => String::new(),
+        "system" => ";--font:system-ui,\"Segoe UI\",sans-serif;--font-display:system-ui,\"Segoe UI\",sans-serif".into(),
+        name => {
+            // Family names come from the font list; keep only characters a name can have.
+            let clean: String = name.chars().filter(|c| c.is_alphanumeric() || " -_.&'".contains(*c)).take(64).collect();
+            let clean = clean.replace('\'', "\\'");
+            format!(";--font:'{clean}',\"Segoe UI\",sans-serif;--font-display:'{clean}',\"Segoe UI\",sans-serif")
+        }
+    }
+}
+
 pub fn html_attrs(settings: &Settings) -> String {
     let a = &settings.appearance;
     let enum_str = |v: serde_json::Value| v.as_str().unwrap_or_default().to_owned();
     let accent = if a.accent.len() == 7 && a.accent.starts_with('#') { a.accent.as_str() } else { "#2f7de1" };
     format!(
-        r#"data-lang="{}" data-theme="{}" data-palette="{}" data-density="{}" data-style="{}" data-motion="{}" style="--accent:{accent}""#,
+        r#"data-lang="{}" data-theme="{}" data-palette="{}" data-density="{}" data-style="{}" data-motion="{}"{} style="--accent:{accent}{}""#,
         ui_language(settings),
         if is_dark(settings) { "dark" } else { "light" },
         enum_str(serde_json::to_value(a.palette).unwrap_or_default()),
         enum_str(serde_json::to_value(a.density).unwrap_or_default()),
         enum_str(serde_json::to_value(a.style).unwrap_or_default()),
         if a.animations { "on" } else { "off" },
+        if a.accent_tint { " data-tint=\"\"" } else { "" },
+        font_style(&a.ui_font).replace('"', "&quot;"),
     )
 }
 

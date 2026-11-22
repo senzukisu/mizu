@@ -155,7 +155,8 @@ function render() {
     const now = new Date();
     clock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const day = now.toLocaleDateString(i18n.lang === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' });
-    date.textContent = `${i18n.tr(greeting())} · ${day}`;
+    const hello = i18n.tr(greeting());
+    date.textContent = `${data.name ? `${hello}, ${data.name}` : hello} · ${day}`;
   };
   tick();
   clearInterval(render.timer);
@@ -171,6 +172,8 @@ function render() {
     );
   } else {
     if (data.clock !== false) content.append(h('div', { class: 'nt-hello' }, clock, date));
+    // Widgets under the clock: what plays now.
+    if (data.now_playing !== false) content.append(nowPlaying());
     content.append(searchForm());
   }
 
@@ -185,7 +188,12 @@ function render() {
   }
 
   if (!isPrivate && data.engines && data.shortcuts !== false) {
-    content.append(tiles());
+    const t = tiles();
+    t.classList.add(`size-${data.tile_size || 'medium'}`);
+    content.append(t);
+  }
+  if (!isPrivate && data.engines && (data.recent || data.notes)) {
+    content.append(h('div', { class: 'nt-widgets' }, data.recent ? recentWidget() : null, data.notes ? notesWidget() : null));
   }
   if (!isPrivate && data.engines && data.shield_stats !== false) {
     const stats = h('a', { class: 'nt-stats', href: '#' }, icon('shield-check', { size: 16 }), h('span', { text: `${Number(data.blocked_lifetime || 0)} ads and trackers blocked by Mizu Shield` }));
@@ -198,6 +206,62 @@ function render() {
   const bg = isPrivate ? 'wave' : data.background || 'wave';
   applyBackground(bg);
   main.replaceChildren(...[content, bg === 'wave' || isPrivate ? h('div', { class: 'nt-wave', 'aria-hidden': 'true' }) : null, !isPrivate && data.engines ? customizeButton() : null].filter(Boolean));
+}
+
+// ── Widgets ─────────────────────────────────────────────────
+// "Now playing": the latest media tab with play/pause and next; hidden while nothing plays.
+const npBox = h('div', { class: 'nt-np', hidden: true });
+function drawNowPlaying(items) {
+  const m = (items || [])[0];
+  npBox.hidden = !m;
+  if (!m) return npBox.replaceChildren();
+  const send = (action) => mizu.request('media_control', { tab: m.tab, action });
+  const btn = (ic, label, action, main) => {
+    const b = h('button', { class: `nt-np-btn${main ? ' main' : ''}`, title: label }, icon(ic, { size: main ? 18 : 15 }));
+    b.addEventListener('click', () => send(action));
+    return b;
+  };
+  const art = m.artwork ? h('div', { class: 'nt-np-art', style: { backgroundImage: `url("${m.artwork.replace(/"/g, '%22')}")` } }) : h('div', { class: 'nt-np-art none' }, icon(m.video ? 'media' : 'music', { size: 20 }));
+  const meta = h('button', { class: 'nt-np-meta', title: 'Go to tab' }, h('div', { class: 't', translate: 'no', text: m.title || m.page_title || m.site }), h('div', { class: 'd', translate: 'no', text: [m.artist, m.site].filter(Boolean).join(' · ') }));
+  meta.addEventListener('click', () => send('focus'));
+  npBox.classList.toggle('playing', !!m.playing);
+  npBox.replaceChildren(art, meta, h('div', { class: 'nt-np-ctl' }, m.prev ? btn('skip-back', 'Previous', 'prev') : null, btn(m.playing ? 'pause' : 'play', m.playing ? 'Pause' : 'Play', 'toggle', true), btn('skip-forward', 'Next', 'next')));
+}
+function nowPlaying() {
+  drawNowPlaying(data.media);
+  return npBox;
+}
+mizu.on('media', (m) => {
+  data.media = m.items;
+  if (data.now_playing !== false) drawNowPlaying(m.items);
+});
+
+function recentWidget() {
+  const list = h('div', { class: 'nt-recent' });
+  const items = data.closed || [];
+  if (!items.length) list.append(h('div', { class: 'nt-w-empty', text: 'No closed tabs yet.' }));
+  for (const c of items) {
+    const a = h('a', { href: c.url, class: 'nt-recent-row', title: c.url }, letterAvatar(c.url, c.title), h('span', { translate: 'no', text: c.title || hostOf(c.url) || c.url }));
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      mizu.send('open_url', { url: c.url, disposition: e.ctrlKey ? 'background' : 'current' });
+    });
+    list.append(a);
+  }
+  return h('section', { class: 'nt-widget' }, h('h4', null, icon('history', { size: 15 }), h('span', { text: 'Recently closed' })), list);
+}
+
+// Notes stay in this page's local storage, on this PC only.
+const NOTES_KEY = 'mizu.newtab.notes';
+function notesWidget() {
+  const area = h('textarea', { class: 'nt-notes', placeholder: 'Write something down…', spellcheck: 'true' });
+  area.value = store.get(NOTES_KEY) || '';
+  let t = 0;
+  area.addEventListener('input', () => {
+    clearTimeout(t);
+    t = setTimeout(() => store.set(NOTES_KEY, area.value.slice(0, 20000)), 300);
+  });
+  return h('section', { class: 'nt-widget' }, h('h4', null, icon('edit', { size: 15 }), h('span', { text: 'Notes' })), area);
 }
 
 // Customize: background (built-in or your picture), what the page shows, a link to the
@@ -272,7 +336,17 @@ function customizeButton() {
 }
 
 function openCustomize() {
-  const prefs = { background: data.background || 'wave', clock: data.clock !== false, shield_stats: data.shield_stats !== false, shortcuts: data.shortcuts !== false };
+  const prefs = {
+    background: data.background || 'wave',
+    clock: data.clock !== false,
+    shield_stats: data.shield_stats !== false,
+    shortcuts: data.shortcuts !== false,
+    now_playing: data.now_playing !== false,
+    recent: !!data.recent,
+    notes: !!data.notes,
+    tile_size: data.tile_size || 'medium',
+    name: data.name || '',
+  };
   const save = () => {
     Object.assign(data, prefs);
     mizu.request('newtab_prefs', prefs).then(render);
@@ -337,6 +411,24 @@ function openCustomize() {
     save();
   }, { label }));
 
+  const sizeSeg = h('div', { class: 'nt-seg' }, ...[['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']].map(([v, label]) => {
+    const b = h('button', { class: prefs.tile_size === v ? 'on' : '', text: label });
+    b.addEventListener('click', () => {
+      prefs.tile_size = v;
+      for (const x of b.parentElement.children) x.classList.toggle('on', x === b);
+      save();
+    });
+    return b;
+  }));
+  const nameInput = h('input', { type: 'text', class: 'nt-name', value: prefs.name, maxlength: '40', placeholder: 'Optional' });
+  let nameT = 0;
+  nameInput.addEventListener('input', () => {
+    clearTimeout(nameT);
+    nameT = setTimeout(() => {
+      prefs.name = nameInput.value.trim();
+      save();
+    }, 400);
+  });
   const theme = h('button', { class: 'btn ghost nt-theme-link' }, icon('sun', { size: 15 }), h('span', { text: 'Colours and theme' }));
   theme.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://settings/#appearance', disposition: 'current' }));
   const done = h('button', { class: 'btn primary', text: 'Done', autofocus: true });
@@ -345,6 +437,12 @@ function openCustomize() {
     h('div', { class: 'nt-sub', text: 'Background' }), swatches, dimRow,
     h('div', { class: 'nt-sub', text: 'Show on the page' }),
     h('div', { class: 'nt-checks' }, check('Clock and greeting', 'clock'), check('Shortcut tiles', 'shortcuts'), check('Mizu Shield counter', 'shield_stats')),
+    h('div', { class: 'nt-sub', text: 'Widgets' }),
+    h('div', { class: 'nt-checks' }, check('Now playing', 'now_playing'), check('Recently closed', 'recent'), check('Notes', 'notes')),
+    h('div', { class: 'nt-sub', text: 'Layout' }),
+    h('div', { class: 'nt-checks' },
+      h('div', { class: 'nt-check' }, h('span', { text: 'Tile size' }), sizeSeg),
+      h('div', { class: 'nt-check' }, h('span', { text: 'Your name in the greeting' }), nameInput)),
     h('div', { class: 'row' }, theme, done));
   done.addEventListener('click', () => dlg.close());
   dlg.addEventListener('close', () => dlg.remove());

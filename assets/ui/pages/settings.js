@@ -138,6 +138,47 @@ const ACCENTS = [
   '#d9822b', '#e0672b', '#e5484d', '#d0607b', '#db2777', '#a855f7', '#7a5af5', '#5b6cf0', '#4b5563',
 ];
 
+// Interface font: Mizu standard, the Windows font, or any installed family (with a preview).
+let fontList = null;
+function fontSetting(a) {
+  const sel = h('select', { class: 'font-select' });
+  const opt = (v, label) => {
+    const o = h('option', { value: v, text: label });
+    if ((a.ui_font || '') === v) o.selected = true;
+    return o;
+  };
+  const fill = () => {
+    sel.replaceChildren(opt('', 'Mizu standard (Segoe UI Variable)'), opt('system', 'System font'));
+    const group = h('optgroup', { label: 'Installed fonts' });
+    for (const f of fontList || []) {
+      const o = opt(f, f);
+      o.setAttribute('translate', 'no');
+      o.style.fontFamily = `'${f}'`;
+      group.append(o);
+    }
+    if (a.ui_font && a.ui_font !== 'system' && !(fontList || []).includes(a.ui_font)) group.prepend(opt(a.ui_font, a.ui_font));
+    sel.append(group);
+  };
+  fill();
+  if (!fontList) {
+    mizu.request('system_fonts').then((list) => {
+      fontList = list || [];
+      const v = sel.value;
+      fill();
+      sel.value = v;
+    });
+  }
+  const preview = h('div', { class: 'font-preview', text: 'Mizu — Быстрая лиса 0123' });
+  const show = () => (preview.style.fontFamily = sel.value === '' ? '' : sel.value === 'system' ? 'system-ui' : `'${sel.value}'`);
+  show();
+  sel.addEventListener('change', () => {
+    a.ui_font = sel.value;
+    show();
+    save(true);
+  });
+  return h('div', { class: 'setting' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Interface font' }), h('div', { class: 'd', text: 'Menus, tabs, settings and Mizu pages. Websites keep their own fonts.' }), preview), sel);
+}
+
 // A small browser drawn with the current tokens, so palette and accent changes show at once.
 function themePreview() {
   return h('div', { class: 'theme-preview', 'aria-hidden': 'true' },
@@ -190,12 +231,24 @@ function appearance() {
       })),
       h('div', { class: 'setting col' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Palette' })), palettes),
       h('div', { class: 'setting col' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Accent colour' })), accents),
+      toggle('Tint the window with the accent colour', 'The tab strip and page backgrounds take a light shade of your accent.', () => !!a.accent_tint, (v) => (a.accent_tint = v)),
+    ),
+    card('Toolbar', 'Choose which buttons the toolbar shows.',
+      toggle('Bookmark star', 'Ctrl+D works either way.', () => a.toolbar_star !== false, (v) => (a.toolbar_star = v)),
+      toggle('Mizu Shield button', 'Shows how much was blocked on the page.', () => a.toolbar_shield !== false, (v) => (a.toolbar_shield = v)),
+      toggle('Music button', 'Appears while a tab plays music or video.', () => a.toolbar_media !== false, (v) => (a.toolbar_media = v)),
+      setting('Downloads button', null, seg([['auto', 'After the first download'], ['always', 'Always']], a.toolbar_downloads || 'auto', (v) => {
+        a.toolbar_downloads = v;
+        save();
+      })),
+      toggle('Show Home button', null, () => a.show_home_button, (v) => (a.show_home_button = v)),
     ),
     card('Interface', null,
-      setting('Style', 'Soft uses rounded, floating controls; Crisp is flatter.', seg([['soft', 'Soft'], ['crisp', 'Crisp']], a.style, (v) => {
+      setting('Style', 'Soft uses rounded, floating controls; Round makes them pill-shaped; Crisp is flatter.', seg([['soft', 'Soft'], ['round', 'Round'], ['crisp', 'Crisp']], a.style, (v) => {
         a.style = v;
         save(true);
       })),
+      fontSetting(a),
       setting('Density', null, seg([['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']], a.density, (v) => {
         a.density = v;
         save(true);
@@ -207,7 +260,6 @@ function appearance() {
         save(true);
       })),
       toggle('Show bookmarks bar', 'Ctrl+Shift+B', () => a.show_bookmarks_bar, (v) => (a.show_bookmarks_bar = v)),
-      toggle('Show Home button', null, () => a.show_home_button, (v) => (a.show_home_button = v)),
       setting('Default page zoom', null, zoom),
     ),
   ];
@@ -517,7 +569,31 @@ function media() {
   const m = s.media;
   const diag = h('button', { class: 'btn', text: 'Open media diagnostics' });
   diag.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://media/', disposition: 'new_tab' }));
+  const vols = Object.entries(m.site_volumes || {});
+  const volList = h('div');
+  const drawVols = () => {
+    volList.replaceChildren();
+    if (!vols.length) return;
+    const table = h('table', { class: 'grid' }, h('tr', null, h('th', { text: 'Site' }), h('th', { text: 'Volume' }), h('th')));
+    vols.forEach(([origin, pct], i) => {
+      const del = h('button', { class: 'icon-btn', title: 'Reset' }, icon('close'));
+      del.addEventListener('click', () => {
+        delete m.site_volumes[origin];
+        vols.splice(i, 1);
+        save(true);
+        drawVols();
+      });
+      table.append(h('tr', null, h('td', { translate: 'no', text: origin }), h('td', { text: `${pct}%` }), h('td', null, del)));
+    });
+    volList.append(table);
+  };
+  drawVols();
   return [
+    card('Music and video', 'The music button appears in the toolbar while something plays: control every tab from one place, see the track, and set a volume per site.',
+      toggle('Media panel and media keys', 'The toolbar button, the "Now playing" card on the new tab, and the keyboard media keys while Mizu is focused. Reload open pages to apply.', () => m.media_hub !== false, (v) => (m.media_hub = v)),
+      toggle('One sound at a time', 'When a tab starts playing, the others pause. Handy with music in the background.', () => !!m.pause_others, (v) => (m.pause_others = v)),
+      h('div', { class: 'setting col' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Site volumes' }), h('div', { class: 'd', text: 'Set from the music panel and applied every time the site plays.' })), volList),
+    ),
     card('Autoplay', null,
       setting('Media autoplay', 'Requires restart.', seg([['default', 'Muted autoplay allowed'], ['require_interaction', 'Only after I interact']], m.autoplay, (v) => {
         m.autoplay = v;

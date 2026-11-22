@@ -128,6 +128,16 @@ pub enum Command {
     ShieldToggleSite { enabled: bool },
     DownloadAction { id: u64, action: DownloadAction },
     DownloadsClear,
+    /// Media hub: `action` is toggle, play, pause, next, prev, volume (`value` 0..1) or focus.
+    MediaControl {
+        tab: u64,
+        action: String,
+        #[serde(default)]
+        value: Option<f64>,
+    },
+    MediaList,
+    /// Installed font families, for the interface font setting.
+    SystemFonts,
     /// Opens the folder downloads are saved to.
     DownloadsOpenFolder,
 
@@ -173,6 +183,16 @@ pub enum Command {
         shield_stats: bool,
         #[serde(default = "yes")]
         shortcuts: bool,
+        #[serde(default = "yes")]
+        now_playing: bool,
+        #[serde(default)]
+        recent: bool,
+        #[serde(default)]
+        notes: bool,
+        #[serde(default)]
+        tile_size: String,
+        #[serde(default)]
+        name: String,
     },
     DownloadsGet,
     ClearData(ClearDataRequest),
@@ -315,6 +335,8 @@ pub enum FlyoutKind {
     Confirm,
     SavePassword,
     Logins,
+    /// Media hub panel: what plays in which tab.
+    Media,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
@@ -375,6 +397,8 @@ pub enum Event {
     /// Appearance and preferences changed (broadcast to every surface).
     Settings { settings: Value },
     Downloads { items: Value },
+    /// Media hub list changed.
+    Media { items: Value },
     /// Focus the omnibox (Ctrl+L / F6 / new tab).
     FocusOmnibox,
     /// Open the find bar and focus it (Ctrl+F); `step` moves through matches (F3).

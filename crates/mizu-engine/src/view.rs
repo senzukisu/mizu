@@ -37,6 +37,11 @@ struct Inner {
     doc_script: RefCell<Option<String>>,
     /// Bumped on every `set_document_script` so late completions can be discarded.
     doc_script_gen: Cell<u64>,
+    /// Registration of the current document script has completed.
+    doc_script_ready: Cell<bool>,
+    /// The page's document was created while the current script was still registering, so it
+    /// did not run at document start; it runs as soon as registration completes instead.
+    doc_script_missed: Cell<bool>,
     closed: Cell<bool>,
     /// Window whose composition tree shows this view.
     parent: HWND,
@@ -89,6 +94,8 @@ impl View {
                         key: config.key,
                         doc_script: RefCell::new(None),
                         doc_script_gen: Cell::new(0),
+                        doc_script_ready: Cell::new(true),
+                        doc_script_missed: Cell::new(false),
                         closed: Cell::new(false),
                         parent,
                     }),
@@ -264,8 +271,16 @@ impl View {
             )?;
 
             let h = handler.clone();
+            let w = weak.clone();
             core.add_ContentLoading(
                 &ContentLoadingEventHandler::create(Box::new(move |_, _| {
+                    // A document is starting: if the navigation's script is still being
+                    // registered, remember to run it as soon as it is.
+                    if let Some(inner) = w.upgrade() {
+                        if !inner.doc_script_ready.get() {
+                            inner.doc_script_missed.set(true);
+                        }
+                    }
                     h.on_event(key, ViewEvent::ContentLoading);
                     Ok(())
                 })),
@@ -769,6 +784,8 @@ impl View {
     pub fn set_document_script(&self, js: Option<String>) {
         let generation = self.inner.doc_script_gen.get() + 1;
         self.inner.doc_script_gen.set(generation);
+        self.inner.doc_script_missed.set(false);
+        self.inner.doc_script_ready.set(js.is_none());
         if let Some(old) = self.inner.doc_script.borrow_mut().take() {
             // SAFETY: COM call on the UI thread.
             unsafe {
@@ -777,10 +794,23 @@ impl View {
         }
         let Some(js) = js else { return };
         let weak = Rc::downgrade(&self.inner);
+        let late = js.clone();
         let handler = AddScriptToExecuteOnDocumentCreatedCompletedHandler::create(Box::new(move |hr, id| {
             if let (Ok(()), Some(inner)) = (hr, weak.upgrade()) {
                 if inner.doc_script_gen.get() == generation {
                     *inner.doc_script.borrow_mut() = Some(id);
+                    inner.doc_script_ready.set(true);
+                    // The document beat the registration (fast or cached pages): run the
+                    // script now so the page still gets it.
+                    if inner.doc_script_missed.replace(false) {
+                        // SAFETY: COM call on the UI thread.
+                        unsafe {
+                            let _ = inner.core.ExecuteScript(
+                                &HSTRING::from(late.as_str()),
+                                &ExecuteScriptCompletedHandler::create(Box::new(|_, _| Ok(()))),
+                            );
+                        }
+                    }
                 } else {
                     // Superseded while registering: remove immediately.
                     // SAFETY: COM call on the UI thread.

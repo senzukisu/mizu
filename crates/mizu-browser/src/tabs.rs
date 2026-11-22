@@ -410,6 +410,10 @@ impl App {
 
     pub fn on_tab_event(&mut self, window: WindowId, tab: TabId, event: ViewEvent) {
         let private = self.window(window).is_some_and(|w| w.private);
+        // A new page in a tab starts with nothing playing.
+        if matches!(event, ViewEvent::ContentLoading) && self.media.forget(tab.0) {
+            self.media_dirty = true;
+        }
         let Some(w) = self.window_mut(window) else { return };
         let active = w.strip.active() == Some(tab);
         let mut record: Option<(String, String)> = None;
@@ -528,6 +532,7 @@ impl App {
             Vec::new()
         };
         let (dl_active, dl_progress) = self.downloads.summary();
+        let (media_count, media_playing) = self.media.summary(self.window(id).is_some_and(|w| w.private));
         let session_blocked = hot::with(|h| h.stats.session_blocked).unwrap_or(0);
         let Some(w) = self.window(id) else { return };
         let active = w.active_tab();
@@ -608,6 +613,7 @@ impl App {
             "bookmarks_other": if self.settings.appearance.show_bookmarks_bar { self.bookmarks_other } else { 0 },
             "closed": w.strip.closed_tabs().count(),
             "downloads": { "active": dl_active, "progress": dl_progress, "any": !self.downloads.items.is_empty() },
+            "media": { "count": media_count, "playing": media_playing, "on": self.settings.media.media_hub },
             "shield": { "session": session_blocked },
             "update": match &self.update {
                 crate::update::UpdateState::Ready { version, .. } => serde_json::Value::String(version.clone()),

@@ -89,7 +89,8 @@ loading improvements, "Open with…", automatic cookie cleanup, CI, updater roll
   the sidebar and panels.
 
 **Technical work**
-- CI: tests, Clippy and UI script checks on every push; integration tests that drive the real interface.
+- ~~CI: tests, Clippy and UI script checks on every push~~ — done in 0.2.2; next: integration tests that drive the
+  real interface.
 - Updater: roll back if a new version fails to start, and a beta channel.
 - A code-signed installer (Authenticode) and local crash reports (never uploaded automatically).
 - Tree tab model and session format v2 with a tested migration.

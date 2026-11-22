@@ -623,3 +623,134 @@ button {
 .sug.k-calc .d {
   color: var(--accent);
 }
+
+/* ── Music and video panel ────────────────────────────────── */
+.mh-panel {
+  width: 380px;
+}
+.mh-card {
+  display: flex;
+  gap: 12px;
+  padding: 10px;
+  border-radius: var(--r-lg);
+  margin-bottom: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.mh-card.playing {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
+}
+.mh-art {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: var(--surface-3) center / cover no-repeat;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+.mh-card.big .mh-art {
+  width: 76px;
+  height: 76px;
+}
+.mh-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mh-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mh-sub {
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mh-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  overflow: hidden;
+  margin: 5px 0 2px;
+}
+.mh-progress > div {
+  height: 100%;
+  background: var(--accent);
+}
+.mh-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.mh-btn {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: none;
+  color: var(--ink-2);
+}
+.mh-btn:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+.mh-btn.main {
+  width: 34px;
+  height: 34px;
+  background: var(--accent);
+  color: #fff;
+}
+.mh-btn.main:hover {
+  background: color-mix(in srgb, var(--accent) 85%, #fff);
+  color: #fff;
+}
+.mh-vol-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  color: var(--ink-3);
+}
+.mh-vol {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+.mh-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+.mh-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.mh-link:hover {
+  color: var(--accent);
+}
+.mh-time {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}

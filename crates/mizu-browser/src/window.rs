@@ -304,7 +304,10 @@ pub fn create_native(id: WindowId, title: &str, placement: Option<(i32, i32, i32
             WS_EX_APPWINDOW,
             &wide(CLASS),
             &wide(title),
-            WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+            // No WS_SYSMENU: with it, DWM paints its own caption buttons into the extended
+            // Mica frame, where they show through Mizu's buttons. Minimise/maximise boxes stay
+            // so snapping, animations and Win+arrow keys keep working.
+            (WS_OVERLAPPEDWINDOW & !WS_SYSMENU) | WS_CLIPCHILDREN,
             x,
             y,
             w,

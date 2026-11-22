@@ -49,6 +49,10 @@ pub fn on_message(app: &mut App, key: ViewKey, source: &str, json: &str) {
                 crate::passwords::on_capture(app, key, &value);
                 return;
             }
+            if value.get("mizu_media").is_some() {
+                crate::media::on_report(app, key, &value);
+                return;
+            }
             let action = hot::with(|h| crate::scripts::handle_gm_message(h, key, &value));
             if let Some(crate::scripts::GmAction::OpenTab { url, background }) = action {
                 let opts = if background { OpenOptions::background() } else { OpenOptions::foreground() };
@@ -585,6 +589,30 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             crate::internal::download_action(app, window, id, action);
             ok()
         }
+        Command::MediaControl { tab, action, value } => {
+            let Some(key) = app.media_key_for_tab(tab) else { return ok() };
+            match action.as_str() {
+                "volume" => app.set_media_volume(key, value.unwrap_or(1.0)),
+                "focus" => {
+                    if let Some(hot::Role::Tab { window: w, tab: t }) = hot::role(key) {
+                        app.activate_tab(w, t);
+                        if w != window {
+                            if let Some(win) = app.window(w) {
+                                crate::win::bring_to_front(win.hwnd);
+                            }
+                        }
+                    }
+                }
+                "toggle" | "play" | "pause" | "next" | "prev" => crate::media::control(key, &action, None),
+                _ => {}
+            }
+            ok()
+        }
+        Command::SystemFonts => Ok(Some(serde_json::to_value(crate::win::font_families()).unwrap_or_default())),
+        Command::MediaList => {
+            let private = app.window(window).is_some_and(|w| w.private);
+            Ok(Some(app.media.to_json(private)))
+        }
         Command::DownloadsOpenFolder => {
             let dir = &app.settings.downloads.directory;
             let dir = if dir.trim().is_empty() { crate::downloads::default_dir() } else { std::path::PathBuf::from(dir) };
@@ -604,6 +632,7 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
     let private = app.window(window).is_some_and(|w| w.private);
     match kind {
         FlyoutKind::Downloads => app.downloads.to_json(private),
+        FlyoutKind::Media => json!({ "items": app.media.to_json(private), "pause_others": app.settings.media.pause_others }),
         FlyoutKind::TabMenu => {
             let tab = tab_id.and_then(|id| app.window(window)?.strip.get(TabId(id)).cloned());
             let state = tab_id.and_then(|id| app.window(window)?.tabs.get(&TabId(id)));
@@ -913,6 +942,17 @@ pub fn run_shortcut(app: &mut App, window: WindowId, s: Shortcut) {
         Shortcut::ZoomIn => zoom(app, window, 1),
         Shortcut::ZoomOut => zoom(app, window, -1),
         Shortcut::ZoomReset => zoom(app, window, 0),
+        Shortcut::MediaToggle | Shortcut::MediaNext | Shortcut::MediaPrev => {
+            let private = app.window(window).is_some_and(|w| w.private);
+            if let Some(key) = app.media_current(private) {
+                let cmd = match s {
+                    Shortcut::MediaNext => "next",
+                    Shortcut::MediaPrev => "prev",
+                    _ => "toggle",
+                };
+                crate::media::control(key, cmd, None);
+            }
+        }
         Shortcut::Find | Shortcut::FindNext | Shortcut::FindPrev => {
             let step = match s {
                 Shortcut::FindNext => Some(true),

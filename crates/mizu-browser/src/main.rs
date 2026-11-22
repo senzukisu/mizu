@@ -12,6 +12,7 @@ mod dialogs;
 mod downloads;
 mod extensions;
 mod external;
+mod media;
 mod flyout;
 mod handler;
 mod hot;

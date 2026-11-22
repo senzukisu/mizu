@@ -57,6 +57,13 @@ pub fn apply_backdrop(hwnd: HWND, dark: bool, mica: bool) {
             MARGINS { cxLeftWidth: 0, cxRightWidth: 0, cyTopHeight: 1, cyBottomHeight: 0 }
         };
         let _ = DwmExtendFrameIntoClientArea(hwnd, &margins);
+        // With the frame extended over the whole window, Windows draws its own title, icon
+        // and minimise/maximise/close buttons into the glass, where they show through Mizu's
+        // own buttons. Mizu draws all of these itself, so tell the theme not to.
+        use windows::Win32::UI::Controls::{SetWindowThemeAttribute, WTA_NONCLIENT, WTA_OPTIONS, WTNCA_NODRAWCAPTION, WTNCA_NODRAWICON, WTNCA_NOSYSMENU};
+        let flags = WTNCA_NODRAWCAPTION | WTNCA_NODRAWICON | WTNCA_NOSYSMENU;
+        let opts = WTA_OPTIONS { dwFlags: flags, dwMask: flags };
+        let _ = SetWindowThemeAttribute(hwnd, WTA_NONCLIENT, (&raw const opts).cast(), size_of::<WTA_OPTIONS>() as u32);
     }
 }
 
@@ -140,4 +147,37 @@ pub fn bring_to_front(hwnd: windows::Win32::Foundation::HWND) {
         }
         let _ = SetForegroundWindow(hwnd);
     }
+}
+
+/// Font families installed on this PC (for the interface font setting), sorted, without
+/// vertical "@" variants.
+pub fn font_families() -> Vec<String> {
+    use windows::Win32::Foundation::LPARAM;
+    use windows::Win32::Graphics::Gdi::{DEFAULT_CHARSET, EnumFontFamiliesExW, GetDC, LOGFONTW, ReleaseDC, TEXTMETRICW};
+
+    unsafe extern "system" fn collect(lf: *const LOGFONTW, _: *const TEXTMETRICW, _: u32, lparam: LPARAM) -> i32 {
+        // SAFETY: lparam is the Vec passed below; lf is valid for the duration of the call.
+        unsafe {
+            let out = &mut *(lparam.0 as *mut Vec<String>);
+            let face = &(*lf).lfFaceName;
+            let len = face.iter().position(|&c| c == 0).unwrap_or(face.len());
+            let name = String::from_utf16_lossy(&face[..len]);
+            if !name.is_empty() && !name.starts_with('@') {
+                out.push(name);
+            }
+        }
+        1
+    }
+
+    let mut out: Vec<String> = Vec::new();
+    // SAFETY: screen DC released below; the callback only touches `out`.
+    unsafe {
+        let dc = GetDC(None);
+        let lf = LOGFONTW { lfCharSet: DEFAULT_CHARSET, ..Default::default() };
+        EnumFontFamiliesExW(dc, &lf, Some(collect), LPARAM(&raw mut out as isize), 0);
+        ReleaseDC(None, dc);
+    }
+    out.sort_by_key(|s| s.to_lowercase());
+    out.dedup();
+    out
 }

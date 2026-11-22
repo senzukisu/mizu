@@ -59,6 +59,9 @@ pub struct App {
     pub handler: Rc<Dispatcher>,
     pub windows: Vec<BrowserWindow>,
     pub downloads: Downloads,
+    /// What is playing where (the music button, its panel and the new tab card).
+    pub media: crate::media::MediaHub,
+    pub media_dirty: bool,
     pub worker: WorkerSender,
     worker_rx: Receiver<WorkerResult>,
     pub msg_hwnd: HWND,
@@ -235,6 +238,9 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         gm_tokens: HashMap::new(),
         nav_started: HashMap::new(),
         pw_tokens: HashMap::new(),
+        media_tokens: HashMap::new(),
+        site_volumes: settings.media.site_volumes.iter().map(|(k, v)| (k.clone(), *v)).collect(),
+        media_hub: settings.media.media_hub,
         password_capture: settings.privacy.password_manager,
         pip_button: settings.media.pip_button,
         pip_config: crate::scripts::pip_config(&settings.media),
@@ -254,6 +260,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         handler: Rc::new(Dispatcher),
         windows: Vec::new(),
         downloads,
+        media: Default::default(),
+        media_dirty: false,
         worker,
         worker_rx,
         msg_hwnd,
@@ -472,6 +480,25 @@ impl App {
             }
             let normal_ev = Event::Downloads { items: self.downloads.to_json(false) }.to_json();
             crate::internal::broadcast_to_pages(self, "downloads", &normal_ev);
+        }
+        // Media hub: drop tabs that are gone, then refresh buttons, open panels and new tabs.
+        let before = self.media.items.len();
+        self.media.items.retain(|k, _| matches!(hot::role(*k), Some(hot::Role::Tab { .. })));
+        if self.media.items.len() != before {
+            self.media_dirty = true;
+        }
+        if self.media_dirty {
+            self.media_dirty = false;
+            for w in &mut self.windows {
+                w.state_dirty = true;
+                if w.flyout.is_open(mizu_ui::protocol::FlyoutKind::Media) {
+                    if let Some(v) = &w.flyout.view {
+                        v.post_json(&Event::Media { items: self.media.to_json(w.private) }.to_json());
+                    }
+                }
+            }
+            let ev = Event::Media { items: self.media.to_json(false) }.to_json();
+            crate::internal::broadcast_to_pages(self, "newtab", &ev);
         }
         let dirty: Vec<WindowId> = self.windows.iter().filter(|w| w.state_dirty).map(|w| w.id).collect();
         for id in dirty {
@@ -1132,6 +1159,8 @@ impl App {
             h.password_capture = self.settings.privacy.password_manager;
             h.pip_button = self.settings.media.pip_button;
             h.pip_config = crate::scripts::pip_config(&self.settings.media);
+            h.media_hub = self.settings.media.media_hub;
+            h.site_volumes = self.settings.media.site_volumes.iter().map(|(k, v)| (k.clone(), *v)).collect();
             h.bindings = crate::shortcuts::Bindings::build(&self.settings.shortcuts);
             h.allowlist = self.settings.privacy.allowlist.iter().map(|x| crate::shield::normalize_host(x)).collect();
         });

@@ -3,6 +3,38 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] — 2026-11-22
+
+### Added
+- **Music and video hub.** A music button appears in the toolbar while a tab plays (its bars move while something
+  is playing). Its panel lists every tab with sound or video, with the track, artist and cover art the site
+  publishes, a progress bar, previous / play-pause / next, a volume slider and "Go to tab".
+  - Previous/next use the site's own controls (YouTube, YouTube Music, Spotify, SoundCloud, VK and others), as the
+    keyboard's media keys would.
+  - **Volume per site**, remembered and applied every time the site plays; listed in Settings → Media.
+  - **One sound at a time** (optional): when a tab starts playing, the others pause.
+  - The keyboard's **media keys** work while Mizu is focused, and there are shortcuts: Ctrl+Alt+Space (play/pause),
+    Ctrl+Alt+Right / Left (next / previous track).
+- **New tab widgets:** "Now playing" with controls, "Recently closed" and a notepad kept on this PC. Tile size
+  (small, medium, large) and your name in the greeting.
+- **Interface font:** Mizu's standard, the Windows system font, or any font installed on the PC, with a preview.
+- **Toolbar:** choose whether to show the bookmark star, the Shield button, the music button and the Home button, and
+  whether the downloads button is always there.
+- A third control style, **Round**, and an option to **tint the window with the accent colour**.
+
+### Fixed
+- **Doubled window buttons:** Windows drew its own minimise/maximise/close buttons under Mizu's when the window was
+  translucent.
+- **Pages that load very fast** (from the cache or the local network) missed Mizu's page scripts: cosmetic filtering,
+  Global Privacy Control, userscripts and password saving. The scripts now run even when the page is quicker than
+  their registration.
+- Duplicate entries in the Russian dictionary; a few labels used a different translation than intended.
+
+### Development
+- **CI** on every push: interface script checks, Clippy with warnings as errors, and the test suite.
+- `scripts/check-ui.mjs`: syntax of every interface script, duplicate translations, and global name clashes between
+  shared and page scripts (the cause of the blank Settings page in 0.2.0 development).
+
 ## [0.2.1] — 2026-11-16
 
 ### Added

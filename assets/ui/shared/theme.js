@@ -16,6 +16,8 @@ const theme = (() => {
     root.dataset.density = a.density || 'comfortable';
     root.dataset.style = a.style || 'soft';
     root.dataset.motion = a.animations === false ? 'off' : 'on';
+    root.toggleAttribute('data-tint', !!a.accent_tint);
+    applyFont(root, a.ui_font || '');
     if (/^#[0-9a-f]{6}$/i.test(a.accent || '')) {
       root.style.setProperty('--accent', a.accent);
       root.style.setProperty('--accent-ink', readableInk(a.accent));
@@ -27,6 +29,19 @@ const theme = (() => {
     }
     if (typeof i18n !== 'undefined' && settings._lang) i18n.setLang(settings._lang);
     for (const fn of listeners) fn(settings);
+  }
+
+  // Interface font: Mizu's standard, the Windows UI font, or an installed family.
+  function applyFont(root, f) {
+    if (!f) {
+      root.style.removeProperty('--font');
+      root.style.removeProperty('--font-display');
+      return;
+    }
+    const name = f === 'system' ? 'system-ui' : `'${f.replace(/[^\p{L}\p{N} \-_.&]/gu, '')}'`;
+    const stack = `${name}, "Segoe UI", sans-serif`;
+    root.style.setProperty('--font', stack);
+    root.style.setProperty('--font-display', stack);
   }
 
   function readableInk(hex) {

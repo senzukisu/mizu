@@ -136,6 +136,16 @@ Userscripts in the Tampermonkey/Greasemonkey format. Open them from Menu → Scr
 - Mizu runs on Microsoft Edge WebView2, so it supports **Chromium (Manifest V3)** extensions. Firefox add-ons are not
   supported.
 
+## Music and video
+
+- While a tab plays sound or video, a **music button** appears in the toolbar. Its panel shows every playing tab
+  with the track and cover, previous / play-pause / next, a volume slider and **Go to tab**.
+- The volume you set is remembered for that site. Settings → Media lists the sites and can reset them.
+- **One sound at a time** (Settings → Media) pauses other tabs when one starts playing.
+- The keyboard's media keys work while Mizu is focused. Ctrl+Alt+Space plays or pauses, Ctrl+Alt+Right / Left switch
+  tracks; change them in Settings → Shortcuts.
+- The new tab page can show **Now playing** (Customize → Widgets).
+
 ## Video and picture in picture
 
 - **Picture in picture.** Hover a video and press **PiP**, or press **Alt+Shift+P** anywhere on the page.
