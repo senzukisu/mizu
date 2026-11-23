@@ -48,6 +48,10 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
   - Nothing goes to history.
   - Cookies are separate from normal windows, and everything is erased when the last private window closes.
 
+- **Tab groups.** Right-click a tab → **Add to new group** (or to an existing one). Click the group's chip to
+  collapse or expand it; right-click the chip to name it, pick a colour, ungroup or close its tabs. Drag a tab
+  between grouped tabs to add it, or out of the group to remove it.
+
 ## Address bar and search
 
 - Type an address or a search; Enter opens the first suggestion.
@@ -60,6 +64,9 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
 - **Open tabs.** Type part of a tab's title or address to get **Switch to this tab**, also for tabs in other
   windows.
 - **Calculator.** Type `2+2*3`, `(1,5+2)^2` or `15% * 80`: the answer is the first suggestion and Enter copies it.
+- **Units.** `10 km in mi`, `70 f to c`, `2 kg to lb`, `1,5 gb in mb`: the answer comes first, Enter copies it.
+- **Quick actions.** Type `>` to see them: clear this site's cookies and data, mute or unmute all tabs, unload or
+  close other tabs, new group, private window, open Mizu's pages and more. Typing words narrows the list.
 - **Find on page.** Ctrl+F opens a bar under the toolbar. Enter / Shift+Enter (or F3 / Shift+F3) go to the next or
   previous match, **Aa** matches case, Esc closes.
 - The **key** icon appears when you have a saved password for the site, and the **star** bookmarks the page.
@@ -67,6 +74,10 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
   cookies and storage (you are signed out of it) and reloads the page.
 
 ## Bookmarks, history and downloads
+
+- **Import from another browser.** Settings → General → Import, the import button in Bookmarks, or `mizu://import/`.
+  Pick a browser profile found on this PC and choose bookmarks, history and search engines. Passwords come from the
+  other browser's CSV export, imported in Mizu Passwords.
 
 - **Bookmarks.**
   - Ctrl+D or the star saves a page to **Other bookmarks**. Pick another folder in the "Bookmark added" panel and new

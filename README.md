@@ -39,6 +39,8 @@
 | **Engine** | Microsoft Edge WebView2 (current Chromium), updated by Windows; hardware video decoding, H.264/AAC, AV1 |
 | **Tabs** | Top strip or a resizable, collapsible sidebar with pinned sites as an icon grid; pin, mute, duplicate, unload; reopen closed tabs; sessions (and sign-ins) restored after restarts and crashes |
 | **Address bar** | Searches and addresses; suggestions from history, bookmarks, open tabs and (optionally) your search engine; `@keyword` engines; a calculator; find on page (Ctrl+F) |
+| **Move in** | Import bookmarks, history and search engines from Chrome, Edge, Yandex, Brave, Vivaldi, Opera or Firefox; a short welcome tour on first start |
+| **Organise** | Tab groups with names and colours in both layouts; `>` quick actions and unit conversion in the address bar |
 | **Cookies & apps** | Third-party cookies blocked; a site's cookies and "Clear site data" in the lock icon; links to Steam, Telegram, Zoom and mail open their app after asking |
 | **Mizu Shield** | uBlock Origin / EasyList syntax: network rules, `$redirect`, `$removeparam`, element hiding, scriptlets; tracking prevention; Global Privacy Control |
 | **Passwords** | Save-after-sign-in prompt, fill from the address bar, CSV import/export (Chrome, Edge, Firefox, Opera, Brave, Vivaldi, Bitwarden) |
@@ -58,7 +60,7 @@
 
 ## Install
 
-1. Download **`MizuSetup-0.2.2.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest).
+1. Download **`MizuSetup-0.3.0.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest).
 2. Run it, choose a folder (or keep the default) and press **Install**. No administrator rights are needed.
 
 A **portable** zip is also available. It runs from any folder but doesn't update itself.

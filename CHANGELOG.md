@@ -3,6 +3,33 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] — 2026-11-23 · "Currents"
+
+### Added
+- **Welcome to Mizu.** A short tour in its own window on first start and once after this update: what Mizu does,
+  theme / tab layout / accent colour, default browser, and importing from another browser. Every step can be
+  skipped and says where to find it later; the language can be switched on the first screen. The browser window
+  opens when the tour is finished or closed.
+- **Import from other browsers** (`mizu://import/`, Settings → General, the bookmarks manager): Chrome, Edge,
+  Yandex Browser, Brave, Vivaldi, Chromium, Opera, Opera GX and Firefox profiles on this PC. Bookmarks (the source's
+  bar onto Mizu's bar without duplicates, the rest into an "Imported from …" folder), up to 50 000 recent history
+  entries, and search engines from Chromium browsers. The other browser can stay open and is never changed.
+- **Tab groups** in both layouts: Add to new group / Add to … / Remove from group in the tab menu; click the chip to
+  collapse or expand, right-click it to rename, recolour, ungroup or close its tabs. Dragging a tab into or out of a
+  group works too, and groups are kept with the session.
+- **Quick actions** in the address bar: type `>` for clear this site's cookies and data, mute or unmute all tabs,
+  unload or close other tabs, new group, private window, bookmarks bar, find, and Mizu's pages. Russian words work.
+- **Unit conversion** in the address bar: length, mass, volume, speed, data size and temperature
+  (`10 km in mi`, `70 f to c`, `5 ft в см`); Enter copies the answer.
+- Settings → General: default browser status with a button, and "Show the welcome tour".
+
+### Changed
+- The About animation draws in a background worker at 60 fps, so the page reacts instantly while it plays.
+
+### Fixed
+- A closed tab could stay on screen for a few seconds while its fade-out waited for the window.
+- Clicking a group chip twice quickly opened its menu instead of just collapsing and expanding.
+
 ## [0.2.2] — 2026-11-22
 
 ### Added

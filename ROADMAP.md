@@ -14,7 +14,8 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 |---|---|---|---|
 | 0.1.x | — | First releases: Shield, passwords, scripts, vertical tabs, visual hosting, auto-updates | ✅ Released |
 | 0.2 | Clear Water | Cookies, links to apps, find bar, pinned sidebar tabs, polish | ✅ Released |
-| **0.3** | Currents | Import, spaces and tab groups, faster loading, Shield per site, accessibility | 🔜 Next |
+| 0.3 | Currents | Import, welcome tour, tab groups, quick actions | ✅ Released |
+| **0.3.x** | Currents | Spaces, split view, Shield per site, faster loading, accessibility | 🔜 Next |
 | 0.4 | Deep Water | Privacy and data: fingerprinting defence, backups | Planned |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
 | 0.6 | Estuary | Built-in tools: PDF, translation, media hub | Planned |
@@ -56,49 +57,47 @@ Released 2026-11-15. What it brought (details in the [changelog](CHANGELOG.md)):
 Moved to 0.3: import from other browsers, Shield cosmetic filters and the per-site page, the UI Automation provider,
 loading improvements, "Open with…", automatic cookie cleanup, CI, updater rollback and the beta channel, crash reports.
 
-## 0.3 — "Currents": your own browser, organised
+## 0.3 — "Currents" ✅
 
-**Goal:** move in from another browser in a minute, keep many tasks apart, and feel faster.
+Released 2026-11-23 (details in the [changelog](CHANGELOG.md)):
 
-**Move in**
-- **Import from other browsers** (Chrome, Edge, Firefox, Opera, Brave, Vivaldi): bookmarks, history, search engines
-  and open tabs, with a preview of what will be imported.
-  - Passwords only from the browsers' own CSV export; Mizu never decrypts other browsers' stores.
-- **"Open with…"** for downloaded files and media links (for example a video in your player).
+- **Move in:** import bookmarks, history and search engines from Chrome, Edge, Yandex Browser, Brave, Vivaldi, Opera
+  and Firefox, with a preview of what each profile holds.
+- **Welcome to Mizu:** a one-time tour in its own window: style, default browser, import.
+- **Tab groups** with names and colours in both layouts, kept with the session.
+- **Address bar:** `>` quick actions and unit conversion.
+- Since 0.2.2: CI on every push and interface checks.
+
+## 0.3.x — "Currents", continued
+
+What was planned for 0.3 and comes in the next updates, roughly in this order:
 
 **Organise**
 - **Spaces:** named tab sets (Work, Study, Play) with a colour and an icon; each restores separately.
-- **Tab groups** in both layouts, and **tree tabs** in the sidebar (tabs opened from a page sit under it).
 - **Split view:** two tabs side by side.
-- **New tab:** folders of shortcuts and your own picture as the background.
-- **Quick actions** in the address bar: `>` commands ("clear cookies for this site", "mute all tabs") and unit
-  conversion. Everything is computed locally.
-
-**Faster**
-- Preconnect to the address being typed, a clearer progress bar, and background tabs restored gradually instead of
-  all at once.
-- A lighter About animation option for slower PCs.
+- **Tree tabs** in the sidebar (tabs opened from a page sit under it), on top of the session format with groups.
+- **New tab:** folders of shortcuts.
 
 **Privacy**
-- **Shield per site:** one page that gathers a site's zoom, permissions, Shield state, cookies and storage, plus
-  generic and procedural cosmetic filters.
+- **Shield per site:** one page with a site's zoom, permissions, Shield state, cookies and storage, plus generic and
+  procedural cosmetic filters.
 - **Automatic cookie cleanup** for sites you haven't visited in N days, with "keep me signed in" exceptions.
 
+**Faster and handier**
+- Preconnect to the address being typed, a clearer progress bar, background tabs restored gradually.
+- **"Open with…"** for downloaded files and media links.
+
 **Accessibility**
-- Screen reader support for visually hosted pages (Mizu's own UI Automation provider), full keyboard navigation of
+- Screen reader support for visually hosted pages (Mizu's own UI Automation provider) and full keyboard navigation of
   the sidebar and panels.
 
 **Technical work**
-- ~~CI: tests, Clippy and UI script checks on every push~~ — done in 0.2.2; next: integration tests that drive the
-  real interface.
+- Integration tests that drive the real interface.
 - Updater: roll back if a new version fails to start, and a beta channel.
 - A code-signed installer (Authenticode) and local crash reports (never uploaded automatically).
-- Tree tab model and session format v2 with a tested migration.
 
 **Done when:**
-- importing from Chrome and Firefox keeps every bookmark and folder, verified on real profiles;
-- a 300-tab session restores in under a second, and a cold start to the first page is under 400 ms on a mid-range
-  laptop;
+- a 300-tab session with groups restores in under a second;
 - NVDA and Narrator read pages and the interface;
 - the updater survives forced failures (bad signature, interrupted download, failed start).
 

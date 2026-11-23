@@ -19,12 +19,12 @@ const FEATURES = [
 
 // Highlights of the current release line (the full list is in the changelog).
 const WHATS_NEW = [
-  ['cookie', 'Sign-ins survive a restart', 'With "Continue where I left off", session cookies are kept, so sites stay signed in.'],
-  ['shield', 'Third-party cookies blocked', 'Embedded ads and trackers can no longer set or read cookies.'],
-  ['external', 'Links open apps', 'Mizu asks before a site opens Steam, Telegram, Zoom or your mail app.'],
-  ['pin', 'Pinned tabs in the sidebar', 'A grid of icons: drag a tab up to pin it, down to unpin it.'],
-  ['bookmark', 'Bookmarks bar, Other bookmarks and shortcuts', 'Three separate lists: the bar, Other bookmarks, and the tiles on the new tab.'],
-  ['search', 'Searchable settings', 'Find any setting with Ctrl+F; changes that need a restart offer a button.'],
+  ['import', 'Move in from another browser', 'Bookmarks, history and search engines from Chrome, Edge, Yandex, Brave, Vivaldi, Opera or Firefox.'],
+  ['folder', 'Tab groups', 'Named, coloured groups in both layouts; collapse them to a chip with a count.'],
+  ['sparkle', 'Quick actions', 'Type > in the address bar: clear a site\u2019s data, mute all tabs, unload the rest and more.'],
+  ['sliders', 'Units in the address bar', '10 km in mi, 70 f to c, 2 kg to lb: the answer appears as you type.'],
+  ['drop', 'Welcome to Mizu', 'A short tour on first start: your style, default browser and import.'],
+  ['music', 'Music and video hub', 'Every playing tab in one panel, with a volume per site and media keys.'],
 ];
 
 function updateText(u, installed) {
