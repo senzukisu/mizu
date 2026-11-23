@@ -250,18 +250,21 @@ fn read_chromium(dir: &Path) -> ImportData {
     data
 }
 
+/// A row of Firefox's bookmarks: (id, type, parent, title, url, guid).
+type FfRow = (i64, i64, i64, String, Option<String>, String);
+
 fn read_firefox(dir: &Path) -> ImportData {
     let mut data = ImportData::default();
     let Some((conn, tmp)) = open_copy(&dir.join("places.sqlite")) else { return data };
     // Bookmarks: (id, type, parent, title, url); type 1 = bookmark, 2 = folder.
-    let rows: Vec<(i64, i64, i64, String, Option<String>, String)> = conn
+    let rows: Vec<FfRow> = conn
         .prepare(
             "SELECT b.id, b.type, b.parent, COALESCE(b.title, ''), p.url, b.guid FROM moz_bookmarks b
              LEFT JOIN moz_places p ON p.id = b.fk ORDER BY b.parent, b.position",
         )
         .and_then(|mut st| st.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?))).map(|it| it.flatten().collect()))
         .unwrap_or_default();
-    fn build(parent: i64, rows: &[(i64, i64, i64, String, Option<String>, String)], depth: usize) -> Vec<Node> {
+    fn build(parent: i64, rows: &[FfRow], depth: usize) -> Vec<Node> {
         if depth > 32 {
             return Vec::new();
         }
