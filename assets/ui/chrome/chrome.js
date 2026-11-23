@@ -330,7 +330,8 @@ function closeTab(el) {
 let lastOrder = '';
 let lastGroupSig = '';
 
-// The chip that names a group: click to collapse or expand, right-click for its menu.
+// The chip that names a group: click to collapse or expand, right-click for its menu (name,
+// colour, ungroup, close). Quick repeated clicks only toggle.
 function groupChip(g) {
   const count = (state.tabs || []).filter((t) => t.group === g.id).length;
   const chip = h('div', { class: `gchip g-${g.color}${g.collapsed ? ' collapsed' : ''}`, title: g.name || i18n.tr('Tab group'), role: 'button', dataset: { group: String(g.id) } },
@@ -344,7 +345,6 @@ function groupChip(g) {
     mizu.send('show_flyout', { kind: 'group_menu', anchor: { x: r.left, y: r.bottom, width: r.width, height: 1 }, tab_id: g.id });
   };
   chip.addEventListener('contextmenu', menu);
-  chip.addEventListener('dblclick', menu);
   return chip;
 }
 
