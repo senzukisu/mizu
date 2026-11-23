@@ -92,7 +92,8 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
   Settings → Privacy can also clear data when Mizu closes.
 - **Downloads.** Ctrl+J.
   - Each download shows its speed and time left, and can be paused, resumed or retried.
-  - Files are grouped by day, with a badge for their type; click a finished file to open it. The folder button opens
+  - Files are grouped by day, with a badge for their type; click a finished file to open it, or **Open with…** to
+    pick the program. The folder button opens
     your downloads folder.
   - Settings → Downloads chooses the folder or makes Mizu ask every time.
 
@@ -203,6 +204,11 @@ Userscripts in the Tampermonkey/Greasemonkey format. Open them from Menu → Scr
   - userscript and update checks;
   - the update manifest on GitHub;
   - search suggestions, if you turn them on.
+- **Site settings.** Click the lock in the address bar → **Site settings**: Shield for that site, its cookies,
+  **Keep me signed in**, **Forget this site** (cookies and stored data), permissions and your last visit.
+- **Cookie cleanup.** Settings → Privacy → Cookie cleanup forgets sites you haven't visited for 7, 30 or 90 days
+  (once a day). Sites with "Keep me signed in" are kept.
+- **Crash reports** stay on your PC (About Mizu → Privacy shows them); attach one to a GitHub issue if you like.
 - **Third-party cookies** are blocked (Settings → Privacy, needs a restart). Turn it off only if an embedded sign-in
   stops working.
 - **Links to apps.** When a site wants to open Steam, Telegram, Zoom, your mail app or another program, Mizu asks

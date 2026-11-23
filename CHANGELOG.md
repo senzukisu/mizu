@@ -3,6 +3,18 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] — 2026-11-24
+
+### Added
+- **Site settings** (lock icon → "Site settings", or `mizu://site/?host=…`): one page per site with Mizu Shield on
+  or off, third-party cookies, the site's cookies, **Keep me signed in**, **Forget this site** (cookies, local
+  storage, IndexedDB, caches and service workers), permissions (Allow / Block / Ask) and when you last visited.
+- **Automatic cookie cleanup** (Settings → Privacy): Mizu can forget the cookies and storage of sites you haven't
+  visited for 7, 30 or 90 days, once a day. Sites marked "Keep me signed in" are never cleaned up.
+- **Open with…** for downloaded files, in the downloads panel and page.
+- **Local crash reports:** if Mizu crashes, a report (version, where it failed) is saved on this PC and never sent.
+  About Mizu shows how many there are and opens the folder.
+
 ## [0.3.0] — 2026-11-23 · "Currents"
 
 ### Added

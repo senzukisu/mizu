@@ -15,7 +15,8 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 | 0.1.x | — | First releases: Shield, passwords, scripts, vertical tabs, visual hosting, auto-updates | ✅ Released |
 | 0.2 | Clear Water | Cookies, links to apps, find bar, pinned sidebar tabs, polish | ✅ Released |
 | 0.3 | Currents | Import, welcome tour, tab groups, quick actions | ✅ Released |
-| **0.3.x** | Currents | Spaces, split view, Shield per site, faster loading, accessibility | 🔜 Next |
+| 0.3.1 | Currents | Site settings, cookie cleanup, Open with, crash reports | ✅ Released |
+| **0.3.x** | Currents | Spaces, split view, faster loading, accessibility, updater rollback | 🔜 Next |
 | 0.4 | Deep Water | Privacy and data: fingerprinting defence, backups | Planned |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
 | 0.6 | Estuary | Built-in tools: PDF, translation, media hub | Planned |
@@ -70,7 +71,10 @@ Released 2026-11-23 (details in the [changelog](CHANGELOG.md)):
 
 ## 0.3.x — "Currents", continued
 
-What was planned for 0.3 and comes in the next updates, roughly in this order:
+**0.3.1 ✅** (2026-11-24): site settings page (Shield, cookies, "keep me signed in", forget the site, permissions),
+automatic cookie cleanup, "Open with…" for downloads, local crash reports.
+
+Still to come, roughly in this order:
 
 **Organise**
 - **Spaces:** named tab sets (Work, Study, Play) with a colour and an icon; each restores separately.
@@ -79,13 +83,11 @@ What was planned for 0.3 and comes in the next updates, roughly in this order:
 - **New tab:** folders of shortcuts.
 
 **Privacy**
-- **Shield per site:** one page with a site's zoom, permissions, Shield state, cookies and storage, plus generic and
-  procedural cosmetic filters.
-- **Automatic cookie cleanup** for sites you haven't visited in N days, with "keep me signed in" exceptions.
+- **Shield:** generic and procedural cosmetic filters; the site page gains per-site zoom.
 
 **Faster and handier**
 - Preconnect to the address being typed, a clearer progress bar, background tabs restored gradually.
-- **"Open with…"** for downloaded files and media links.
+- **"Open with…"** for media links (downloads have it since 0.3.1).
 
 **Accessibility**
 - Screen reader support for visually hosted pages (Mizu's own UI Automation provider) and full keyboard navigation of
@@ -94,7 +96,7 @@ What was planned for 0.3 and comes in the next updates, roughly in this order:
 **Technical work**
 - Integration tests that drive the real interface.
 - Updater: roll back if a new version fails to start, and a beta channel.
-- A code-signed installer (Authenticode) and local crash reports (never uploaded automatically).
+- A code-signed installer (Authenticode).
 
 **Done when:**
 - a 300-tab session with groups restores in under a second;
