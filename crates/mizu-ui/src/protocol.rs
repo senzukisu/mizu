@@ -441,6 +441,8 @@ pub enum Event {
         #[serde(skip_serializing_if = "Option::is_none")]
         step: Option<bool>,
     },
+    /// Leave the address bar and show the page's address again (after a quick action).
+    FocusContent,
     /// Copy text to the clipboard and confirm (the address-bar calculator).
     CopyText { text: String },
     /// Find in page result: active match (1-based, 0 = none) and total.

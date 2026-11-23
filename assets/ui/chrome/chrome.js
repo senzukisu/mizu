@@ -964,6 +964,12 @@ mizu.on('focus_omnibox', () => {
   els.address.select();
 });
 mizu.on('toast', (m) => !SIDEBAR && toast(m.message));
+mizu.on('focus_content', () => {
+  if (SIDEBAR) return;
+  editing = false;
+  els.address.blur();
+  showUrl();
+});
 mizu.on('copy_text', (m) => {
   if (SIDEBAR) return;
   navigator.clipboard.writeText(m.text).then(

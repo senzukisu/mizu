@@ -536,6 +536,15 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
         }
         Command::OmniboxCommit { index } => {
             let url = app.window(window).and_then(|w| w.suggestions.get(index)).map(|s| s.url.clone());
+            if let Some(cmd) = url.as_deref().and_then(|u| u.strip_prefix("mizu-cmd:")) {
+                if let Some(w) = app.window_mut(window) {
+                    w.flyout.hide();
+                    w.suggestions.clear();
+                    w.post_chrome(&Event::FocusContent.to_json());
+                }
+                quick_action(app, window, key, cmd);
+                return ok();
+            }
             if let Some(result) = url.as_deref().and_then(|u| u.strip_prefix("mizu-calc:")) {
                 if let Some(w) = app.window(window) {
                     w.post_chrome(&Event::CopyText { text: result.to_owned() }.to_json());
@@ -794,6 +803,51 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
         }
         FlyoutKind::Logins => crate::passwords::logins_flyout_data(app, window),
         FlyoutKind::Omnibox | FlyoutKind::Permission | FlyoutKind::Confirm | FlyoutKind::SavePassword => Value::Null,
+    }
+}
+
+/// Runs an address-bar quick action ("> mute all tabs" and so on).
+fn quick_action(app: &mut App, window: WindowId, key: ViewKey, id: &str) {
+    let active = app.window(window).and_then(|w| w.active_tab()).map(|t| t.0);
+    let run = |app: &mut App, cmd: Command| {
+        let _ = handle(app, window, key, Surface::Chrome, cmd);
+    };
+    let open = |app: &mut App, page: InternalPage| open_internal(app, window, page);
+    match id {
+        "clear-site" => run(app, Command::SiteDataClear),
+        "mute-all" | "unmute-all" => {
+            let muted = id == "mute-all";
+            let ids: Vec<u64> = app.window(window).map(|w| w.strip.tabs().iter().map(|t| t.id.0).collect()).unwrap_or_default();
+            for t in ids {
+                run(app, Command::MuteTab { id: t, muted });
+            }
+        }
+        "unload-others" => {
+            if let Some(t) = active {
+                run(app, Command::DiscardTab { id: t, others: true });
+            }
+        }
+        "close-others" => {
+            if let Some(t) = active {
+                run(app, Command::CloseOtherTabs { id: t });
+            }
+        }
+        "group-tab" => {
+            if let Some(t) = active {
+                run(app, Command::GroupCreate { tab: t });
+            }
+        }
+        "private" => run_shortcut(app, window, Shortcut::NewPrivateWindow),
+        "bookmarks-bar" => run_shortcut(app, window, Shortcut::ToggleBookmarksBar),
+        "find" => run_shortcut(app, window, Shortcut::Find),
+        "settings" => open(app, InternalPage::Settings),
+        "history" => open(app, InternalPage::History),
+        "downloads" => open(app, InternalPage::Downloads),
+        "bookmarks" => open(app, InternalPage::Bookmarks),
+        "passwords" => open(app, InternalPage::Passwords),
+        "import" => open(app, InternalPage::Import),
+        "welcome" => open(app, InternalPage::Welcome),
+        _ => {}
     }
 }
 

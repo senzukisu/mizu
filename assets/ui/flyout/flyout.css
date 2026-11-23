@@ -807,3 +807,7 @@ button {
   gap: 8px;
   padding: 0 2px;
 }
+
+.sug.k-command .d {
+  color: var(--accent);
+}

@@ -19,6 +19,26 @@ pub struct Suggestion {
 
 const MAX: usize = 8;
 
+/// Address-bar quick actions after ">": (id, title, extra words incl. Russian).
+pub const QUICK_ACTIONS: &[(&str, &str, &str)] = &[
+    ("clear-site", "Clear cookies and data for this site", "очистить куки данные сайт cookies выйти storage"),
+    ("mute-all", "Mute all tabs", "звук выключить заглушить все mute sound"),
+    ("unmute-all", "Unmute all tabs", "звук включить все unmute sound"),
+    ("unload-others", "Unload other tabs", "выгрузить память остальные другие memory"),
+    ("close-others", "Close other tabs", "закрыть остальные другие вкладки"),
+    ("group-tab", "Add this tab to a new group", "группа группу вкладку group"),
+    ("private", "New private window", "приватное окно инкогнито incognito"),
+    ("bookmarks-bar", "Show or hide the bookmarks bar", "панель закладок закладки bar"),
+    ("find", "Find on page", "найти поиск странице search"),
+    ("settings", "Open settings", "настройки параметры preferences"),
+    ("history", "Open history", "история"),
+    ("downloads", "Open downloads", "загрузки скачанные"),
+    ("bookmarks", "Open bookmarks", "закладки"),
+    ("passwords", "Open passwords", "пароли логины"),
+    ("import", "Import from another browser", "импорт перенести chrome firefox edge"),
+    ("welcome", "Show the welcome tour", "знакомство приветствие тур welcome"),
+];
+
 /// Resolves `@keyword query` to an engine-specific search.
 pub fn keyword_search(settings: &Settings, input: &str) -> Option<(String, String)> {
     let (kw, rest) = input.trim().split_once(char::is_whitespace)?;
@@ -73,9 +93,22 @@ pub fn suggest(settings: &Settings, storage: Option<&Storage>, input: &str, open
         }
     }
 
-    // 1b. Arithmetic: the answer, copied on Enter.
-    if let Some(result) = mizu_core::calc::evaluate(text) {
+    // 1b. Arithmetic and unit conversion: the answer, copied on Enter.
+    if let Some(result) = mizu_core::calc::evaluate(text).or_else(|| mizu_core::calc::convert(text)) {
         out.insert(0, Suggestion { kind: "calc", title: format!("= {result}"), display: text.to_owned(), url: format!("mizu-calc:{result}") });
+    }
+
+    // 1c. Quick actions: "> mute", "> очистить куки"…
+    if let Some(q) = text.strip_prefix('>') {
+        let q = q.trim().to_lowercase();
+        let mut cmds: Vec<Suggestion> = QUICK_ACTIONS
+            .iter()
+            .filter(|(_, title, words)| q.is_empty() || q.split_whitespace().all(|w| title.to_lowercase().contains(w) || words.contains(w)))
+            .take(MAX)
+            .map(|(id, title, _)| Suggestion { kind: "command", title: (*title).to_owned(), display: "Quick action".into(), url: format!("mizu-cmd:{id}") })
+            .collect();
+        cmds.append(&mut out);
+        return cmds.into_iter().take(MAX).collect();
     }
 
     // 2. Internal pages by name.
@@ -160,6 +193,12 @@ mod tests {
         let s = suggest(&settings, None, "2+2*3", &tabs);
         assert_eq!(s[0].kind, "calc");
         assert_eq!(s[0].url, "mizu-calc:8");
+        let s = suggest(&settings, None, "10 km in mi", &tabs);
+        assert_eq!(s[0].url, "mizu-calc:6.2137 mi");
+        let s = suggest(&settings, None, "> звук выключить", &tabs);
+        assert_eq!(s[0].url, "mizu-cmd:mute-all");
+        let s = suggest(&settings, None, ">", &tabs);
+        assert_eq!(s.len(), MAX, "a bare > lists actions");
     }
 
     #[test]

@@ -172,3 +172,97 @@ mod tests {
         }
     }
 }
+
+// ── Unit conversion: "10 km in mi", "70 f to c", "5 ft в см" ──
+
+/// (aliases, kind, factor to the base unit). Temperature is handled separately.
+const UNITS: &[(&[&str], &str, f64)] = &[
+    (&["mm", "мм", "millimeter", "millimeters"], "len", 0.001),
+    (&["cm", "см", "centimeter", "centimeters"], "len", 0.01),
+    (&["m", "м", "meter", "meters", "metre", "metres", "метр", "метров", "метра"], "len", 1.0),
+    (&["km", "км", "kilometer", "kilometers", "километр", "километров", "километра"], "len", 1000.0),
+    (&["in", "inch", "inches", "дюйм", "дюймов", "дюйма"], "len", 0.0254),
+    (&["ft", "foot", "feet", "фут", "футов", "фута"], "len", 0.3048),
+    (&["yd", "yard", "yards", "ярд", "ярдов"], "len", 0.9144),
+    (&["mi", "mile", "miles", "миля", "миль", "мили", "милях"], "len", 1609.344),
+    (&["g", "г", "gram", "grams", "грамм", "граммов"], "mass", 0.001),
+    (&["kg", "кг", "kilogram", "kilograms", "килограмм", "килограммов"], "mass", 1.0),
+    (&["lb", "lbs", "pound", "pounds", "фунт", "фунтов", "фунта", "фунтах"], "mass", 0.453_592_37),
+    (&["oz", "ounce", "ounces", "унция", "унций"], "mass", 0.028_349_523_125),
+    (&["t", "т", "tonne", "tonnes", "тонна", "тонн"], "mass", 1000.0),
+    (&["ml", "мл"], "vol", 0.001),
+    (&["l", "л", "liter", "liters", "litre", "litres", "литр", "литров"], "vol", 1.0),
+    (&["gal", "gallon", "gallons", "галлон", "галлонов"], "vol", 3.785_411_784),
+    (&["kmh", "km/h", "kph", "км/ч"], "speed", 1.0 / 3.6),
+    (&["mph"], "speed", 0.447_04),
+    (&["m/s", "мс", "м/с"], "speed", 1.0),
+    (&["kb", "кб"], "data", 1024.0),
+    (&["mb", "мб"], "data", 1_048_576.0),
+    (&["gb", "гб"], "data", 1_073_741_824.0),
+    (&["tb", "тб"], "data", 1_099_511_627_776.0),
+];
+
+fn unit(name: &str) -> Option<(&'static str, f64, &'static str)> {
+    let n = name.trim().trim_end_matches('.').to_lowercase();
+    UNITS.iter().find(|(a, _, _)| a.contains(&n.as_str())).map(|(a, k, f)| (*k, *f, a[0]))
+}
+
+fn temp(name: &str) -> Option<&'static str> {
+    match name.trim().trim_start_matches('°').to_lowercase().as_str() {
+        "c" | "с" | "celsius" | "цельсия" | "цельсий" => Some("°C"),
+        "f" | "fahrenheit" | "фаренгейта" | "фаренгейт" => Some("°F"),
+        "k" | "к" | "kelvin" | "кельвина" | "кельвин" => Some("K"),
+        _ => None,
+    }
+}
+
+/// "10 km in mi" → "6.214 mi". Accepts "to", "in", "в", "=", "->".
+pub fn convert(input: &str) -> Option<String> {
+    let text = input.trim().to_lowercase().replace(',', ".");
+    let (left, right) = ["->", " to ", " in ", " в ", " = "].iter().find_map(|sep| text.split_once(sep))?;
+    let left = left.trim();
+    let split = left.find(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-' || c == ' ')).unwrap_or(left.len());
+    let value: f64 = left[..split].trim().parse().ok()?;
+    let from = left[split..].trim();
+    let to = right.trim();
+    if from.is_empty() || to.is_empty() {
+        return None;
+    }
+    if let (Some(a), Some(b)) = (temp(from), temp(to)) {
+        let c = match a {
+            "°F" => (value - 32.0) * 5.0 / 9.0,
+            "K" => value - 273.15,
+            _ => value,
+        };
+        let out = match b {
+            "°F" => c * 9.0 / 5.0 + 32.0,
+            "K" => c + 273.15,
+            _ => c,
+        };
+        return Some(format!("{} {b}", round(out)));
+    }
+    let (ka, fa, _) = unit(from)?;
+    let (kb, fb, name) = unit(to)?;
+    (ka == kb).then(|| format!("{} {name}", round(value * fa / fb)))
+}
+
+fn round(v: f64) -> String {
+    let r = if v.abs() >= 100.0 { (v * 100.0).round() / 100.0 } else { (v * 10_000.0).round() / 10_000.0 };
+    format_number(r)
+}
+
+#[cfg(test)]
+mod convert_tests {
+    use super::convert;
+
+    #[test]
+    fn units() {
+        assert_eq!(convert("10 km in mi").as_deref(), Some("6.2137 mi"));
+        assert_eq!(convert("70 f to c").as_deref(), Some("21.1111 °C"));
+        assert_eq!(convert("5 ft в см").as_deref(), Some("152.4 cm"));
+        assert_eq!(convert("2 kg to lb").as_deref(), Some("4.4092 lb"));
+        assert_eq!(convert("1,5 gb in mb").as_deref(), Some("1536 mb"));
+        assert_eq!(convert("10 km in kg"), None);
+        assert_eq!(convert("rust in action"), None);
+    }
+}
