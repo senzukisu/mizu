@@ -357,6 +357,10 @@ pub struct PrivacySettings {
     pub custom_rules: String,
     /// Sites where content blocking is disabled (hostnames).
     pub allowlist: Vec<String>,
+    /// Delete cookies and site data of sites not visited for this many days (0 = never).
+    pub cookie_cleanup_days: u32,
+    /// Sites never cleaned up ("keep me signed in"), as hosts without "www.".
+    pub keep_signed_in: Vec<String>,
     /// Sites allowed to open an application without asking: (origin, scheme), e.g.
     /// ("https://store.steampowered.com", "steam").
     pub external_apps: Vec<ExternalAppRule>,
@@ -381,6 +385,8 @@ impl Default for PrivacySettings {
             custom_rules: String::new(),
             allowlist: Vec::new(),
             external_apps: Vec::new(),
+            cookie_cleanup_days: 0,
+            keep_signed_in: Vec::new(),
             global_privacy_control: true,
             engine_password_saving: false,
             engine_autofill: false,

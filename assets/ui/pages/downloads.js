@@ -74,7 +74,7 @@ function render() {
     const acts = h('div', { class: 'dl-acts' });
     if (d.live && d.state === 'in_progress') acts.append(act('pause', 'Pause', 'pause'), act('close', 'Cancel', 'cancel'));
     if (d.live && d.state === 'paused') acts.append(act('play', 'Resume', 'resume'), act('close', 'Cancel', 'cancel'));
-    if (d.state === 'completed' && d.exists) acts.append(act('external', 'Open', 'open'), act('folder', 'Show in folder', 'show'));
+    if (d.state === 'completed' && d.exists) acts.append(act('external', 'Open', 'open'), act('more', 'Open with…', 'open_with'), act('folder', 'Show in folder', 'show'));
     if (['failed', 'cancelled', 'interrupted'].includes(d.state) || (d.state === 'completed' && !d.exists)) acts.append(act('reload', 'Retry', 'retry'));
     if (!['in_progress', 'paused'].includes(d.state)) {
       const rm = h('button', { class: 'icon-btn', title: 'Remove from list' }, icon('close'));

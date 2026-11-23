@@ -72,6 +72,19 @@ function updateRow(a) {
 }
 
 
+// Crash reports stay on this PC; the user decides whether to attach one to an issue.
+function crashRow() {
+  const d = h('div', { class: 'd', text: 'Checking…' });
+  const btn = h('button', { class: 'btn', text: 'Open folder' });
+  btn.addEventListener('click', () => mizu.send('open_crash_folder'));
+  mizu.request('crash_reports').then((r) => {
+    const n = (r && r.count) || 0;
+    d.textContent = i18n.tr(n ? `${n} saved on this PC. Nothing is sent anywhere; attach one to a GitHub issue if you like.` : 'No crashes recorded. If Mizu ever crashes, a report is saved here and never sent.');
+    btn.hidden = !n;
+  });
+  return h('div', { class: 'setting' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Crash reports' }), d), btn);
+}
+
 function openUrl(url) {
   mizu.send('open_url', { url, disposition: 'new_tab' });
 }
@@ -139,7 +152,8 @@ bootPage(() => {
 
         h('section', { class: 'card' },
           h('h2', { text: 'Privacy' }),
-          h('p', { class: 'note', text: 'Mizu sends no analytics or telemetry to Onibi Lab. Your history, bookmarks, passwords and settings are stored only on this device. Filter lists are downloaded directly from their maintainers.' })),
+          h('p', { class: 'note', text: 'Mizu sends no analytics or telemetry to Onibi Lab. Your history, bookmarks, passwords and settings are stored only on this device. Filter lists are downloaded directly from their maintainers.' }),
+          crashRow()),
 
         h('div', { class: 'about-links' },
           link('code', 'Source code', REPO),

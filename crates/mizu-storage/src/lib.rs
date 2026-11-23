@@ -22,7 +22,7 @@ mod shortcuts;
 
 pub use bookmarks::{BOOKMARKS_BAR_ID, Bookmark, BookmarkKind, OTHER_BOOKMARKS_ID};
 pub use downloads::{DownloadRecord, DownloadState};
-pub use history::{HistoryEntry, TimeRange};
+pub use history::{HistoryEntry, TimeRange, url_host};
 pub use logins::Login;
 pub use permissions::{PermissionRecord, PermissionState};
 pub use shortcuts::Shortcut;

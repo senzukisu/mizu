@@ -11,6 +11,7 @@ mod commands;
 mod dialogs;
 mod downloads;
 mod extensions;
+mod cleanup;
 mod external;
 mod media;
 mod flyout;
@@ -90,10 +91,35 @@ fn init_logging() -> Option<tracing_appender::non_blocking::WorkerGuard> {
     Some(guard)
 }
 
+/// Saves a crash report next to the logs. It stays on this PC: the user can attach it to an
+/// issue if they want to. Only Mizu's own data (version, OS, where it failed) is written.
+fn write_crash_report(info: &std::panic::PanicHookInfo<'_>) {
+    let dir = mizu_core::paths::crashes_dir();
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    // Keep the 20 most recent reports.
+    let mut old: Vec<_> = std::fs::read_dir(&dir).into_iter().flatten().flatten().map(|e| e.path()).collect();
+    old.sort();
+    while old.len() >= 20 {
+        let _ = std::fs::remove_file(old.remove(0));
+    }
+    let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let thread = std::thread::current();
+    let report = format!(
+        "Mizu {version} crash report\nunix time: {secs}\nthread: {thread}\n\n{info}\n\nbacktrace:\n{bt}\n",
+        version = mizu_core::VERSION,
+        thread = thread.name().unwrap_or("unnamed"),
+        bt = std::backtrace::Backtrace::force_capture(),
+    );
+    let _ = std::fs::write(dir.join(format!("crash-{secs}.txt")), report);
+}
+
 fn main() {
     let _log_guard = init_logging();
     std::panic::set_hook(Box::new(|info| {
         tracing::error!(%info, "panic");
+        write_crash_report(info);
     }));
     tracing::info!(version = mizu_core::VERSION, "starting Mizu");
 

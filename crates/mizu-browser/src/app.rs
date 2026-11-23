@@ -33,6 +33,7 @@ const TIMER_SHOW: usize = 6;
 const TIMER_SCRIPTS: usize = 7;
 const TIMER_SPARE: usize = 8;
 const TIMER_UPDATE: usize = 9;
+const TIMER_CLEANUP: usize = 10;
 
 /// A permission prompt waiting for the user.
 pub struct PendingPermission {
@@ -311,6 +312,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
             SetTimer(Some(app.msg_hwnd), TIMER_SCRIPTS, 60_000, None);
             // Soon after start, so a new version is offered when Mizu is opened.
             SetTimer(Some(app.msg_hwnd), TIMER_UPDATE, 12_000, None);
+            // Cookie cleanup a minute after start (when pages have settled), then daily.
+            SetTimer(Some(app.msg_hwnd), TIMER_CLEANUP, 60_000, None);
         }
     });
     Ok(())
@@ -566,6 +569,13 @@ impl App {
                 if self.settings.advanced.userscript_auto_update {
                     self.check_script_updates(false, None);
                 }
+            }
+            TIMER_CLEANUP => {
+                // SAFETY: re-arming our own timer.
+                unsafe {
+                    SetTimer(Some(self.msg_hwnd), TIMER_CLEANUP, 24 * 3600 * 1000, None);
+                }
+                self.run_cookie_cleanup();
             }
             TIMER_UPDATE => {
                 // First check 90 s after start, then every 6 hours (a check is cheap: two

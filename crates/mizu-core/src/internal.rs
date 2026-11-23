@@ -23,11 +23,12 @@ pub enum InternalPage {
     Passwords,
     Import,
     Welcome,
+    Site,
     Blocked,
 }
 
 impl InternalPage {
-    pub const ALL: [InternalPage; 13] = [
+    pub const ALL: [InternalPage; 14] = [
         Self::NewTab,
         Self::Settings,
         Self::History,
@@ -40,6 +41,7 @@ impl InternalPage {
         Self::Passwords,
         Self::Import,
         Self::Welcome,
+        Self::Site,
         Self::Blocked,
     ];
 
@@ -57,6 +59,7 @@ impl InternalPage {
             Self::Passwords => "passwords",
             Self::Import => "import",
             Self::Welcome => "welcome",
+            Self::Site => "site",
             Self::Blocked => "blocked",
         }
     }
@@ -79,6 +82,7 @@ impl InternalPage {
             Self::Passwords => "Passwords",
             Self::Import => "Import from another browser",
             Self::Welcome => "Welcome to Mizu",
+            Self::Site => "Site settings",
             Self::Blocked => "Page blocked",
         }
     }

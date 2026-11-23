@@ -66,6 +66,7 @@ const ICONS = {
   sun: [['circle', { cx: 12, cy: 12, r: 4 }], ['path', { d: 'M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8' }]],
   moon: [['path', { d: 'M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z' }]],
   sidebar: [['rect', { x: 3.5, y: 4.5, width: 17, height: 15, rx: 2.5 }], ['path', { d: 'M9.5 4.5v15' }], ['path', { d: 'M6 8.5h1.5M6 11.5h1.5' }]],
+  more: [['circle', { cx: 6, cy: 12, r: 1.3 }], ['circle', { cx: 12, cy: 12, r: 1.3 }], ['circle', { cx: 18, cy: 12, r: 1.3 }]],
   music: [['path', { d: 'M9 18V5.5l11-2V16' }], ['circle', { cx: 6.5, cy: 18, r: 2.5 }], ['circle', { cx: 17.5, cy: 16, r: 2.5 }]],
   'skip-back': [['path', { d: 'M18.5 6v12L10 12z' }], ['path', { d: 'M6.5 6v12' }]],
   'skip-forward': [['path', { d: 'M5.5 6v12L14 12z' }], ['path', { d: 'M17.5 6v12' }]],

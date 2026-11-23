@@ -154,6 +154,9 @@ pub enum Command {
         value: Option<f64>,
     },
     MediaList,
+    /// Local crash reports: how many there are, and opening their folder.
+    CrashReports,
+    OpenCrashFolder,
     /// Installed font families, for the interface font setting.
     SystemFonts,
     /// Welcome tour finished; default browser status and the Windows "Default apps" page.
@@ -231,6 +234,14 @@ pub enum Command {
     ClearData(ClearDataRequest),
     PermissionsGet,
     PermissionSet { origin: String, kind: String, state: String },
+    /// Site page (mizu://site/?host=…): everything Mizu knows and keeps about one site.
+    SiteGet { host: String },
+    /// Cookies of a site (names, domains), read through any normal tab.
+    SiteCookiesFor { host: String },
+    SiteShield { host: String, enabled: bool },
+    SiteKeepSignedIn { host: String, keep: bool },
+    /// Deletes the site's cookies and storage (local storage, IndexedDB, caches, workers).
+    SiteForget { host: String },
     /// Cookies the active tab's site can read (names and domains, no values).
     SiteCookies,
     /// Deletes the active tab's site cookies and storage, then reloads it.
@@ -393,6 +404,8 @@ pub enum DownloadAction {
     Cancel,
     Retry,
     Open,
+    /// The Windows "Open with" dialog: choose the program for this file.
+    OpenWith,
     Show,
     Remove,
 }

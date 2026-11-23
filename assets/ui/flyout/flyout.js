@@ -166,7 +166,7 @@ function downloadRow(d, compact) {
   const acts = h('div', { class: 'acts' });
   if (d.state === 'in_progress' && d.live) acts.append(act('pause', 'Pause', 'pause'), act('close', 'Cancel', 'cancel'));
   else if (d.state === 'paused' && d.live) acts.append(act('play', 'Resume', 'resume'), act('close', 'Cancel', 'cancel'));
-  else if (d.state === 'completed' && d.exists) acts.append(act('folder', 'Show in folder', 'show'));
+  else if (d.state === 'completed' && d.exists) acts.append(act('more', 'Open with…', 'open_with'), act('folder', 'Show in folder', 'show'));
   else if (d.state !== 'in_progress') acts.append(act('reload', 'Retry', 'retry'));
   const failed = ['failed', 'cancelled', 'interrupted'].includes(d.state);
   const name = h('div', { class: `name${d.state === 'completed' && d.exists ? ' done' : ''}`, text: d.file || d.url, title: d.path });
@@ -300,8 +300,8 @@ function renderSiteInfo(d) {
     panel.append(rows);
   }
   if (!d.private && /^https?:/.test(d.url || '')) panel.append(siteCookies());
-  const settings = h('button', { class: 'link', text: 'Site permissions' });
-  settings.addEventListener('click', () => open('mizu://settings/#privacy'));
+  const settings = h('button', { class: 'link', text: 'Site settings' });
+  settings.addEventListener('click', () => open(d.host && /^https?:/.test(d.url || '') ? `mizu://site/?host=${encodeURIComponent(d.host)}` : 'mizu://settings/#privacy'));
   panel.append(h('div', { class: 'footer' }, settings));
   return panel;
 }

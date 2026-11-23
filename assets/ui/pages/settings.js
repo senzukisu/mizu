@@ -431,6 +431,7 @@ function privacy() {
       toggle('Download history', 'Files stay on disk.', () => p.clear_on_exit.downloads, (v) => (p.clear_on_exit.downloads = v)),
     ),
     permissionsCard(),
+    cookieCleanupCard(),
     externalAppsCard(),
     card('Passwords', 'Mizu Passwords stores logins encrypted with your Windows account (DPAPI) on this device only.',
       toggle('Offer to save passwords', 'After you sign in, Mizu asks whether to remember the login. Fill it later with the key in the address bar.', () => p.password_manager, (v) => (p.password_manager = v)),
@@ -481,6 +482,36 @@ function permissionsCard() {
     body.append(table);
   });
   return card('Site permissions', null, body);
+}
+
+// Automatic cookie cleanup and the "keep me signed in" sites.
+function cookieCleanupCard() {
+  const p = s.privacy;
+  p.keep_signed_in = p.keep_signed_in || [];
+  const age = seg([[0, 'Never'], [7, '7 days'], [30, '30 days'], [90, '90 days']], p.cookie_cleanup_days || 0, (v) => {
+    p.cookie_cleanup_days = v;
+    save(true);
+  });
+  const list = h('div', { class: 'keep-list' });
+  const draw = () => {
+    list.replaceChildren();
+    if (!p.keep_signed_in.length) list.append(h('div', { class: 'd', text: 'None yet. Open a site’s settings from the lock icon and turn on "Keep me signed in".' }));
+    p.keep_signed_in.forEach((host, i) => {
+      const del = h('button', { class: 'icon-btn', title: 'Remove' }, icon('close'));
+      del.addEventListener('click', () => {
+        p.keep_signed_in.splice(i, 1);
+        save(true);
+        draw();
+      });
+      const open = h('button', { class: 'link', translate: 'no', text: host });
+      open.addEventListener('click', () => mizu.send('open_url', { url: `mizu://site/?host=${encodeURIComponent(host)}`, disposition: 'current' }));
+      list.append(h('div', { class: 'keep-row' }, icon('key', { size: 14 }), open, del));
+    });
+  };
+  draw();
+  return card('Cookie cleanup', 'Sites keep you signed in with cookies. Mizu can forget sites you no longer visit.',
+    setting('Delete cookies of sites not visited for', 'Cookies and site storage are deleted once a day; history and bookmarks stay.', age),
+    h('div', { class: 'setting col' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Keep me signed in' }), h('div', { class: 'd', text: 'These sites are never cleaned up.' })), list));
 }
 
 // Sites allowed to open other applications (Steam, Telegram, Zoom…) without asking.

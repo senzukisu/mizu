@@ -679,6 +679,17 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             }
             ok()
         }
+        Command::CrashReports => {
+            let dir = mizu_core::paths::crashes_dir();
+            let count = std::fs::read_dir(&dir).map(|r| r.flatten().filter(|e| e.path().extension().is_some_and(|x| x == "txt")).count()).unwrap_or(0);
+            Ok(Some(json!({ "count": count })))
+        }
+        Command::OpenCrashFolder => {
+            let dir = mizu_core::paths::crashes_dir();
+            let _ = std::fs::create_dir_all(&dir);
+            crate::win::shell_open(&dir.to_string_lossy());
+            ok()
+        }
         Command::SystemFonts => Ok(Some(serde_json::to_value(crate::win::font_families()).unwrap_or_default())),
         Command::MediaList => {
             let private = app.window(window).is_some_and(|w| w.private);

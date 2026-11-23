@@ -2922,3 +2922,58 @@ body[data-ntbg='image'] .nt-stats {
     animation: none;
   }
 }
+
+/* ── Site settings ────────────────────────────────────────── */
+.site-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 8px 0 22px;
+}
+.site-head .fav {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font: 700 22px/1 var(--font-display);
+  border-radius: 14px;
+}
+.site-head .grow {
+  flex: 1;
+  min-width: 0;
+}
+.site-head h1 {
+  margin: 0;
+  font: 600 24px/1.2 var(--font-display);
+}
+.site-head .d {
+  color: var(--ink-3);
+}
+.site-cookies {
+  max-height: 220px;
+  overflow: auto;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.7;
+}
+.site-cookies span {
+  color: var(--ink-3);
+}
+
+.keep-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+.keep-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-3);
+}
+.keep-row .link {
+  flex: 1;
+  text-align: left;
+}

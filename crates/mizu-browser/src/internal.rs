@@ -272,6 +272,89 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             ok()
         }
 
+        Command::SiteGet { host } => {
+            let host = crate::shield::normalize_host(&host);
+            if host.is_empty() || !host.chars().all(|c| c.is_ascii_alphanumeric() || ".-:".contains(c)) {
+                return Err("Not a site address".into());
+            }
+            let perms: Vec<Value> = app
+                .storage
+                .all_permissions()
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|p| mizu_storage::url_host(&p.origin).is_some_and(|h| h.eq_ignore_ascii_case(&host)))
+                .map(|p| json!({ "origin": p.origin, "kind": p.kind, "state": p.state }))
+                .collect();
+            let visits = app.storage.host_visits().unwrap_or_default();
+            let (last, count) = visits.get(&host).copied().unwrap_or((0, 0));
+            let shield_on = !app.settings.privacy.allowlist.iter().any(|h| crate::shield::normalize_host(h) == host);
+            data(json!({
+                "host": host,
+                "permissions": perms,
+                "shield": shield_on,
+                "shield_global": app.settings.privacy.content_blocking,
+                "third_party_blocked": app.settings.privacy.block_third_party_cookies,
+                "keep_signed_in": app.settings.privacy.keep_signed_in.iter().any(|h| h == &host),
+                "cleanup_days": app.settings.privacy.cookie_cleanup_days,
+                "last_visit": last,
+                "visits": count,
+            }))
+        }
+        Command::SiteCookiesFor { host } => {
+            let host = crate::shield::normalize_host(&host);
+            let Some(view) = any_normal_view(app) else { return data(json!({ "cookies": [] })) };
+            let rid = current_rid();
+            view.cookies_for(&format!("https://{host}/"), move |list| {
+                let cookies: Vec<Value> = list
+                    .iter()
+                    .map(|c| json!({ "name": c.name, "domain": c.domain.trim_start_matches('.'), "session": c.session }))
+                    .collect();
+                if let Some(rid) = rid {
+                    reply(key, rid, json!({ "cookies": cookies }));
+                }
+            });
+            Ok(None)
+        }
+        Command::SiteShield { host, enabled } => {
+            let host = crate::shield::normalize_host(&host);
+            app.settings.privacy.allowlist.retain(|h| crate::shield::normalize_host(h) != host);
+            if !enabled {
+                app.settings.privacy.allowlist.push(host);
+            }
+            app.persist_settings();
+            app.apply_settings_to_surfaces();
+            ok()
+        }
+        Command::SiteKeepSignedIn { host, keep } => {
+            let host = crate::shield::normalize_host(&host);
+            let list = &mut app.settings.privacy.keep_signed_in;
+            list.retain(|h| h != &host);
+            if keep {
+                list.push(host);
+                list.sort();
+            }
+            app.persist_settings();
+            ok()
+        }
+        Command::SiteForget { host } => {
+            let host = crate::shield::normalize_host(&host);
+            let Some(view) = any_normal_view(app) else { return data(json!({ "deleted": 0 })) };
+            for origin in [format!("https://{host}"), format!("https://www.{host}"), format!("http://{host}")] {
+                view.clear_origin_storage(&origin);
+            }
+            let rid = current_rid();
+            let v2 = view.clone();
+            let h2 = host.clone();
+            view.delete_cookies_for(&format!("https://{host}/"), move |a| {
+                v2.delete_cookies_for(&format!("https://www.{h2}/"), move |b| {
+                    tracing::info!(n = a + b, "forgot site cookies and storage");
+                    if let Some(rid) = rid {
+                        reply(key, rid, json!({ "deleted": a + b }));
+                    }
+                });
+            });
+            Ok(None)
+        }
         Command::SiteCookies | Command::SiteDataClear => {
             let view = app.window(window).and_then(|w| w.active_view()).ok_or("no page")?;
             let url = app.current_url(window).unwrap_or_default();
@@ -704,6 +787,10 @@ pub fn download_action(app: &mut App, window: WindowId, id: u64, action: Downloa
             }
         }
         DownloadAction::Show => crate::win::show_in_folder(&path),
+        DownloadAction::OpenWith => {
+            let hwnd = app.window(window).map(|w| w.hwnd);
+            crate::win::open_with(hwnd, &path);
+        }
         DownloadAction::Remove => {
             let storage = if private { None } else { Some(&app.storage) };
             app.downloads.remove(id, storage);
@@ -713,6 +800,12 @@ pub fn download_action(app: &mut App, window: WindowId, id: u64, action: Downloa
 
 thread_local! {
     static CURRENT_RID: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+}
+
+/// A web view of a normal (non-private) window, for profile-wide engine calls (cookies,
+/// site storage).
+pub fn any_normal_view(app: &App) -> Option<mizu_engine::View> {
+    app.windows.iter().filter(|w| !w.private).flat_map(|w| w.tabs.values()).find_map(|t| t.view.clone())
 }
 
 /// Request id of the message being handled (for commands that reply asynchronously).

@@ -70,6 +70,8 @@ fn surface(host: &str, file: &str) -> Option<&'static [u8]> {
         ("scripts", "page.js") => asset!("pages/scripts.js"),
         ("passwords", "") => asset!("pages/passwords.html"),
         ("passwords", "page.js") => asset!("pages/passwords.js"),
+        ("site", "") => asset!("pages/site.html"),
+        ("site", "page.js") => asset!("pages/site.js"),
         ("welcome", "") => asset!("pages/welcome.html"),
         ("welcome", "page.js") => asset!("pages/welcome.js"),
         ("import", "") => asset!("pages/import.html"),

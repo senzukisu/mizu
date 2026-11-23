@@ -207,3 +207,14 @@ pub fn is_default_browser() -> bool {
 pub fn is_registered_browser() -> bool {
     hkcu_string(r"Software\RegisteredApplications", "Mizu").is_some()
 }
+
+/// Shows the Windows "Open with" dialog for a file and opens it with the chosen program.
+pub fn open_with(owner: Option<HWND>, path: &str) {
+    use windows::Win32::UI::Shell::{OAIF_ALLOW_REGISTRATION, OAIF_EXEC, OPENASINFO, SHOpenWithDialog};
+    let file = wide(path);
+    let info = OPENASINFO { pcszFile: PCWSTR(file.as_ptr()), pcszClass: PCWSTR::null(), oaifInFlags: OAIF_EXEC | OAIF_ALLOW_REGISTRATION };
+    // SAFETY: the strings outlive the call; the dialog is modal to `owner`.
+    unsafe {
+        let _ = SHOpenWithDialog(owner, &info);
+    }
+}

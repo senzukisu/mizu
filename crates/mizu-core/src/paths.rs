@@ -84,6 +84,11 @@ pub fn user_data_dir() -> PathBuf {
 }
 
 /// Logs live next to profiles, not inside one, so they survive profile resets.
+/// Local crash reports (never uploaded): one text file per crash.
+pub fn crashes_dir() -> PathBuf {
+    user_data_dir().join("crashes")
+}
+
 pub fn logs_dir() -> PathBuf {
     user_data_dir().join("logs")
 }

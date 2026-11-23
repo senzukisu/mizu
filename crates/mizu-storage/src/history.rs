@@ -173,6 +173,32 @@ impl Storage {
     }
 }
 
+/// Host of a URL without "www." ("https://www.a.example/x" → "a.example").
+pub fn url_host(url: &str) -> Option<&str> {
+    let rest = url.split_once("://")?.1;
+    let host = rest.split(['/', '?', '#', ':']).next()?;
+    let host = host.rsplit_once('@').map_or(host, |(_, h)| h);
+    (!host.is_empty()).then(|| host.strip_prefix("www.").unwrap_or(host))
+}
+
+impl Storage {
+    /// Last visit (ms) and total visits per host, from the whole history.
+    pub fn host_visits(&self) -> Result<std::collections::HashMap<String, (i64, i64)>> {
+        let mut out: std::collections::HashMap<String, (i64, i64)> = std::collections::HashMap::new();
+        let conn = self.conn();
+        let mut st = conn.prepare("SELECT url, last_visit, visit_count FROM history_urls")?;
+        let rows = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?)))?;
+        for (url, last, count) in rows.flatten() {
+            if let Some(h) = url_host(&url) {
+                let e = out.entry(h.to_ascii_lowercase()).or_insert((0, 0));
+                e.0 = e.0.max(last);
+                e.1 += count;
+            }
+        }
+        Ok(out)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
