@@ -328,6 +328,26 @@ function closeTab(el) {
 }
 
 let lastOrder = '';
+let lastGroupSig = '';
+
+// The chip that names a group: click to collapse or expand, right-click for its menu.
+function groupChip(g) {
+  const count = (state.tabs || []).filter((t) => t.group === g.id).length;
+  const chip = h('div', { class: `gchip g-${g.color}${g.collapsed ? ' collapsed' : ''}`, title: g.name || i18n.tr('Tab group'), role: 'button', dataset: { group: String(g.id) } },
+    h('span', { class: 'gchip-dot' }),
+    g.name ? h('span', { class: 'gchip-name', text: g.name }) : null,
+    g.collapsed ? h('span', { class: 'gchip-count', text: String(count) }) : null);
+  chip.addEventListener('click', () => mizu.send('group_update', { id: g.id, collapsed: !g.collapsed }));
+  const menu = (e) => {
+    e.preventDefault();
+    const r = chip.getBoundingClientRect();
+    mizu.send('show_flyout', { kind: 'group_menu', anchor: { x: r.left, y: r.bottom, width: r.width, height: 1 }, tab_id: g.id });
+  };
+  chip.addEventListener('contextmenu', menu);
+  chip.addEventListener('dblclick', menu);
+  return chip;
+}
+
 function renderTabs() {
   const tabs = state.tabs;
   const order = tabs.map((t) => t.id).join(',');
@@ -358,9 +378,30 @@ function renderTabs() {
         ghostOut(el);
       }
     }
-    if (structural) {
+    // Tab groups: a chip before each group's first tab; tabs carry the group's colour and
+    // hide while the group is collapsed (the active tab always shows).
+    const groups = new Map((state.groups || []).map((g) => [g.id, g]));
+    for (const t of tabs) {
+      const el = tabEls.get(t.id);
+      const g = t.group != null ? groups.get(t.group) : null;
+      el.dataset.group = g ? String(g.id) : '';
+      el.classList.toggle('grouped', !!g);
+      for (const c of [...el.classList]) if (c.startsWith('g-')) el.classList.remove(c);
+      if (g) el.classList.add(`g-${g.color}`);
+      el.classList.toggle('g-hidden', !!(g && g.collapsed && t.id !== state.active));
+    }
+    const sig = JSON.stringify(state.groups || []) + order + tabs.map((t) => t.group).join(',');
+    if (structural || sig !== lastGroupSig) {
+      lastGroupSig = sig;
+      for (const chip of els.tabs.querySelectorAll('.gchip')) chip.remove();
       // One linear pass: append live tabs in order (ghosts are absolutely positioned).
-      for (const t of tabs) els.tabs.append(tabEls.get(t.id));
+      let prev = null;
+      for (const t of tabs) {
+        const el = tabEls.get(t.id);
+        if (t.group != null && t.group !== prev && groups.has(t.group)) els.tabs.append(groupChip(groups.get(t.group)));
+        prev = t.group;
+        els.tabs.append(el);
+      }
     }
     return fresh;
   };
@@ -421,6 +462,14 @@ if (!VERTICAL) {
 }
 const observeTab = (el) => narrowObserver.observe(el);
 
+// Position of a tab element in the browser's tab list (hidden tabs of collapsed groups and
+// group chips are not draggable targets, so on-screen order and list index can differ).
+function stripIndex(el) {
+  const id = Number(el.dataset.id);
+  const i = (state.tabs || []).findIndex((t) => t.id === id);
+  return i < 0 ? 0 : i;
+}
+
 // Drag to reorder (within the strip). Pinned and unpinned tabs stay in their own groups;
 // the browser enforces that too.
 function onTabPointerDown(e, el) {
@@ -429,7 +478,7 @@ function onTabPointerDown(e, el) {
   const id = Number(el.dataset.id);
   const coord = (ev) => (VERTICAL ? ev.clientY : ev.clientX);
   const startX = coord(e);
-  const siblings = [...els.tabs.children].filter((c) => !c._out);
+  const siblings = [...els.tabs.children].filter((c) => !c._out && c.classList.contains('tab') && !c.classList.contains('g-hidden'));
   const from = siblings.indexOf(el);
   const rects = siblings.map((s) => s.getBoundingClientRect());
   let dragging = false;
@@ -471,7 +520,7 @@ function onTabPointerDown(e, el) {
     if (dragging) {
       if (target !== from) {
         els.tabs.insertBefore(el, target > from ? siblings[target].nextSibling : siblings[target]);
-        mizu.send('move_tab', { id, index: target });
+        mizu.send('move_tab', { id, index: stripIndex(siblings[target]) });
       }
     } else {
       activateNow(id);
@@ -491,7 +540,7 @@ function onSidebarTabPointerDown(e, el) {
   const id = Number(el.dataset.id);
   const sx = e.clientX;
   const sy = e.clientY;
-  const siblings = [...els.tabs.children].filter((c) => !c._out);
+  const siblings = [...els.tabs.children].filter((c) => !c._out && c.classList.contains('tab') && !c.classList.contains('g-hidden'));
   const from = siblings.indexOf(el);
   const wasPinned = el.classList.contains('pinned');
   let rects = [];
@@ -568,7 +617,10 @@ function onSidebarTabPointerDown(e, el) {
       return;
     }
     if (pinTarget !== wasPinned) mizu.send('pin_tab', { id, pinned: pinTarget });
-    if (target !== from || pinTarget !== wasPinned) mizu.send('move_tab', { id, index: target });
+    if (target !== from || pinTarget !== wasPinned) {
+      const ref = siblings[Math.min(target + (target > from ? 0 : 0), siblings.length - 1)];
+      mizu.send('move_tab', { id, index: target === from ? stripIndex(el) : stripIndex(ref) });
+    }
   };
   el.addEventListener('pointermove', move);
   el.addEventListener('pointerup', up);

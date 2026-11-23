@@ -1165,3 +1165,79 @@ body.collapsed .vt-collapse svg.icon {
 .tab.ghost .audio {
   visibility: hidden;
 }
+
+/* ── Tab group colours ────────────────────────────────────── */
+.g-blue { --g: #3b82f6; }
+.g-green { --g: #22a06b; }
+.g-orange { --g: #f08c2e; }
+.g-pink { --g: #e5508f; }
+.g-purple { --g: #8b5cf6; }
+.g-teal { --g: #14a3a3; }
+.g-yellow { --g: #d4a514; }
+.g-grey { --g: #8a94a6; }
+
+/* Group chips in the tab strip / sidebar */
+.gchip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: calc(var(--tab-h) - 8px);
+  align-self: flex-end;
+  margin: 0 2px 4px 4px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--g) 22%, transparent);
+  color: color-mix(in srgb, var(--g) 70%, var(--ink));
+  font: 600 12px/1 var(--font);
+  cursor: pointer;
+  user-select: none;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  transition: background var(--t-fast);
+}
+.gchip:hover {
+  background: color-mix(in srgb, var(--g) 32%, transparent);
+}
+.gchip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--g);
+}
+.gchip-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gchip-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--g);
+  color: #fff;
+  font-size: 10.5px;
+}
+.tab.grouped {
+  box-shadow: inset 0 -2px 0 var(--g);
+}
+.tab.g-hidden {
+  display: none !important;
+}
+/* Sidebar: a header row and an accent line along the group's tabs. */
+#vt .gchip {
+  flex: 0 0 100%;
+  align-self: auto;
+  height: 28px;
+  margin: 6px 0 2px;
+  border-radius: var(--r-md);
+  justify-content: flex-start;
+}
+#vt #tabs > .tab.grouped:not(.pinned) {
+  box-shadow: inset 3px 0 0 var(--g);
+  padding-left: 14px;
+}

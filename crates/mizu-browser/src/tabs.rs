@@ -121,6 +121,12 @@ impl App {
         if !w.strip.activate(tab) {
             return;
         }
+        if let Some(g) = w.strip.get(tab).and_then(|t| t.group) {
+            if let Some(group) = w.strip.group_mut(g).filter(|x| x.collapsed) {
+                group.collapsed = false;
+                w.state_dirty = true;
+            }
+        }
         if let Some(prev) = previous.filter(|p| *p != tab) {
             if let Some(v) = w.tabs.get(&prev).and_then(|t| t.view.clone()) {
                 v.find_stop();
@@ -547,6 +553,7 @@ impl App {
                     "title": if t.title.is_empty() { tab_fallback_title(&t.url) } else { t.title.clone() },
                     "url": t.url,
                     "pinned": t.pinned,
+                    "group": t.group,
                     "away": t.away_from_pin(),
                     "loading": s.is_some_and(|s| s.loading),
                     "audible": s.is_some_and(|s| s.audible),
@@ -615,6 +622,7 @@ impl App {
             "downloads": { "active": dl_active, "progress": dl_progress, "any": !self.downloads.items.is_empty() },
             "media": { "count": media_count, "playing": media_playing, "on": self.settings.media.media_hub },
             "app": self.window(id).is_some_and(|w| w.app),
+            "groups": self.window(id).map(|w| w.strip.groups().to_vec()).unwrap_or_default(),
             "shield": { "session": session_blocked },
             "update": match &self.update {
                 crate::update::UpdateState::Ready { version, .. } => serde_json::Value::String(version.clone()),

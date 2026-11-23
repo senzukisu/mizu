@@ -73,6 +73,24 @@ pub enum Command {
     FindClose,
     MoveTab { id: u64, index: usize },
     PinTab { id: u64, pinned: bool },
+    /// Tab groups: start a group with a tab, move a tab in or out, change, ungroup, close.
+    GroupCreate { tab: u64 },
+    GroupSet {
+        tab: u64,
+        #[serde(default)]
+        group: Option<u32>,
+    },
+    GroupUpdate {
+        id: u32,
+        #[serde(default)]
+        name: Option<String>,
+        #[serde(default)]
+        color: Option<String>,
+        #[serde(default)]
+        collapsed: Option<bool>,
+    },
+    GroupUngroup { id: u32 },
+    GroupClose { id: u32 },
     /// Pinned tab: go back to its pinned page, or (`reset`) make the current page its own.
     PinnedHome {
         id: u64,
@@ -352,6 +370,8 @@ pub enum FlyoutKind {
     Logins,
     /// Media hub panel: what plays in which tab.
     Media,
+    /// Menu of a tab group (`tab_id` carries the group id).
+    GroupMenu,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]

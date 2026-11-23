@@ -118,7 +118,7 @@ impl Flyout {
             // Toolbar buttons on the right open their panels right-aligned to the button; things
             // anchored on the left (address bar, site info, prompts, tab menu) open left-aligned.
             let x = match self.kind {
-                Some(FlyoutKind::Omnibox | FlyoutKind::SiteInfo | FlyoutKind::Permission | FlyoutKind::TabMenu | FlyoutKind::BookmarkMenu) => a.left,
+                Some(FlyoutKind::Omnibox | FlyoutKind::SiteInfo | FlyoutKind::Permission | FlyoutKind::TabMenu | FlyoutKind::BookmarkMenu | FlyoutKind::GroupMenu) => a.left,
                 // Anchored to the whole address bar: align with its right end.
                 Some(FlyoutKind::Confirm) => a.left - w / 2,
                 _ => a.right - w,

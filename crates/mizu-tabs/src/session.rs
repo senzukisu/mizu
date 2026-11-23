@@ -15,6 +15,20 @@ pub struct TabSnapshot {
     pub pinned: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pinned_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<u32>,
+}
+
+/// A named, coloured group of neighbouring tabs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TabGroup {
+    pub id: u32,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub color: String,
+    #[serde(default)]
+    pub collapsed: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,6 +50,8 @@ pub struct WindowSnapshot {
     pub active_index: usize,
     #[serde(default)]
     pub closed: Vec<ClosedTab>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub groups: Vec<TabGroup>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

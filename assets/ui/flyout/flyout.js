@@ -21,8 +21,12 @@ function reportSize() {
   mizu.send('flyout_size', { width: Math.ceil(width), height: Math.ceil(r.height) });
 }
 
+const GROUP_COLOR_NAMES = { blue: 'Blue', green: 'Green', orange: 'Orange', pink: 'Pink', purple: 'Purple', teal: 'Teal', yellow: 'Yellow', grey: 'Grey' };
+const groupColorName = (c) => i18n.tr(GROUP_COLOR_NAMES[c] || 'Group');
+
 function item(iconName, label, onClick, opts = {}) {
-  const el = h('button', { class: `item${opts.danger ? ' danger' : ''}` }, iconName ? icon(iconName) : h('span', { style: { width: '16px' } }), h('span', { class: 'label', text: label }), opts.kbd ? h('span', { class: 'kbd', text: opts.kbd }) : null);
+  const lead = opts.dot ? h('span', { class: `gdot g-${opts.dot}` }) : iconName ? icon(iconName) : h('span', { style: { width: '16px' } });
+  const el = h('button', { class: `item${opts.danger ? ' danger' : ''}` }, lead, h('span', { class: 'label', text: label }), opts.kbd ? h('span', { class: 'kbd', text: opts.kbd }) : null);
   el.addEventListener('click', () => {
     onClick();
     if (!opts.keepOpen) close();
@@ -88,6 +92,11 @@ function renderTabMenu(d) {
     item('reload', 'Reload', () => mizu.send('reload_tab', { id }), { kbd: 'Ctrl+R' }),
     item('copy', 'Duplicate', () => mizu.send('duplicate_tab', { id })),
     item('pin', d.pinned ? 'Unpin' : 'Pin', () => mizu.send('pin_tab', { id, pinned: !d.pinned })),
+    !d.pinned ? sep() : null,
+    !d.pinned && d.group == null ? item('folder', 'Add to new group', () => mizu.send('group_create', { tab: id })) : null,
+    ...(!d.pinned ? (d.groups || []).filter((g) => g.id !== d.group).slice(0, 6).map((g) => item(null, `Add to ${g.name || groupColorName(g.color)}`, () => mizu.send('group_set', { tab: id, group: g.id }), { dot: g.color })) : []),
+    d.group != null ? item('close', 'Remove from group', () => mizu.send('group_set', { tab: id, group: null })) : null,
+    !d.pinned ? sep() : null,
     d.away ? item('home', 'Back to pinned page', () => mizu.send('pinned_home', { id })) : null,
     d.away ? item(null, 'Pin this page instead', () => mizu.send('pinned_home', { id, reset: true })) : null,
     item(d.muted ? 'volume' : 'mute', d.muted ? 'Unmute site' : 'Mute tab', () => mizu.send('mute_tab', { id, muted: !d.muted })),
@@ -326,6 +335,34 @@ function siteCookies() {
   return box;
 }
 
+// ── Tab group menu ───────────────────────────────────────────
+function renderGroupMenu(d) {
+  const g = d.group;
+  if (!g) return h('div', { class: 'menu' }, h('div', { class: 'empty', text: 'This group is gone.' }));
+  const name = h('input', { type: 'text', value: g.name || '', placeholder: 'Name this group', maxlength: '40' });
+  const send = (patch) => mizu.send('group_update', { id: g.id, ...patch });
+  name.addEventListener('input', () => send({ name: name.value }));
+  name.addEventListener('keydown', (e) => e.key === 'Enter' && close());
+  const colors = h('div', { class: 'gcolors' }, ...(d.colors || []).map((c) => {
+    const b = h('button', { class: `gdot big g-${c}${c === g.color ? ' on' : ''}`, title: groupColorName(c) });
+    b.addEventListener('click', () => {
+      for (const x of colors.children) x.classList.toggle('on', x === b);
+      send({ color: c });
+    });
+    return b;
+  }));
+  setTimeout(() => {
+    name.focus();
+    name.select();
+  }, 30);
+  return h('div', { class: 'menu gmenu', style: { width: '260px' } },
+    h('div', { class: 'gm-head' }, name, colors),
+    sep(),
+    item(g.collapsed ? 'chevron-down' : 'chevron-right', g.collapsed ? 'Expand group' : 'Collapse group', () => send({ collapsed: !g.collapsed })),
+    item('folder', 'Ungroup', () => mizu.send('group_ungroup', { id: g.id })),
+    item('close', d.count === 1 ? 'Close the tab' : `Close ${d.count} tabs`, () => mizu.send('group_close', { id: g.id }), { danger: true }));
+}
+
 // ── Bookmark editor ──────────────────────────────────────────
 function renderBookmark(d) {
   const bm = d.bookmark;
@@ -474,6 +511,7 @@ const RENDERERS = {
   logins: renderLogins,
   menu: renderMenu,
   tab_menu: renderTabMenu,
+  group_menu: renderGroupMenu,
   bookmark_menu: renderBookmarkMenu,
   downloads: renderDownloads,
   media: renderMedia,

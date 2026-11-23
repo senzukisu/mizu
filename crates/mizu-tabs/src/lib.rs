@@ -7,7 +7,10 @@
 
 mod session;
 
-pub use session::{ClosedTab, SessionSnapshot, TabSnapshot, WindowSnapshot};
+pub use session::{ClosedTab, SessionSnapshot, TabGroup, TabSnapshot, WindowSnapshot};
+
+/// Group colours, in the order new groups take them.
+pub const GROUP_COLORS: [&str; 8] = ["blue", "green", "orange", "pink", "purple", "teal", "yellow", "grey"];
 
 use mizu_core::ids::TabId;
 use serde::Serialize;
@@ -25,6 +28,8 @@ pub struct Tab {
     /// The page a pinned tab belongs to. Browsing elsewhere keeps it; "back to pinned
     /// page" returns there.
     pub pinned_url: Option<String>,
+    /// The group this tab belongs to (never for pinned tabs).
+    pub group: Option<u32>,
 }
 
 impl Tab {
@@ -50,6 +55,7 @@ impl Tab {
             title: String::new(),
             pinned: false,
             pinned_url: None,
+            group: None,
         }
     }
 }
@@ -61,6 +67,7 @@ pub struct TabStrip {
     /// Most recently activated first; used to choose the next tab after a close.
     activation_order: Vec<TabId>,
     closed: VecDeque<ClosedTab>,
+    groups: Vec<TabGroup>,
 }
 
 impl TabStrip {
@@ -144,6 +151,7 @@ impl TabStrip {
     pub fn close(&mut self, id: TabId) -> Option<TabId> {
         let index = self.index_of(id)?;
         let tab = self.tabs.remove(index);
+        self.prune_groups();
         self.activation_order.retain(|&t| t != id);
         if !is_blank(&tab.url) {
             self.closed.push_front(ClosedTab {
@@ -196,7 +204,101 @@ impl TabStrip {
             to.clamp(pinned, self.tabs.len())
         };
         self.tabs.insert(to, tab);
+        self.regroup_after_move(to);
+        self.prune_groups();
         from != to
+    }
+
+    // ───────────────────────────── Groups ─────────────────────────────
+
+    pub fn groups(&self) -> &[TabGroup] {
+        &self.groups
+    }
+
+    pub fn group(&self, id: u32) -> Option<&TabGroup> {
+        self.groups.iter().find(|g| g.id == id)
+    }
+
+    pub fn group_mut(&mut self, id: u32) -> Option<&mut TabGroup> {
+        self.groups.iter_mut().find(|g| g.id == id)
+    }
+
+    pub fn group_tabs(&self, id: u32) -> Vec<TabId> {
+        self.tabs.iter().filter(|t| t.group == Some(id)).map(|t| t.id).collect()
+    }
+
+    /// Starts a new group with `tab` in it. Pinned tabs cannot be grouped.
+    pub fn create_group(&mut self, tab: TabId, name: &str) -> Option<u32> {
+        if self.get(tab).is_none_or(|t| t.pinned) {
+            return None;
+        }
+        let id = self.groups.iter().map(|g| g.id).max().unwrap_or(0) + 1;
+        let color = GROUP_COLORS[(id as usize - 1) % GROUP_COLORS.len()].to_owned();
+        self.groups.push(TabGroup { id, name: name.to_owned(), color, collapsed: false });
+        self.set_group(tab, Some(id));
+        Some(id)
+    }
+
+    /// Puts a tab into a group (next to its last tab) or, with `None`, takes it out (just
+    /// after the group, so groups stay contiguous).
+    pub fn set_group(&mut self, tab: TabId, group: Option<u32>) -> bool {
+        let Some(from) = self.index_of(tab) else { return false };
+        if self.tabs[from].pinned || self.tabs[from].group == group {
+            return false;
+        }
+        if let Some(g) = group {
+            if self.group(g).is_none() {
+                return false;
+            }
+        }
+        let old = self.tabs[from].group;
+        let mut t = self.tabs.remove(from);
+        t.group = group;
+        let anchor = group.or(old);
+        let last = anchor.and_then(|g| self.tabs.iter().rposition(|x| x.group == Some(g)));
+        let to = match (group, last) {
+            (Some(_), Some(i)) | (None, Some(i)) => i + 1,
+            (Some(_), None) | (None, None) => from.min(self.tabs.len()),
+        };
+        let pinned = self.pinned_count();
+        self.tabs.insert(to.clamp(pinned, self.tabs.len()), t);
+        if let Some(g) = group.and_then(|g| self.group_mut(g)) {
+            g.collapsed = false;
+        }
+        self.prune_groups();
+        true
+    }
+
+    /// Removes the group; its tabs stay where they are.
+    pub fn ungroup(&mut self, id: u32) {
+        for t in &mut self.tabs {
+            if t.group == Some(id) {
+                t.group = None;
+            }
+        }
+        self.groups.retain(|g| g.id != id);
+    }
+
+    /// A tab dropped at `at` joins the group around it, or leaves a group it was taken out of.
+    fn regroup_after_move(&mut self, at: usize) {
+        let left = at.checked_sub(1).and_then(|i| self.tabs.get(i)).and_then(|t| t.group);
+        let right = self.tabs.get(at + 1).and_then(|t| t.group);
+        let own = self.tabs[at].group;
+        if self.tabs[at].pinned {
+            self.tabs[at].group = None;
+            return;
+        }
+        self.tabs[at].group = match (left, right) {
+            (Some(l), Some(r)) if l == r => Some(l),
+            _ if own.is_some() && (left == own || right == own) => own,
+            _ => None,
+        };
+    }
+
+    /// Drops groups without tabs.
+    fn prune_groups(&mut self) {
+        let tabs = &self.tabs;
+        self.groups.retain(|g| tabs.iter().any(|t| t.group == Some(g.id)));
     }
 
     pub fn set_pinned(&mut self, id: TabId, pinned: bool) -> bool {
@@ -207,6 +309,9 @@ impl TabStrip {
         let mut tab = self.tabs.remove(from);
         tab.pinned = pinned;
         tab.pinned_url = (pinned && !is_blank(&tab.url)).then(|| tab.url.clone());
+        if pinned {
+            tab.group = None;
+        }
         // A newly pinned tab goes to the end of the pinned group; an unpinned one to the
         // start of the normal group. Both are the same boundary index.
         let boundary = self.pinned_count();
@@ -222,6 +327,7 @@ impl TabStrip {
         tab.title = src.title.clone();
         tab.pinned = src.pinned;
         tab.pinned_url = src.pinned_url.clone();
+        tab.group = src.group;
         Some(self.insert(index + 1, tab))
     }
 
@@ -258,10 +364,12 @@ impl TabStrip {
                     title: t.title.clone(),
                     pinned: t.pinned,
                     pinned_url: t.pinned_url.clone(),
+                    group: t.group,
                 })
                 .collect(),
             active_index: self.active.and_then(|a| self.index_of(a)).unwrap_or(0),
             closed: self.closed.iter().cloned().collect(),
+            groups: self.groups.clone(),
         }
     }
 
@@ -275,12 +383,15 @@ impl TabStrip {
             if t.pinned {
                 tab.pinned_url = Some(t.pinned_url.clone().unwrap_or_else(|| t.url.clone()));
             }
+            tab.group = t.group.filter(|g| !t.pinned && snapshot.groups.iter().any(|x| x.id == *g));
             strip.push(tab);
         }
         if let Some(t) = strip.tabs.get(snapshot.active_index).map(|t| t.id) {
             strip.activate(t);
         }
         strip.closed = snapshot.closed.iter().take(CLOSED_TAB_LIMIT).cloned().collect();
+        strip.groups = snapshot.groups.clone();
+        strip.prune_groups();
         strip
     }
 }
@@ -308,6 +419,40 @@ mod tests {
 
     fn order(s: &TabStrip) -> Vec<String> {
         s.tabs().iter().map(|t| t.url.clone()).collect()
+    }
+
+    #[test]
+    fn groups_stay_together_and_survive_sessions() {
+        let (mut s, ids) = strip(&["a", "b", "c", "d"]);
+        let g = s.create_group(ids[0], "Work").unwrap();
+        // Adding "c" moves it right after the group's last tab.
+        s.set_group(ids[2], Some(g));
+        assert_eq!(order(&s), ["a", "c", "b", "d"]);
+        assert_eq!(s.group_tabs(g), vec![ids[0], ids[2]]);
+        // Dropping "d" between two grouped tabs puts it in the group.
+        s.move_tab(ids[3], 1);
+        assert_eq!(s.get(ids[3]).unwrap().group, Some(g));
+        // Dragging it out to the end takes it out.
+        s.move_tab(ids[3], 3);
+        assert_eq!(s.get(ids[3]).unwrap().group, None);
+        let restored = TabStrip::from_snapshot(&s.snapshot());
+        assert_eq!(restored.groups().len(), 1);
+        assert_eq!(restored.group_tabs(g).len(), 2);
+        // Closing every tab of a group removes the group.
+        s.close(ids[0]);
+        s.close(ids[2]);
+        assert!(s.groups().is_empty());
+    }
+
+    #[test]
+    fn ungroup_keeps_tabs() {
+        let (mut s, ids) = strip(&["a", "b"]);
+        let g = s.create_group(ids[1], "").unwrap();
+        s.ungroup(g);
+        assert!(s.groups().is_empty());
+        assert_eq!(s.len(), 2);
+        s.set_pinned(ids[0], true);
+        assert!(s.create_group(ids[0], "x").is_none(), "pinned tabs are not grouped");
     }
 
     #[test]

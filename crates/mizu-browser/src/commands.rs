@@ -256,6 +256,68 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             app.close_tab(window, tab_id(id));
             ok()
         }
+        Command::GroupCreate { tab } => {
+            if let Some(w) = app.window_mut(window) {
+                if let Some(g) = w.strip.create_group(tab_id(tab), "") {
+                    w.state_dirty = true;
+                    // Ask for a name right away, next to the new group's chip.
+                    let _ = g;
+                }
+            }
+            app.session_dirty = true;
+            ok()
+        }
+        Command::GroupSet { tab, group } => {
+            if let Some(w) = app.window_mut(window) {
+                w.strip.set_group(tab_id(tab), group);
+                w.state_dirty = true;
+            }
+            app.session_dirty = true;
+            ok()
+        }
+        Command::GroupUpdate { id, name, color, collapsed } => {
+            if let Some(w) = app.window_mut(window) {
+                let active_in_group = w.active_tab().and_then(|t| w.strip.get(t)).is_some_and(|t| t.group == Some(id));
+                if let Some(g) = w.strip.group_mut(id) {
+                    if let Some(n) = name {
+                        g.name = n.trim().chars().take(40).collect();
+                    }
+                    if let Some(c) = color.filter(|c| mizu_tabs::GROUP_COLORS.contains(&c.as_str())) {
+                        g.color = c;
+                    }
+                    if let Some(c) = collapsed {
+                        g.collapsed = c;
+                    }
+                }
+                // Collapsing the group of the active tab moves on to a tab outside it.
+                if collapsed == Some(true) && active_in_group {
+                    let next = w.strip.tabs().iter().find(|t| t.group != Some(id)).map(|t| t.id);
+                    if let Some(next) = next {
+                        app.activate_tab(window, next);
+                    }
+                }
+                if let Some(w) = app.window_mut(window) {
+                    w.state_dirty = true;
+                }
+            }
+            app.session_dirty = true;
+            ok()
+        }
+        Command::GroupUngroup { id } => {
+            if let Some(w) = app.window_mut(window) {
+                w.strip.ungroup(id);
+                w.state_dirty = true;
+            }
+            app.session_dirty = true;
+            ok()
+        }
+        Command::GroupClose { id } => {
+            let tabs = app.window(window).map(|w| w.strip.group_tabs(id)).unwrap_or_default();
+            for t in tabs {
+                app.close_tab(window, t);
+            }
+            ok()
+        }
         Command::Find { text, case_sensitive } => {
             let posted = app.window(window).map(|w| (w.id, w.active_view()));
             if let Some((wid, Some(v))) = posted {
@@ -632,6 +694,11 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
     let private = app.window(window).is_some_and(|w| w.private);
     match kind {
         FlyoutKind::Downloads => app.downloads.to_json(private),
+        FlyoutKind::GroupMenu => {
+            let g = tab_id.and_then(|id| app.window(window)?.strip.group(id as u32).cloned());
+            let count = tab_id.map(|id| app.window(window).map(|w| w.strip.group_tabs(id as u32).len()).unwrap_or(0)).unwrap_or(0);
+            json!({ "group": g, "count": count, "colors": mizu_tabs::GROUP_COLORS })
+        }
         FlyoutKind::Media => json!({ "items": app.media.to_json(private), "pause_others": app.settings.media.pause_others }),
         FlyoutKind::TabMenu => {
             let tab = tab_id.and_then(|id| app.window(window)?.strip.get(TabId(id)).cloned());
@@ -640,6 +707,8 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
             json!({
                 "id": tab_id,
                 "pinned": tab.as_ref().is_some_and(|t| t.pinned),
+                "group": tab.as_ref().and_then(|t| t.group),
+                "groups": app.window(window).map(|w| w.strip.groups().to_vec()).unwrap_or_default(),
                 "away": tab.as_ref().is_some_and(mizu_tabs::Tab::away_from_pin),
                 "home": tab.as_ref().and_then(|t| t.pinned_url.clone()),
                 "muted": state.is_some_and(|s| s.muted),

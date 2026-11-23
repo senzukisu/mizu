@@ -754,3 +754,56 @@ button {
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Tab group colours ────────────────────────────────────── */
+.g-blue { --g: #3b82f6; }
+.g-green { --g: #22a06b; }
+.g-orange { --g: #f08c2e; }
+.g-pink { --g: #e5508f; }
+.g-purple { --g: #8b5cf6; }
+.g-teal { --g: #14a3a3; }
+.g-yellow { --g: #d4a514; }
+.g-grey { --g: #8a94a6; }
+
+.gdot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--g, var(--ink-3));
+  flex: none;
+  margin: 0 2px;
+}
+.gdot.big {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  cursor: pointer;
+  margin: 0;
+}
+.gdot.big.on {
+  box-shadow: 0 0 0 2px var(--raised), 0 0 0 4px var(--g);
+}
+.gm-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 6px 4px;
+}
+.gm-head input {
+  height: 32px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--ink);
+  padding: 0 10px;
+  font: inherit;
+  outline: none;
+}
+.gm-head input:focus {
+  border-color: var(--accent);
+}
+.gcolors {
+  display: flex;
+  gap: 8px;
+  padding: 0 2px;
+}
