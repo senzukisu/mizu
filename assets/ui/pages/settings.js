@@ -118,6 +118,11 @@ function general() {
       toggle('Confirm before closing many tabs', null, () => g.confirm_close_multiple_tabs, (v) => (g.confirm_close_multiple_tabs = v)),
       toggle('Open windows maximized', 'Mizu starts full-size instead of in a smaller window.', () => g.start_maximized, (v) => (g.start_maximized = v)),
     ),
+    card('Import', null, (() => {
+      const b = h('button', { class: 'btn' }, icon('import'), h('span', { text: 'Import from another browser' }));
+      b.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://import/', disposition: 'current' }));
+      return h('div', { class: 'setting' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Bookmarks, history and search engines' }), h('div', { class: 'd', text: 'From Chrome, Edge, Yandex Browser, Brave, Vivaldi, Opera or Firefox on this PC.' })), b);
+    })()),
     updatesCard(g),
   ];
 }

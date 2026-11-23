@@ -2434,3 +2434,99 @@ body[data-ntbg='image'] .nt-stats {
   font-size: 15px;
   color: var(--ink-2);
 }
+
+/* ── Import ───────────────────────────────────────────────── */
+.imp-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 14px;
+}
+.imp-src {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.imp-src:hover:not(:disabled) {
+  border-color: var(--line-2);
+}
+.imp-src.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+}
+.imp-src:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.imp-ic {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+}
+.imp-meta {
+  flex: 1;
+  min-width: 0;
+}
+.imp-meta .t {
+  font-weight: 600;
+}
+.imp-meta .d {
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+.imp-counts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.imp-counts span {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.imp-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.imp-status {
+  color: var(--ink-3);
+}
+.imp-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 30px 20px;
+  text-align: center;
+}
+.imp-done svg.icon {
+  color: var(--accent);
+}
+.imp-done h3 {
+  margin: 4px 0 0;
+}
+.imp-done .row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.page-head .btn svg.icon:only-child {
+  margin: 0;
+}

@@ -166,8 +166,10 @@ const searchWrap = searchBox('Search bookmarks', (q) => {
 const searchInput = searchWrap.querySelector('input');
 const addBtn = h('button', { class: 'btn', text: 'Add bookmark' });
 addBtn.addEventListener('click', () => editDialog({ kind: 'url' }));
+const importBtn = h('button', { class: 'btn', title: 'Import from another browser' }, icon('import'));
+importBtn.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://import/', disposition: 'current' }));
 const folderBtn = h('button', { class: 'btn', text: 'New folder' });
 folderBtn.addEventListener('click', () => editDialog({ kind: 'folder' }));
 
-main.append(h('div', { class: 'page', style: { maxWidth: '1080px' } }, pageHead('Bookmarks', searchWrap, folderBtn, addBtn), h('div', { class: 'bm-layout' }, tree, list)));
+main.append(h('div', { class: 'page', style: { maxWidth: '1080px' } }, pageHead('Bookmarks', searchWrap, importBtn, folderBtn, addBtn), h('div', { class: 'bm-layout' }, tree, list)));
 bootPage(reload);

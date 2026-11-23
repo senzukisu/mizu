@@ -138,6 +138,17 @@ pub enum Command {
     MediaList,
     /// Installed font families, for the interface font setting.
     SystemFonts,
+    /// Import: browser profiles on this PC with counts, and running an import.
+    ImportSources,
+    ImportRun {
+        id: String,
+        #[serde(default)]
+        bookmarks: bool,
+        #[serde(default)]
+        history: bool,
+        #[serde(default)]
+        engines: bool,
+    },
     /// Opens the folder downloads are saved to.
     DownloadsOpenFolder,
 

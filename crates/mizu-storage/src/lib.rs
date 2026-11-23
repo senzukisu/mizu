@@ -13,6 +13,7 @@
 mod bookmarks;
 mod downloads;
 mod history;
+pub mod import;
 mod logins;
 mod migrations;
 mod permissions;

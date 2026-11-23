@@ -398,6 +398,49 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             }
             ok()
         }
+        Command::ImportSources => {
+            let list: Vec<Value> = mizu_storage::import::detect()
+                .into_iter()
+                .map(|s| {
+                    let counts = mizu_storage::import::read(&s).counts();
+                    json!({ "id": s.id, "browser": s.browser, "profile": s.profile, "kind": s.kind, "counts": counts })
+                })
+                .collect();
+            data(list)
+        }
+        Command::ImportRun { id, bookmarks, history, engines } => {
+            let src = mizu_storage::import::detect().into_iter().find(|s| s.id == id).ok_or("That browser profile is no longer there")?;
+            tracing::info!(browser = %src.browser, bookmarks, history, engines, "importing");
+            let d = mizu_storage::import::read(&src);
+            let added_bm = if bookmarks { app.storage.import_bookmarks(&src.browser, &d).map_err(storage_err)? } else { 0 };
+            let added_h = if history { app.storage.import_history(&d.history).map_err(storage_err)? } else { 0 };
+            let mut added_e = 0;
+            if engines {
+                let existing = app.settings.search.all_engines();
+                for (name, keyword, template) in &d.engines {
+                    let template = template.trim();
+                    if existing.iter().any(|e| e.template == template || e.name.eq_ignore_ascii_case(name))
+                        || app.settings.search.custom_engines.iter().any(|e| e.template == template)
+                    {
+                        continue;
+                    }
+                    // Mizu keywords start with '@' and are short; long ones ("example.com") are dropped.
+                    let kw = keyword.trim_start_matches('@');
+                    let keyword = if !kw.is_empty() && kw.len() <= 8 && kw.chars().all(|c| c.is_alphanumeric()) { format!("@{kw}") } else { String::new() };
+                    let engine = mizu_settings::SearchEngine { id: format!("imported-{:x}-{added_e}", mizu_storage::now_ms()), name: name.clone(), template: template.to_owned(), keyword };
+                    if engine.is_valid() {
+                        app.settings.search.custom_engines.push(engine);
+                        added_e += 1;
+                    }
+                }
+                if added_e > 0 {
+                    app.persist_settings();
+                }
+            }
+            app.bookmarks_bar = None;
+            mark_all_dirty(app);
+            data(json!({ "bookmarks": added_bm, "history": added_h, "engines": added_e }))
+        }
         Command::NewtabData => {
             // Speed dial: the new tab's own shortcuts (separate from the bookmarks bar).
             let top: Vec<Value> = app
