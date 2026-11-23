@@ -306,6 +306,9 @@ function ghostOut(el) {
     [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: VERTICAL ? 'translateX(-12px) scale(0.96)' : 'scale(0.92) translateY(2px)' }],
     { duration: dur, easing: 'ease-in', fill: 'forwards' },
   ).onfinish = () => el.remove();
+  // The animation's finish can arrive late while the window is busy: never let a closed tab
+  // linger on screen.
+  setTimeout(() => el.remove(), dur + 60);
 }
 
 function animateIn(el) {
@@ -730,6 +733,16 @@ function renderMedia() {
 
 function renderDownloads() {
   renderMedia();
+  if (!SIDEBAR) {
+    const appWin = !!state.app;
+    if (document.body.classList.contains('app-window') !== appWin) {
+      document.body.classList.toggle('app-window', appWin);
+      if (appWin && !document.getElementById('app-title')) {
+        document.getElementById('tabstrip').prepend(h('div', { id: 'app-title' }, h('img', { src: '/_/logo.svg', alt: '' }), h('span', { text: 'Mizu' })));
+      }
+      reportMetrics();
+    }
+  }
   const d = state.downloads || {};
   els.downloads.hidden = !d.any && settings?.appearance?.toolbar_downloads !== 'always';
   els.downloads.classList.toggle('active', d.active > 0);

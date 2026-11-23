@@ -398,6 +398,25 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             }
             ok()
         }
+        Command::WelcomeDone => {
+            app.settings.general.welcome_version = mizu_settings::WELCOME_VERSION;
+            app.persist_settings();
+            // Close the tour's window (or, if it was opened as a tab, show the new tab page).
+            if app.window(window).is_some_and(|w| w.app) {
+                // Closing it opens the browser window that waited for the tour.
+                queue::with_app(move |a| a.close_window(window));
+            } else {
+                app.navigate_active(window, "mizu://newtab/");
+            }
+            ok()
+        }
+        Command::DefaultBrowserStatus => data(json!({ "default": crate::win::is_default_browser(), "registered": crate::win::is_registered_browser() })),
+        Command::MakeDefaultBrowser => {
+            // Windows 10/11 only let the user choose, in Settings → Default apps.
+            let target = if crate::win::is_registered_browser() { "ms-settings:defaultapps?registeredAppUser=Mizu" } else { "ms-settings:defaultapps" };
+            crate::win::shell_open(target);
+            ok()
+        }
         Command::ImportSources => {
             let list: Vec<Value> = mizu_storage::import::detect()
                 .into_iter()

@@ -225,7 +225,7 @@ function drawNowPlaying(items) {
   const meta = h('button', { class: 'nt-np-meta', title: 'Go to tab' }, h('div', { class: 't', translate: 'no', text: m.title || m.page_title || m.site }), h('div', { class: 'd', translate: 'no', text: [m.artist, m.site].filter(Boolean).join(' · ') }));
   meta.addEventListener('click', () => send('focus'));
   npBox.classList.toggle('playing', !!m.playing);
-  npBox.replaceChildren(art, meta, h('div', { class: 'nt-np-ctl' }, m.prev ? btn('skip-back', 'Previous', 'prev') : null, btn(m.playing ? 'pause' : 'play', m.playing ? 'Pause' : 'Play', 'toggle', true), btn('skip-forward', 'Next', 'next')));
+  npBox.replaceChildren(art, meta, h('div', { class: 'nt-np-ctl' }, m.prev ? btn('skip-back', 'Previous track', 'prev') : null, btn(m.playing ? 'pause' : 'play', m.playing ? 'Pause' : 'Play', 'toggle', true), btn('skip-forward', 'Next track', 'next')));
 }
 function nowPlaying() {
   drawNowPlaying(data.media);

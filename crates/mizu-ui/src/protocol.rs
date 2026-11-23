@@ -138,6 +138,10 @@ pub enum Command {
     MediaList,
     /// Installed font families, for the interface font setting.
     SystemFonts,
+    /// Welcome tour finished; default browser status and the Windows "Default apps" page.
+    WelcomeDone,
+    DefaultBrowserStatus,
+    MakeDefaultBrowser,
     /// Import: browser profiles on this PC with counts, and running an import.
     ImportSources,
     ImportRun {

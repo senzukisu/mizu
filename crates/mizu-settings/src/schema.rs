@@ -89,7 +89,12 @@ pub struct GeneralSettings {
     /// Offer to restore tabs after Mizu was not shut down cleanly.
     pub restore_after_crash: bool,
     pub confirm_close_multiple_tabs: bool,
+    /// The welcome tour last completed (0 = never). Shown again when WELCOME_VERSION grows.
+    pub welcome_version: u32,
 }
+
+/// Bump to show the welcome tour once more to everyone (0.3.0 introduced it).
+pub const WELCOME_VERSION: u32 = 3;
 
 impl Default for GeneralSettings {
     fn default() -> Self {
@@ -101,6 +106,7 @@ impl Default for GeneralSettings {
             home_page: "mizu://newtab/".into(),
             restore_after_crash: true,
             confirm_close_multiple_tabs: true,
+            welcome_version: 0,
         }
     }
 }

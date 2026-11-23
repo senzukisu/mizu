@@ -2530,3 +2530,395 @@ body[data-ntbg='image'] .nt-stats {
 .page-head .btn svg.icon:only-child {
   margin: 0;
 }
+
+/* ── Welcome tour: the "current" of About Mizu as a living background ───── */
+.p-welcome {
+  /* Always the deep violet night of the hero, whatever the theme. */
+  --ink: #f4eeff;
+  --ink-2: #d4c6ee;
+  --ink-3: #a594c8;
+  --surface: rgb(24 10 42 / 0.84);
+  --surface-2: rgb(255 255 255 / 0.06);
+  --surface-3: rgb(255 255 255 / 0.12);
+  --line: rgb(199 166 255 / 0.16);
+  --line-2: rgb(199 166 255 / 0.3);
+  --coral: #ff8a6b;
+  background: #12061f;
+  color: var(--ink);
+  overflow-x: hidden;
+  user-select: none;
+}
+.p-welcome canvas.wl-bg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+}
+.wl-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 60% at 50% 50%, rgb(14 5 26 / 0.55), rgb(14 5 26 / 0.15) 70%),
+    linear-gradient(0deg, rgb(14 5 26 / 0.5), transparent 40%);
+}
+.wl {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 40px 20px;
+}
+.wl-panel {
+  position: relative;
+  width: min(880px, 100%);
+  padding: 30px 40px 26px;
+  border-radius: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 80px rgb(8 2 18 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  animation: wl-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes wl-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+}
+.wl-lang {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink-3);
+}
+.wl-lang button {
+  border: 0;
+  background: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  font: 500 12.5px/1 var(--font);
+  cursor: pointer;
+}
+.wl-lang button.on {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+.wl-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.wl-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line-2);
+  transition: width 300ms ease, background 300ms ease;
+}
+.wl-dots span.done {
+  background: color-mix(in srgb, var(--coral) 60%, var(--line-2));
+}
+.wl-dots span.on {
+  width: 28px;
+  background: linear-gradient(90deg, var(--coral), #c77dff);
+}
+.wl-hero {
+  text-align: center;
+  margin: 18px 0 24px;
+}
+.wl-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.wl-name img {
+  width: 52px;
+  height: 52px;
+  filter: drop-shadow(0 8px 22px rgb(124 58 237 / 0.5));
+  animation: wl-float 6s ease-in-out infinite;
+}
+@keyframes wl-float {
+  50% { transform: translateY(-5px); }
+}
+.wl-word {
+  font: 700 54px/1 var(--font-display);
+  letter-spacing: -0.02em;
+  background: linear-gradient(100deg, #fff 10%, #e7d8ff 45%, #ffb59e 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.wl-kanji {
+  font: 500 30px/1 var(--font-display);
+  color: var(--coral);
+  opacity: 0.9;
+}
+.wl-hero h1 {
+  margin: 12px 0 2px;
+  font: 600 22px/1.3 var(--font-display);
+  color: var(--ink);
+}
+.wl-motto {
+  font: italic 600 14px/1.4 var(--font);
+  letter-spacing: 0.04em;
+  color: var(--coral);
+  margin-bottom: 10px;
+}
+.wl-hero p,
+.wl-sub {
+  margin: 0 auto;
+  max-width: 580px;
+  color: var(--ink-2);
+  text-align: center;
+  line-height: 1.55;
+}
+.wl-panel h2 {
+  margin: 6px 0 6px;
+  text-align: center;
+  font: 600 26px/1.25 var(--font-display);
+  color: var(--ink);
+}
+.wl-sub {
+  margin-bottom: 22px;
+}
+.wl-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.wl-card {
+  padding: 14px 14px 13px;
+  border-radius: 18px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  transition: transform 220ms ease, border-color 220ms ease, background 220ms ease;
+}
+.wl-card:hover {
+  transform: translateY(-2px);
+  border-color: rgb(255 138 107 / 0.45);
+  background: rgb(255 255 255 / 0.09);
+}
+.wl-ic {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgb(199 125 255 / 0.28), rgb(255 138 107 / 0.22));
+  color: #ffd2c4;
+  margin-bottom: 9px;
+}
+.wl-card .t {
+  font-weight: 600;
+  margin-bottom: 3px;
+  color: var(--ink);
+}
+.wl-card .d {
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.wl-label {
+  margin: 16px 0 8px;
+  font: 600 11.5px/1.3 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+}
+.wl-choice {
+  display: flex;
+  gap: 10px;
+}
+.wl-choice button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px;
+  border-radius: 18px;
+  border: 1.5px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font: 500 14px/1.2 var(--font);
+  cursor: pointer;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+.wl-choice button:hover {
+  background: rgb(255 255 255 / 0.09);
+}
+.wl-choice button.on {
+  border-color: var(--coral);
+  color: var(--ink);
+  background: rgb(255 138 107 / 0.12);
+}
+.wl-choice button svg.icon {
+  color: #ffd2c4;
+}
+.wl-accents {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.wl-accents button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 160ms ease;
+}
+.wl-accents button:hover {
+  transform: scale(1.08);
+}
+.wl-accents button svg.icon {
+  opacity: 0;
+}
+.wl-accents button.on {
+  box-shadow: 0 0 0 2px #1c0c30, 0 0 0 4px #fff;
+}
+.wl-accents button.on svg.icon {
+  opacity: 1;
+}
+.wl-center {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0 6px;
+}
+.p-welcome .btn {
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+.p-welcome .btn:hover {
+  background: var(--surface-3);
+}
+.p-welcome .btn.ghost {
+  background: none;
+  border-color: transparent;
+  color: var(--ink-2);
+}
+.p-welcome .btn.primary {
+  border: 0;
+  color: #1a0b10;
+  font-weight: 600;
+  background: linear-gradient(100deg, #ffb59e, var(--coral) 55%, #f472b6);
+  box-shadow: 0 8px 24px rgb(255 138 107 / 0.35);
+}
+.p-welcome .btn.primary:hover {
+  filter: brightness(1.06);
+}
+.wl-big {
+  height: 48px;
+  padding: 0 24px;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.wl-ok {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px 0;
+  color: #9ef0c0;
+  font-weight: 600;
+}
+.wl-later {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 18px auto 0;
+  max-width: 600px;
+  color: var(--ink-3);
+  font-size: 13px;
+  text-align: center;
+}
+.wl-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wl-src {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.wl-src-m {
+  flex: 1;
+  min-width: 0;
+}
+.wl-src-m .t {
+  font-weight: 600;
+}
+.wl-src-m .d {
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+.wl-done-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #9ef0c0;
+  font-weight: 600;
+}
+.wl-muted {
+  text-align: center;
+  color: var(--ink-3);
+  padding: 12px;
+}
+.wl-check {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 6px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #ffb59e, var(--coral) 50%, #c77dff);
+  color: #1a0b10;
+  box-shadow: 0 12px 34px rgb(255 138 107 / 0.4);
+}
+.wl-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 26px;
+}
+.wl-nav-r {
+  display: flex;
+  gap: 8px;
+}
+@media (max-width: 760px) {
+  .wl-grid {
+    grid-template-columns: 1fr;
+  }
+  .wl-panel {
+    padding: 56px 20px 22px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wl-name img,
+  .wl-panel {
+    animation: none;
+  }
+}

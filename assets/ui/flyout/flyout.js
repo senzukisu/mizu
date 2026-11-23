@@ -229,9 +229,9 @@ function mediaCard(m, big) {
       h('div', { class: 'mh-sub', translate: 'no', text: sub }),
       progress,
       h('div', { class: 'mh-row' },
-        btn('skip-back', 'Previous', 'prev'),
+        btn('skip-back', 'Previous track', 'prev'),
         btn(m.playing ? 'pause' : 'play', m.playing ? 'Pause' : 'Play', 'toggle', 'main'),
-        btn('skip-forward', 'Next', 'next'),
+        btn('skip-forward', 'Next track', 'next'),
         h('span', { class: 'mh-vol-wrap' }, icon(m.muted || m.volume === 0 ? 'mute' : 'volume', { size: 14 }), vol),
       ),
       h('div', { class: 'mh-foot' }, go, time)));

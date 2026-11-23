@@ -614,6 +614,7 @@ impl App {
             "closed": w.strip.closed_tabs().count(),
             "downloads": { "active": dl_active, "progress": dl_progress, "any": !self.downloads.items.is_empty() },
             "media": { "count": media_count, "playing": media_playing, "on": self.settings.media.media_hub },
+            "app": self.window(id).is_some_and(|w| w.app),
             "shield": { "session": session_blocked },
             "update": match &self.update {
                 crate::update::UpdateState::Ready { version, .. } => serde_json::Value::String(version.clone()),

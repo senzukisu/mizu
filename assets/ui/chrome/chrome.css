@@ -1127,3 +1127,41 @@ body.collapsed .vt-collapse svg.icon {
     transform: scaleY(0.7);
   }
 }
+
+/* ── App windows (welcome tour): title and window buttons only ─ */
+.app-window #tabs,
+.app-window #new-tab,
+.app-window #private-badge,
+.app-window #toolbar,
+.app-window #bookmarks,
+.app-window #findbar {
+  display: none !important;
+}
+#app-title {
+  display: none;
+}
+.app-window #app-title {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  margin-bottom: 0;
+  padding-bottom: 2px;
+  gap: 8px;
+  flex: 1;
+  padding-left: 14px;
+  color: var(--ink-2);
+  font: 600 13px/1 var(--font);
+}
+.app-window #app-title img {
+  width: 16px;
+  height: 16px;
+}
+
+/* A closing tab: no buttons or hover while it fades out. */
+.tab.ghost {
+  pointer-events: none;
+}
+.tab.ghost .close,
+.tab.ghost .audio {
+  visibility: hidden;
+}

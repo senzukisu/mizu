@@ -814,6 +814,18 @@ fn toggle_bookmark(app: &mut App, window: WindowId) {
 
 pub fn open_url(app: &mut App, window: WindowId, url: String, disposition: Disposition) {
     let Some(url) = crate::omnibox::resolve_input(&app.settings, &url) else { return };
+    // App windows (the welcome tour) show one page: everything else goes to the browser.
+    if app.window(window).is_some_and(|w| w.app) {
+        let target = match app.main_window(false) {
+            Some(w) => w,
+            None => app.new_window(false, Some(Vec::new())),
+        };
+        app.open_tab(target, url, OpenOptions::foreground());
+        if let Some(w) = app.window(target) {
+            crate::win::bring_to_front(w.hwnd);
+        }
+        return;
+    }
     match disposition {
         Disposition::Current => app.navigate_active(window, &url),
         Disposition::NewTab => {
@@ -859,6 +871,12 @@ fn open_internal(app: &mut App, window: WindowId, page: InternalPage) {
 }
 
 pub fn run_shortcut(app: &mut App, window: WindowId, s: Shortcut) {
+    // App windows (the welcome tour) have no tabs or toolbar: only zoom, Esc and full screen.
+    if app.window(window).is_some_and(|w| w.app)
+        && !matches!(s, Shortcut::ZoomIn | Shortcut::ZoomOut | Shortcut::ZoomReset | Shortcut::Escape | Shortcut::Fullscreen)
+    {
+        return;
+    }
     match s {
         Shortcut::NewTab => {
             app.open_tab(window, InternalPage::NewTab.url(), OpenOptions::foreground());

@@ -126,6 +126,9 @@ pub struct BrowserWindow {
     pub sidebar_collapsed: bool,
     /// Expanded sidebar width in CSS pixels.
     pub sidebar_width: f64,
+    /// A single-page window (the welcome tour): no tabs or toolbar, only the window
+    /// buttons; not saved in the session.
+    pub app: bool,
 }
 
 /// Collapsed (icons only) sidebar width in CSS pixels.

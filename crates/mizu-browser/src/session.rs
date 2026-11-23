@@ -11,7 +11,7 @@ impl App {
         let windows: Vec<_> = self
             .windows
             .iter()
-            .filter(|w| !w.private && !w.closing)
+            .filter(|w| !w.private && !w.closing && !w.app)
             .map(|w| w.strip.snapshot())
             .filter(|s| !s.tabs.is_empty())
             .collect();

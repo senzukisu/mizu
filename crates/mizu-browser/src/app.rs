@@ -59,6 +59,10 @@ pub struct App {
     pub handler: Rc<Dispatcher>,
     pub windows: Vec<BrowserWindow>,
     pub downloads: Downloads,
+    /// The next window created is an app window (see `open_app_window`).
+    pub next_window_app: bool,
+    /// Startup windows held back while the welcome tour is open.
+    pub pending_startup: Option<LaunchArgs>,
     /// What is playing where (the music button, its panel and the new tab card).
     pub media: crate::media::MediaHub,
     pub media_dirty: bool,
@@ -260,6 +264,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         handler: Rc::new(Dispatcher),
         windows: Vec::new(),
         downloads,
+        next_window_app: false,
+        pending_startup: None,
         media: Default::default(),
         media_dirty: false,
         worker,
@@ -403,7 +409,13 @@ impl App {
 
     /// The window that should receive new tabs from outside (last active normal window).
     pub fn main_window(&self, private: bool) -> Option<WindowId> {
-        self.windows.iter().rev().find(|w| w.private == private && !w.closing).map(|w| w.id)
+        self.windows.iter().rev().find(|w| w.private == private && !w.closing && !w.app).map(|w| w.id)
+    }
+
+    /// Opens a single page in its own window without tabs or toolbar (the welcome tour).
+    pub fn open_app_window(&mut self, url: &str) -> WindowId {
+        self.next_window_app = true;
+        self.new_window(false, Some(vec![url.to_owned()]))
     }
 
     pub fn storage_for(&self, private: bool) -> Option<&Storage> {
@@ -644,6 +656,18 @@ impl App {
     }
 
     fn open_initial_windows(&mut self, args: &LaunchArgs) {
+        // Welcome tour: first run, and once after an update that brings a new tour. It opens
+        // alone; the browser window follows when the tour is finished or closed. A launch with
+        // a link (from another app) opens the browser at once and leaves the tour for later.
+        if !args.private && args.urls.is_empty() && self.settings.general.welcome_version < mizu_settings::WELCOME_VERSION {
+            self.pending_startup = Some(args.clone());
+            self.open_app_window("mizu://welcome/");
+            return;
+        }
+        self.open_startup_windows(args);
+    }
+
+    fn open_startup_windows(&mut self, args: &LaunchArgs) {
         use mizu_settings::StartupBehavior;
         let urls: Vec<String> = args.urls.iter().filter_map(|u| crate::omnibox::resolve_input(&self.settings, u)).collect();
         if args.private {
@@ -693,6 +717,7 @@ impl App {
         snapshot: Option<&mizu_tabs::WindowSnapshot>,
     ) -> WindowId {
         let id = WindowId::next();
+        let app_mode = std::mem::take(&mut self.next_window_app);
         let title = if private { "Mizu – Private" } else { "Mizu" };
         let hwnd = window::create_native(id, title, placement);
         crate::win::apply_backdrop(hwnd, crate::theme::is_dark(&self.settings) || private, self.settings.appearance.translucency && !private);
@@ -731,16 +756,17 @@ impl App {
             shown: false,
             activated: false,
             created_at: std::time::Instant::now(),
-            show_maximized: self.settings.general.start_maximized || placement.is_some_and(|p| p.4),
+            show_maximized: app_mode || self.settings.general.start_maximized || placement.is_some_and(|p| p.4),
             spare: None,
             spare_creating: false,
             sidebar: None,
             sidebar_key: TabId::next().0,
             sidebar_ready: false,
             sidebar_creating: false,
-            side_tabs: self.settings.appearance.tab_layout == "side",
+            side_tabs: !app_mode && self.settings.appearance.tab_layout == "side",
             sidebar_collapsed: self.settings.appearance.sidebar_collapsed,
             sidebar_width: f64::from(self.settings.appearance.sidebar_width),
+            app: app_mode,
         });
 
         self.create_surface_views(id);
@@ -1016,7 +1042,18 @@ impl App {
     }
 
     pub fn close_window(&mut self, id: WindowId) {
-        let normal_remaining = self.windows.iter().filter(|w| !w.private && w.id != id).count();
+        // Closing the welcome window counts as having seen the tour; the browser window it
+        // held back opens now.
+        if self.window(id).is_some_and(|w| w.app) {
+            if self.settings.general.welcome_version < mizu_settings::WELCOME_VERSION {
+                self.settings.general.welcome_version = mizu_settings::WELCOME_VERSION;
+                self.persist_settings();
+            }
+            if let Some(args) = self.pending_startup.take() {
+                self.open_startup_windows(&args);
+            }
+        }
+        let normal_remaining = self.windows.iter().filter(|w| !w.private && !w.app && w.id != id).count();
         let is_private = self.window(id).is_some_and(|w| w.private);
         if !is_private && normal_remaining == 0 {
             // Keep session cookies for the restored session; close once they are saved.

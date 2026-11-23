@@ -181,3 +181,29 @@ pub fn font_families() -> Vec<String> {
     out.dedup();
     out
 }
+
+fn hkcu_string(key: &str, name: &str) -> Option<String> {
+    use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_SZ, RegGetValueW};
+    let mut buf = vec![0u16; 512];
+    let mut size = (buf.len() * 2) as u32;
+    // SAFETY: RegGetValueW writes at most `size` bytes into `buf`.
+    let r = unsafe {
+        RegGetValueW(HKEY_CURRENT_USER, &windows_core::HSTRING::from(key), &windows_core::HSTRING::from(name), RRF_RT_REG_SZ, None, Some(buf.as_mut_ptr().cast()), Some(&mut size))
+    };
+    if r.is_err() {
+        return None;
+    }
+    let len = (size as usize / 2).saturating_sub(1).min(buf.len());
+    Some(String::from_utf16_lossy(&buf[..len]))
+}
+
+/// Windows opens https links with Mizu (the installer registers the MizuURL class).
+pub fn is_default_browser() -> bool {
+    hkcu_string(r"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice", "ProgId")
+        .is_some_and(|p| p.eq_ignore_ascii_case("MizuURL"))
+}
+
+/// Mizu is registered with Windows as a browser (installed copies; portable ones are not).
+pub fn is_registered_browser() -> bool {
+    hkcu_string(r"Software\RegisteredApplications", "Mizu").is_some()
+}
