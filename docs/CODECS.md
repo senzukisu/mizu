@@ -3,6 +3,10 @@
 Mizu plays media through the Chromium media pipeline of the WebView2 engine. **Mizu ships no codec binaries.**
 `mizu://media` shows the real state of the machine it runs on.
 
+**Quick check:** open `mizu://media`. Each format shows whether it plays and whether the GPU decodes it ("Hardware").
+Video stutters? See [If video stutters](#hardware-acceleration). Want a file to play in VLC or mpv instead? Right-click
+it → **Open video in …** (see the [guide](GUIDE.md#open-in-a-media-player)).
+
 ## What is available
 
 | Format | Source | Notes |

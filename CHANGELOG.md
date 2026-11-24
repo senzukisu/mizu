@@ -1,7 +1,10 @@
 # Changelog
 
-All notable changes to Mizu are documented here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
+What changed in each version, newest first. **Added** is new, **Changed** works differently, **Fixed** was broken.
+How to use a feature is in the [user guide](docs/GUIDE.md); what comes next is in the [roadmap](ROADMAP.md).
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
+[Semantic Versioning](https://semver.org/).
 
 ## [0.3.4] — 2026-11-24
 

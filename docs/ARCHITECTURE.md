@@ -1,5 +1,16 @@
 # Mizu architecture
 
+How Mizu is put together, for people changing it. The short version: one Rust process owns the windows and all
+decisions; web pages and Mizu's own interface are WebView2 views drawn into those windows; only `mizu-engine` talks
+to WebView2.
+
+**Contents:** [Engine choice](#engine-choice) · [Crates](#crates) · [Process and window model](#process-and-window-model) ·
+[Event flow](#event-flow) · [UI protocol](#ui-protocol) · [Tab model](#tab-model) ·
+[Content blocking](#content-blocking-pipeline) · [Page scripts](#page-scripts) · [Storage](#storage-layout) ·
+[Sessions](#session-and-crash-recovery) · [Passwords](#passwords) · [Userscript site rules](#userscript-site-rules) ·
+[Translations](#translations) ·
+[Updates](#updates) · [Installer](#installer)
+
 ## Engine choice
 
 | Option | Compatibility | Codecs | Updates & security | Footprint | Verdict |
@@ -19,8 +30,9 @@ proprietary codecs, while Mizu stays a small native application. Everything engi
 crates/
 ├── mizu-core         ids, omnibox classification, profile paths, internal page registry (no deps on Windows)
 ├── mizu-settings     settings schema, defaults, validation, atomic TOML persistence
-├── mizu-storage      SQLite: history, bookmarks, downloads, permissions, session; migrations, backup, recovery
-├── mizu-tabs         tab strip model (order, pinning, closed-tab stack, snapshots) – pure logic
+├── mizu-storage      SQLite: history, bookmarks, new tab tiles, downloads, permissions, session, logins;
+│                     import from other browsers; migrations, backup, recovery
+├── mizu-tabs         tab strip model: order, pinning, groups, spaces, tree tabs, closed tabs, snapshots – pure logic
 ├── mizu-privacy      Mizu Shield: adblock-rust engine, filter list store/updater, permissions catalogue, stats
 ├── mizu-userscripts  Mizu Scripts: metadata parser, match patterns, script store, GM_* bootstrap
 ├── mizu-media        media diagnostics (Media Foundation decoders, DXGI GPUs)
@@ -46,9 +58,10 @@ mizu.exe (UI thread, single-threaded COM apartment)
  ├── Browser window (Win32, custom frame, Mica)
  │    ├── chrome view   mizu://chrome/   tab strip, toolbar, bookmarks bar        (privileged)
  │    ├── sidebar view  mizu://chrome/?sidebar  vertical tabs, side layout only   (privileged)
- │    ├── tab views     one WebView2 controller per tab (created lazily)          (untrusted)
+ │    ├── tab views     one WebView2 controller per tab (created lazily); two shown in split view (untrusted)
  │    ├── spare view    a pre-created blank view, so a new tab appears instantly
  │    └── flyout popup  mizu://flyout/   menus, panels, prompts (owned popup)     (privileged)
+ ├── App window (welcome tour)  same frame, no tabs or toolbar; opens before the browser window on first start
  ├── hidden message window   event queue pump, timers, single-instance IPC
  └── worker threads   filter list downloads & compilation, userscript fetches, media probe
 
@@ -95,6 +108,20 @@ The window is shown only when the chrome view reports it is ready (with a 2 s fa
 and event (`{"type":"state",…}`, `{"type":"reply","rid":3,…}`). Unknown or malformed messages fail deserialisation and
 are dropped. See [SECURITY.md](SECURITY.md) for who may send what.
 
+## Tab model
+
+`mizu-tabs::TabStrip` owns the order and metadata of one window's tabs; the browser mirrors its decisions onto views.
+
+- **Pinned** tabs come first; pinned and normal tabs never interleave.
+- **Groups** (`Tab.group`, `TabGroup`) are contiguous runs of tabs with a name, colour and collapsed flag.
+- **Spaces** (`Tab.space`, `Space`) split the window into tab sets. Only the active space's tabs are shown; new tabs
+  join the active space; activating a tab switches to its space; cycling and Ctrl+1…9 stay within it.
+- **Tree tabs** (`Tab.parent`, `tree_collapsed`): a tab opened from a page is inserted after its opener's branch as a
+  child. Closing, moving or pinning a tab moves its children up a level.
+- **Split view** lives in the window (`BrowserWindow.split`: two tab ids and a ratio). `tab_rect` gives each half its
+  rectangle and the divider is dragged in the window procedure.
+- Everything above is saved in `WindowSnapshot` (indices for parents and the split) and restored on start.
+
 ## Content blocking pipeline
 
 ```
@@ -103,15 +130,37 @@ custom rules ──────────────────────�
 bundled essential list ───────────────────────┘                (compiled on a worker; swapped in atomically)
 
 NavigationStarting (top level) ─► document check (badware → interstitial)
-                                └► cosmetic CSS + scriptlets + userscripts ─► AddScriptToExecuteOnDocumentCreated
+                                └► document script: site CSS + scriptlets + procedural filters + generic-hiding
+                                   reporter + media hub + password capture + userscripts
 WebResourceRequested (every request) ─► check(url, page url, type) ─► block | redirect (data:) | strip params | + Sec-GPC
+
+page ─► {mizu_cosmetic: token, classes, ids} ─► hidden_class_id_selectors ─► CSS added to the page
 ```
+
+- **Site-specific** element hiding and plain `:style()` rules become one stylesheet.
+- **Procedural** filters (`:has-text`, `:upward`, `:xpath`, `:matches-*`, actions `:remove`, `:remove-attr`…) are
+  passed as JSON to a small in-page engine that re-applies them as the page changes.
+- **Generic** rules (`##.ad` on every site) depend on the page's classes and ids, so the page reports new ones in
+  batches and Mizu answers with the matching CSS, minus `#@#` exceptions; `$generichide` turns this off.
+- The adblock engine is built with `css-validation`, so invalid selectors are dropped at parse time.
+
+## Page scripts
+
+Every top-level navigation gets one document script built by `scripts::document_script`. It is registered before the
+navigation; if the document was created before registration finished, the engine runs it once with `ExecuteScript`
+so it is never missed. Pages talk back through `chrome.webview.postMessage` with messages that carry a random
+per-page token (`mizu_media`, `mizu_pw`, `mizu_cosmetic`, userscript `GM_*`); messages with a wrong token are
+ignored.
+
+The page's **context menu** is the engine's, plus entries the browser adds through `ViewHandler::context_items`
+(for example "Open video in VLC", handled by `players.rs`).
 
 ## Storage layout
 
 ```
 %LOCALAPPDATA%\Onibi Lab\Mizu\User Data\
 ├── logs\                       daily logs, 7 kept
+├── crashes\                    local crash reports, one text file per crash (never uploaded)
 └── Default\
     ├── mizu.db / mizu.db.bak   SQLite (WAL) + last good backup; includes DPAPI-encrypted logins
     ├── settings.toml
@@ -127,7 +176,8 @@ Executables and user data are never mixed. Profiles are separate folders (`--pro
 
 ## Session and crash recovery
 
-The session (all normal windows, tabs, pinned state, closed-tab stacks, window placement) is saved to SQLite every few
+The session (all normal windows, tabs, pinned state, groups, spaces, tree, split view, closed-tab stacks, window
+placement) is saved to SQLite every few
 seconds when it changes and on exit. `running.lock` exists while Mizu runs; if it is present at start, the previous run
 crashed and Mizu restores the session or offers a restore button on the new tab page. Restored tabs are *lazy*: their
 engine view is created only when the tab is first shown.
@@ -139,6 +189,14 @@ engine view is created only when the tab is first shown.
 2. The browser shows the "Save password?" flyout. Saved secrets are encrypted with DPAPI (`vault.rs`) and stored in
    the `logins` table.
 3. The key icon in the omnibox opens the logins flyout. Filling runs a script in the page through `ExecuteScript`.
+
+## Userscript site rules
+
+Each script has user rules (`SiteRules` in `mizu-userscripts`): an "only here" list and a "never here" list.
+- When "only" is not empty, the script's own `@match`/`@include` are ignored. The script's `@exclude` and the "never"
+  list always apply.
+- A rule can be a site name (`youtube.com`, with subdomains), a site with a path (`github.com/user`) or a normal match
+  pattern (`https://*.example.org/*`).
 
 ## Translations
 

@@ -6,10 +6,11 @@
 <p align="center"><b>A new way to browse.</b><br>A fast, privacy-focused browser for Windows, written in Rust by <b>Onibi Lab</b>.</p>
 
 <p align="center">
-  <a href="https://github.com/senzukisu/mizu/releases/latest"><b>Download</b></a> ·
+  <a href="https://github.com/senzukisu/mizu/releases/latest"><b>⬇ Download</b></a> ·
   <a href="docs/GUIDE.md">User guide</a> ·
-  <a href="docs/ru/README.md">По-русски</a> ·
-  <a href="CHANGELOG.md">Changelog</a>
+  <a href="CHANGELOG.md">What's new</a> ·
+  <a href="ROADMAP.md">Roadmap</a> ·
+  <a href="docs/ru/README.md">По-русски</a>
 </p>
 
 <p align="center">
@@ -18,37 +19,42 @@
 
 *水 (mizu) is Japanese for "water": clear, calm, and quick to take the shape of what you need.*
 
+## Install in a minute
+
+1. Download **`MizuSetup-0.3.4.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest).
+2. Run it and press **Install**. No administrator rights are needed.
+3. The welcome tour lets you import from your old browser and make Mizu the default — or skip both and do it later in
+   Settings → General.
+
+**Needs:** Windows 10 1809+ or Windows 11 (x64) and the
+[Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/), already present on
+Windows 11 and most Windows 10 PCs. A **portable** zip is on the same page (no auto-updates).
+**Uninstall:** Windows Settings → Apps → Installed apps → Mizu; your browsing data stays unless you tick the option.
+
 ## Why Mizu
 
-- **Fast with many tabs.** Pages are drawn inside Mizu's own window (WebView2 visual hosting), so a busy engine never
-  freezes the interface. Background tabs sleep, and you can unload them by hand.
-- **Ad and tracker blocking built in.** Mizu Shield is compatible with uBlock Origin filter lists and ships with
-  about 150,000 rules. Turn it off per site with one click.
-- **Your data stays with you.** There's no telemetry. Passwords are encrypted with your Windows account, and private
-  windows leave nothing behind.
-- **Made to be shaped.**
-  - Vertical or classic tabs;
-  - five palettes and any accent colour;
-  - your own keyboard shortcuts;
-  - userscripts with per-site rules, and Chrome extensions.
+- **Stays fast with many tabs.** Pages are drawn inside Mizu's own window, so a busy page never freezes the interface.
+  Background tabs sleep; unload them by hand when you like.
+- **Blocks ads and trackers out of the box.** Mizu Shield understands uBlock Origin filter lists — network rules,
+  scriptlets, generic and procedural element hiding. One click turns it off for a site.
+- **Keeps your data with you.** No telemetry. Passwords are encrypted with your Windows account; private windows leave
+  nothing behind; crash reports stay on your PC.
+- **Shapes itself to you.** Tabs on top or on the side, tree tabs, groups, spaces, split view; palettes and any accent
+  colour; your own shortcuts; userscripts and Chrome extensions.
 
-## Features
+## What's inside
 
 | | |
 |---|---|
-| **Engine** | Microsoft Edge WebView2 (current Chromium), updated by Windows; hardware video decoding, H.264/AAC, AV1 |
-| **Tabs** | Top strip or a resizable, collapsible sidebar with pinned sites as an icon grid; pin, mute, duplicate, unload; reopen closed tabs; sessions (and sign-ins) restored after restarts and crashes |
-| **Address bar** | Searches and addresses; suggestions from history, bookmarks, open tabs and (optionally) your search engine; `@keyword` engines; a calculator; find on page (Ctrl+F) |
-| **Move in** | Import bookmarks, history and search engines from Chrome, Edge, Yandex, Brave, Vivaldi, Opera or Firefox; a short welcome tour on first start |
-| **Organise** | Tab groups with names and colours in both layouts; `>` quick actions and unit conversion in the address bar |
-| **Cookies & apps** | Third-party cookies blocked; a site's cookies and "Clear site data" in the lock icon; links to Steam, Telegram, Zoom and mail open their app after asking |
-| **Mizu Shield** | uBlock Origin / EasyList syntax: network rules, `$redirect`, `$removeparam`, element hiding, scriptlets; tracking prevention; Global Privacy Control |
-| **Passwords** | Save-after-sign-in prompt, fill from the address bar, CSV import/export (Chrome, Edge, Firefox, Opera, Brave, Vivaldi, Bitwarden) |
-| **Mizu Scripts** | Tampermonkey-style userscripts from Greasy Fork, GitHub, GitLab and more; automatic updates; run only on the sites you choose |
-| **Extensions** | "Add to Mizu" on the Chrome Web Store, or install from `.crx` / `.zip` |
-| **Video** | Picture in picture on any video, with previous/next and 10-second skip buttons |
-| **Look & feel** | Light, dark or system theme; Mica; density and style; English and Russian |
-| **Updates** | Signed (ed25519) automatic updates. Mizu asks before installing them |
+| **Tabs** | Top strip or sidebar with pinned sites · tree tabs · groups · spaces · split view · sleeping and unloaded tabs · sessions restored after restarts and crashes |
+| **Address bar** | Suggestions from history, bookmarks and open tabs · `@keyword` engines · calculator and unit conversion · `>` quick actions · find on page |
+| **Privacy** | Mizu Shield · third-party cookies blocked · per-site settings (cookies, "Keep me signed in", permissions, zoom) · automatic cookie cleanup · Global Privacy Control |
+| **Passwords** | Save after sign-in, fill from the address bar, CSV import/export |
+| **Music and video** | Media panel for every playing tab · per-site volume · media keys · picture in picture · open in VLC / mpv / PotPlayer / MPC |
+| **New tab** | Your own tiles and folders · 13 backgrounds or your picture · clock, now playing, recent tabs, notes |
+| **Moving in** | Import from Chrome, Edge, Yandex, Brave, Vivaldi, Opera or Firefox |
+| **Add-ons** | Tampermonkey-style userscripts · Chrome Web Store extensions (Manifest V3) |
+| **Engine and updates** | Microsoft Edge WebView2 (current Chromium, H.264/AAC/AV1, hardware decoding) · signed automatic updates that ask first · English and Russian |
 
 <p align="center">
   <img src="docs/screenshots/vertical-tabs.png" width="860" alt="Vertical tabs with a one-row toolbar">
@@ -58,31 +64,34 @@
   <img src="docs/screenshots/settings.png" width="425" alt="Settings">
 </p>
 
-## Install
+## Good to know
 
-1. Download **`MizuSetup-0.3.4.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest).
-2. Run it, choose a folder (or keep the default) and press **Install**. No administrator rights are needed.
-
-A **portable** zip is also available. It runs from any folder but doesn't update itself.
-
-**Requirements:** Windows 10 1809+ or Windows 11 (x64), and the
-[Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/). The runtime is already
-present on Windows 11 and most Windows 10 PCs.
-
-**Uninstall:** Windows Settings → Apps → Installed apps → Mizu. Your browsing data is kept unless you choose to
-delete it.
-
-## Known limitations
-
-- Windows only for now. Linux, macOS and mobile are planned (see the [roadmap](ROADMAP.md)).
-- Extensions must be Chromium Manifest V3 extensions. They have no toolbar buttons, so their pages open in a tab.
-  Firefox add-ons are not supported.
-- Screen reader support is limited until Mizu provides its own accessibility tree for visually hosted pages.
+- Windows only for now; Linux, macOS and mobile are planned ([roadmap](ROADMAP.md)).
+- Extensions must be Chromium Manifest V3. They have no toolbar buttons yet, so their pages open in a tab. Firefox
+  add-ons are not supported.
+- Screen reader support is limited until Mizu provides its own accessibility tree (planned for 0.6).
 - Restored tabs keep their address but not their back/forward history.
+
+## Documentation
+
+**Using Mizu**
+
+- [User guide](docs/GUIDE.md) — quick start, "how do I…", every feature, shortcuts, troubleshooting
+- [What's new](CHANGELOG.md) · [Roadmap](ROADMAP.md)
+- [Security and privacy](docs/SECURITY.md) — what Mizu protects and what it sends
+- [Video and codecs](docs/CODECS.md)
+
+**Working on Mizu**
+
+- [Development](docs/DEVELOPMENT.md) — build, run, add features, release
+- [Architecture](docs/ARCHITECTURE.md) — how the pieces fit
+- [Testing](docs/TESTING.md) — automated tests and the release checklist
+
+All documents are also [in Russian](docs/ru/README.md).
 
 ## Build from source
 
-You need Rust 1.85+ (MSVC) and Visual Studio Build Tools with the C++ workload and Windows SDK.
+Rust 1.85+ (MSVC) and Visual Studio Build Tools (C++ workload, Windows SDK):
 
 ```bash
 git clone https://github.com/senzukisu/mizu.git
@@ -96,23 +105,12 @@ cd mizu
 cargo run --release
 ```
 
-Tests, the installer and releases are covered in [DEVELOPMENT](docs/DEVELOPMENT.md) and [TESTING](docs/TESTING.md).
+Details in [DEVELOPMENT](docs/DEVELOPMENT.md).
 
-## Documentation
+## Feedback
 
-| | English | Русский |
-|---|---|---|
-| User guide | [GUIDE](docs/GUIDE.md) | [Руководство](docs/ru/GUIDE.md) |
-| Architecture | [ARCHITECTURE](docs/ARCHITECTURE.md) | [Архитектура](docs/ru/ARCHITECTURE.md) |
-| Security & privacy | [SECURITY](docs/SECURITY.md) | [Безопасность](docs/ru/SECURITY.md) |
-| Video & codecs | [CODECS](docs/CODECS.md) | [Кодеки](docs/ru/CODECS.md) |
-| Development | [DEVELOPMENT](docs/DEVELOPMENT.md) | [Разработка](docs/ru/DEVELOPMENT.md) |
-| Testing | [TESTING](docs/TESTING.md) | [Тестирование](docs/ru/TESTING.md) |
-| Roadmap | [ROADMAP](ROADMAP.md) | [План развития](docs/ru/ROADMAP.md) |
-| Changelog | [CHANGELOG](CHANGELOG.md) | [Изменения](docs/ru/CHANGELOG.md) |
-
-Found a bug? [Open an issue](https://github.com/senzukisu/mizu/issues). Security problems: see
-[SECURITY](docs/SECURITY.md).
+Found a bug or have an idea? [Open an issue](https://github.com/senzukisu/mizu/issues). Security problems: please
+report privately, see [SECURITY](docs/SECURITY.md#reporting-a-vulnerability).
 
 ## License
 

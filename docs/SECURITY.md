@@ -1,8 +1,27 @@
 # Mizu security model
 
-## Reporting vulnerabilities
+What Mizu protects, how, and what it sends over the network.
 
-Please report security issues privately via GitHub Security Advisories on the repository, not in public issues.
+**In short**
+
+- Pages run in Chromium's sandbox, isolated per site; Mizu never weakens it.
+- Web pages cannot reach Mizu's own pages or commands; every message from a page needs a per-page secret token.
+- Passwords and kept session cookies are encrypted with your Windows account (DPAPI).
+- Updates are signed (ed25519) and checked twice before anything runs, and only after you agree.
+- No telemetry. Crash reports stay on your PC.
+
+**Contents:** [Reporting a vulnerability](#reporting-a-vulnerability) · [Principles](#principles) ·
+[Processes and sandboxing](#processes-and-sandboxing) · [Trust levels](#trust-levels) · [Internal pages](#internal-pages) ·
+[Messages from pages](#messages-from-pages) · [Network](#network) · [Permissions](#permissions) ·
+[Pop-ups and external applications](#pop-ups-and-external-applications) · [Userscripts and extensions](#userscripts-and-extensions) ·
+[Downloads](#downloads) · [Media players](#media-players) · [Local data](#local-data) · [Passwords](#passwords) ·
+[Updates](#updates) · [Installer](#installer) · [Search suggestions](#search-suggestions) · [Telemetry](#telemetry)
+
+## Reporting a vulnerability
+
+Please report security issues **privately** through GitHub Security Advisories on the repository
+(Security → Report a vulnerability), not in public issues. Include the Mizu version (`mizu://about`) and steps to
+reproduce.
 
 ## Principles
 
@@ -41,6 +60,13 @@ by the engine. A web page cannot claim to be the chrome.
 - `mizu://` resources requested by web pages get a 403 response.
 - Engine internals (`edge://`, `chrome://`) and unknown schemes are refused.
 
+## Messages from pages
+
+Web pages may talk to Mizu only through `chrome.webview.postMessage`, and only for a few features: media controls,
+the password-save prompt, generic element hiding and userscript storage. Each feature gets a random token per page,
+known only to the script Mizu injected; a message with a missing or wrong token is ignored. Even with a valid token a
+page can only *report* (a playing track, a submitted login, the classes it uses) — it cannot run commands.
+
 ## Network
 
 - TLS 1.2/1.3 and certificate verification are handled by the engine. Certificate errors show the engine's error page
@@ -58,8 +84,7 @@ Requests whose kind cannot be described accurately are denied.
 
 ## Pop-ups and external applications
 
-Pop-ups without a user gesture are blocked. Links to external applications go through the engine's confirmation
-dialog, and schemes that have been used for attacks (`ms-msdt:`, `search-ms:`, `ms-officecmd:`, `shell:` …) are refused.
+Pop-ups without a user gesture are blocked. Links to external applications go through Mizu's own prompt, and schemes that have been used for attacks (`ms-msdt:`, `search-ms:`, `ms-officecmd:`, `shell:` …) are refused.
 
 ## Userscripts and extensions
 
@@ -79,6 +104,12 @@ dialog, and schemes that have been used for attacks (`ms-msdt:`, `search-ms:`, `
 
 Files are saved through the engine, so Windows Mark-of-the-Web and SmartScreen checks (when enabled) apply.
 Mizu never opens a downloaded file automatically.
+
+## Media players
+
+"Open video in …" starts an installed player (VLC, mpv, PotPlayer, MPC) found in the usual install locations. Mizu
+passes exactly one argument: an `http(s)` address without spaces or quotes. Nothing else from the page reaches the
+command line, and it only happens when you pick the menu item.
 
 ## Local data
 
@@ -127,6 +158,7 @@ The profile lives under `%LOCALAPPDATA%`, which is protected by Windows user ACL
 
 ## Telemetry
 
-None. Crash dumps produced by the engine stay on the machine (custom crash reporting is enabled, so nothing is
+None. Mizu's own crash reports (version and where it failed) are written to the `crashes` folder in Mizu's user data and never
+sent. Crash dumps produced by the engine stay on the machine too (custom crash reporting is enabled, so nothing is
 uploaded to Microsoft by Mizu's choice). Note that SmartScreen, when enabled, checks addresses with Microsoft's service;
 the setting explains this.

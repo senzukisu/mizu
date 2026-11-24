@@ -1,100 +1,111 @@
 # Testing Mizu
 
+Two layers: automated tests that run on every push, and a manual checklist before every release.
+
+**Contents:** [Automated tests](#automated-tests) · [Looking at the interface without clicking](#looking-at-the-interface-without-clicking) ·
+[Release checklist](#release-checklist)
+
+---
+
 ## Automated tests
 
 ```bash
 cargo test --workspace
 ```
 
+```bash
+node scripts/check-ui.mjs
+```
+
+```bash
+cargo clippy --workspace --all-targets -- -D warnings
+```
+
+CI (`.github/workflows/ci.yml`) runs the interface check on Linux and clippy plus the tests on Windows.
+
 | Crate | What is covered |
 |---|---|
-| mizu-core | URL vs search classification (IDN, ports, IPs, `javascript:` refusal), search URLs, origins, profile names, internal pages |
-| mizu-settings | round trip, defaults for partial files, corrupt file recovery, sanitising invalid values |
-| mizu-storage | migrations, history, bookmarks (folders, moves, cycles, protected roots), downloads, permissions, session, saved logins, **recovery from backup** |
-| mizu-tabs | activation after close, reopen position, pinned ordering, drag constraints, duplicate, cycling, snapshots |
-| mizu-privacy | third-party blocking, exceptions, `$redirect`, `$removeparam`, allowlist, cosmetic filters, scriptlets, hosts files, HTTPS-only downloads, list validation |
-| mizu-userscripts | metadata, `@match`/`@include`, install/update/remove, storage limit, bootstrap escaping, link rewriting (GitHub, Gist, GitLab, Greasy Fork), several scripts per file, update scheduling, site rules |
-| mizu-update | signature verification, tampered manifests, wrong key, installer hash, version comparison |
-| mizu-ui | protocol parsing, rejection of unknown commands, asset resolution, path traversal |
-| mizu-browser | shortcut bindings and key parsing, launch args, omnibox suggestions and search-engine suggestions, data URLs, CRX parsing and store keys, DPAPI, password CSV import/export |
+| mizu-core | address vs search (IDN, ports, IPs, refusing `javascript:`), search URLs, origins, profile names, internal pages, calculator and unit conversion |
+| mizu-settings | round trip, defaults for partial files, recovery from a corrupt file, sanitising bad values |
+| mizu-storage | migrations, history, bookmarks (folders, moves, cycles, protected roots), new tab tiles and folders, downloads, permissions, session, logins, import from other browsers, recovery from backup |
+| mizu-tabs | activation after close, reopen position, pinned ordering, drag rules, duplicate, cycling, groups, spaces, tree tabs, snapshots |
+| mizu-privacy | third-party blocking, exceptions, `$redirect`, `$removeparam`, allowlist, site, generic and procedural cosmetic filters, scriptlets, hosts files, list validation |
+| mizu-userscripts | metadata, `@match`/`@include`, install/update/remove, storage limit, bootstrap escaping, link rewriting, several scripts per file, update schedule, site rules |
+| mizu-update | signature check, tampered manifests, wrong key, installer hash, version comparison |
+| mizu-ui | protocol parsing, unknown commands refused, asset lookup, path traversal |
+| mizu-browser | shortcuts and key parsing, launch arguments, address bar suggestions, cookie cleanup, media links, data URLs, CRX parsing, DPAPI, password CSV |
 | mizu-media | the Media Foundation probe finds an H.264 decoder |
 
-Check the UI scripts' syntax (requires Node.js):
+---
 
-```bash
-for f in assets/ui/*/*.js; do node --check "$f" || exit 1; done
-```
+## Looking at the interface without clicking
 
-Lint:
+To check a change visually, start Mizu with a **test profile** and put it in the state you need through files and URL
+hooks instead of input:
 
-```bash
-cargo clippy --workspace
-```
+1. `MIZU_USER_DATA=%TEMP%\mizu-test` — a fresh, disposable profile.
+2. Write `Default\settings.toml` before the start (e.g. `[appearance] tab_layout = "side"`,
+   `[general] welcome_version = 3` to skip the tour).
+3. For tabs, start once, close, then write a session into `Default\mizu.db` (`session` table, JSON with `tabs`,
+   `groups`, `spaces`, `split`, `parent`).
+4. Open a state directly: `mizu://settings/#q=…`, `mizu://newtab/#customize`, `mizu://newtab/#folder=<id>`,
+   `mizu://welcome/#2`.
+5. Capture the window (e.g. with `PrintWindow`) and stop only the process you started.
 
-## Manual checklist
+---
 
-Run it before every release with a fresh profile (`MIZU_USER_DATA=%TEMP%\mizu-test`).
+## Release checklist
 
-### Start, tabs and windows
-- [ ] Mizu starts in under 2 s, maximised; the next start restores the tabs; after `taskkill /IM mizu.exe /F` it offers to restore them.
-- [ ] Tabs:
-  - drag, pin, duplicate, mute, middle-click close;
-  - Ctrl+Shift+T, Ctrl+1…9, Ctrl+Tab;
-  - **Unload tab** and **Unload other tabs** (the tab reloads when opened).
-- [ ] Open 30+ heavy sites quickly:
-  - the window stays responsive and Explorer is unaffected;
-  - the strip scrolls sideways without shaking;
-  - closing tabs is smooth.
-- [ ] Vertical tabs (Settings → Appearance):
-  - one top row with the window buttons;
-  - dragging the empty toolbar moves the window;
-  - the sidebar resizes and collapses;
-  - "New tab" stays under the last tab.
-- [ ] Menus and panels: a second click on their button closes them.
-- [ ] Private window: no history; cookies are separate; closing the last one signs you out of sites used there.
+Use a fresh profile. Tick each line.
 
-### Sites and media
-- [ ] YouTube (1080p/4K, fullscreen, no pre-roll ads), GitHub sign-in, Discord, Reddit, Twitch live, a shop checkout, Figma or Notion.
-- [ ] html5test.com, a WebAssembly demo, WebGL and WebGPU samples.
-- [ ] `mizu://media`: H.264/VP9/AV1 show "Hardware" on capable GPUs.
-- [ ] Picture in picture on YouTube:
-  - the hover button and Alt+Shift+P work;
-  - previous/next video and the 10-second skips work in the floating window;
-  - the button position and compact button settings take effect.
-- [ ] Drag a file from Explorer onto an upload field on a page.
+### Start and tabs
 
-### Data
-- [ ] History: search, delete an entry, clear the last hour.
-- [ ] Bookmarks:
-  - Ctrl+D, rename, move to a folder;
-  - the bar appears with its first bookmark;
-  - right-click → Open in new tab / Delete.
-- [ ] Downloads: pause, resume, cancel, retry, open, show in folder, change the folder, "ask where to save".
-- [ ] Settings, themes, palettes and the language survive a restart.
-- [ ] Clear cookies for "last hour" and check you are signed out.
+- [ ] Starts in under 2 s; the next start restores the tabs; after `taskkill /IM mizu.exe /F` it offers to restore.
+- [ ] First start of a new profile shows the welcome tour once, in its own window; the browser opens after it.
+- [ ] Tabs: drag, pin, duplicate, mute, middle-click close, Ctrl+Shift+T, Ctrl+1…9, Ctrl+Tab, **Unload tab**.
+- [ ] 30+ heavy sites opened quickly: the window stays responsive; the strip scrolls without shaking.
+- [ ] Side tabs: one top row with window buttons; dragging the empty toolbar moves the window; resize and collapse;
+  pinned grid drag in/out.
+- [ ] Tree tabs: a link opened in a new tab sits under its page; fold/unfold; close a branch.
+- [ ] Groups: create, rename, colour, collapse by click, menu by right-click.
+- [ ] Spaces: create, switch (top and side), move a tab, delete a space; restored after restart.
+- [ ] Split view: open, drag the divider, swap, close; restored after restart.
+- [ ] Private window: no history, separate cookies, signed out after closing.
+
+### Address bar and pages
+
+- [ ] Suggestions, `@g` keyword, calculator, `10 km in mi`, `>` quick actions, switch to tab.
+- [ ] Find on page: next/previous, match case, Esc.
+- [ ] Bookmarks: Ctrl+D, folders, the bar appears with its first bookmark, right-click menu.
+- [ ] New tab: add, edit, reorder tiles; make a folder by dropping a tile on another; customize panel.
+- [ ] History search and clearing; downloads pause/resume/retry, **Open with…**.
+- [ ] Import from an installed browser: Mizu's bookmarks bar is untouched unless the box is ticked.
 
 ### Privacy and security
-- [ ] Shield: an ad-block test page, the per-site switch, a custom rule, adding a list.
-- [ ] Passwords:
-  - the save prompt appears after sign-in, and filling from the key icon works;
-  - CSV export and import;
-  - Settings → Security → Open password manager.
-- [ ] Search suggestions appear while typing, and never in a private window.
-- [ ] In a website's DevTools console, `location = 'mizu://settings/'` does nothing.
-- [ ] Process Explorer shows renderers running at untrusted/low integrity.
+
+- [ ] Shield: an ad test page; per-site switch; a custom rule; a generic `##.class` rule; a `:has-text()` rule.
+- [ ] Site settings: cookies, Keep me signed in, Forget this site, permissions, zoom reset.
+- [ ] Per-site zoom is remembered and applied when coming back.
+- [ ] Passwords: save prompt after sign-in, fill from the key, CSV import/export.
+- [ ] Search suggestions never appear in a private window.
+- [ ] In a site's DevTools console, `location = 'mizu://settings/'` does nothing.
+- [ ] A link to an app (e.g. `mailto:`) asks first.
+
+### Media
+
+- [ ] YouTube 1080p/4K, fullscreen, no pre-roll ads; Twitch live.
+- [ ] `mizu://media`: H.264/VP9/AV1 "Hardware" on capable GPUs.
+- [ ] Media panel: play/pause/next, volume per site, media keys, one sound at a time.
+- [ ] Picture in picture: button, Alt+Shift+P, next/previous and skip buttons.
+- [ ] With VLC or mpv installed: right-click a video → **Open video in …**.
 
 ### Scripts, extensions, shortcuts
-- [ ] Install a userscript from greasyfork.org:
-  - `GM_setValue` persists across reloads;
-  - limit it to one site with **Where it runs**, then add a site to **Never run on**.
-- [ ] Install an extension with "Add to Mizu":
-  - change an option, restart, and the option is kept;
-  - disable it, then remove it.
-- [ ] Settings → Shortcuts: change "New tab"; the new keys work and the old ones don't; reset.
+
+- [ ] Install a userscript from Greasy Fork; `GM_setValue` persists; **Where it runs** limits it.
+- [ ] Install an extension with **Add to Mizu**; options survive a restart; disable and remove.
+- [ ] Settings → Shortcuts: change "New tab"; new keys work, old ones don't; reset.
 
 ### Install and update
-- [ ] MizuSetup into a custom folder:
-  - it starts from the Start menu;
-  - Default apps lists Mizu;
-  - `uninstall.exe` removes it.
-- [ ] Publish a test release with a higher version. An installed copy asks "Update now / Later", and "Update now" restarts into the new version.
+
+- [ ] MizuSetup into a custom folder: Start menu entry, listed in Default apps, `uninstall.exe` removes it.
+- [ ] An installed copy sees a higher version: "Update now / Later"; "Update now" restarts into it with the tabs.
