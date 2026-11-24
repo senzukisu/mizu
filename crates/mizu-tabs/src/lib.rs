@@ -7,7 +7,11 @@
 
 mod session;
 
-pub use session::{ClosedTab, SessionSnapshot, TabGroup, TabSnapshot, WindowSnapshot};
+pub use session::{ClosedTab, SessionSnapshot, Space, TabGroup, TabSnapshot, WindowSnapshot};
+
+/// Space colours and icons the interface offers.
+pub const SPACE_COLORS: [&str; 8] = ["blue", "green", "orange", "pink", "purple", "teal", "yellow", "grey"];
+pub const SPACE_ICONS: [&str; 12] = ["home", "briefcase", "music", "code", "gamepad", "book", "star", "globe", "sparkle", "wave", "user", "moon"];
 
 /// Group colours, in the order new groups take them.
 pub const GROUP_COLORS: [&str; 8] = ["blue", "green", "orange", "pink", "purple", "teal", "yellow", "grey"];
@@ -30,6 +34,8 @@ pub struct Tab {
     pub pinned_url: Option<String>,
     /// The group this tab belongs to (never for pinned tabs).
     pub group: Option<u32>,
+    /// The space this tab belongs to.
+    pub space: u32,
 }
 
 impl Tab {
@@ -56,11 +62,12 @@ impl Tab {
             pinned: false,
             pinned_url: None,
             group: None,
+            space: 0,
         }
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TabStrip {
     tabs: Vec<Tab>,
     active: Option<TabId>,
@@ -68,6 +75,23 @@ pub struct TabStrip {
     activation_order: Vec<TabId>,
     closed: VecDeque<ClosedTab>,
     groups: Vec<TabGroup>,
+    /// Never empty: the main space is always there.
+    spaces: Vec<Space>,
+    active_space: u32,
+}
+
+impl Default for TabStrip {
+    fn default() -> Self {
+        Self {
+            tabs: Vec::new(),
+            active: None,
+            activation_order: Vec::new(),
+            closed: VecDeque::new(),
+            groups: Vec::new(),
+            spaces: vec![Space::main()],
+            active_space: 0,
+        }
+    }
 }
 
 impl TabStrip {
@@ -107,8 +131,14 @@ impl TabStrip {
         self.tabs.iter().take_while(|t| t.pinned).count()
     }
 
-    /// Inserts a tab. `index` is clamped into the region matching the tab's pinned state.
-    pub fn insert(&mut self, mut index: usize, tab: Tab) -> TabId {
+    /// Inserts a tab into the current space. `index` is clamped into the region matching the
+    /// tab's pinned state.
+    pub fn insert(&mut self, index: usize, mut tab: Tab) -> TabId {
+        tab.space = self.active_space;
+        self.insert_raw(index, tab)
+    }
+
+    fn insert_raw(&mut self, mut index: usize, tab: Tab) -> TabId {
         let pinned = self.pinned_count();
         index = if tab.pinned {
             index.min(pinned)
@@ -116,8 +146,9 @@ impl TabStrip {
             index.clamp(pinned, self.tabs.len())
         };
         let id = tab.id;
+        let space = tab.space;
         self.tabs.insert(index, tab);
-        if self.active.is_none() {
+        if self.active.is_none() && space == self.active_space {
             self.activate(id);
         }
         id
@@ -137,9 +168,8 @@ impl TabStrip {
     }
 
     pub fn activate(&mut self, id: TabId) -> bool {
-        if self.index_of(id).is_none() {
-            return false;
-        }
+        let Some(space) = self.get(id).map(|t| t.space) else { return false };
+        self.active_space = space;
         self.active = Some(id);
         self.activation_order.retain(|&t| t != id);
         self.activation_order.insert(0, id);
@@ -167,10 +197,13 @@ impl TabStrip {
         }
         self.active = None;
         // Prefer the neighbour to the right, like mainstream browsers; fall back to the left.
-        let next = self
-            .tabs
-            .get(index)
-            .or_else(|| index.checked_sub(1).and_then(|i| self.tabs.get(i)))
+        // Only tabs of the same space qualify: with none left, the space is empty (the
+        // browser opens a new tab there).
+        let space = tab.space;
+        let next = self.tabs[index..]
+            .iter()
+            .find(|t| t.space == space)
+            .or_else(|| self.tabs[..index].iter().rev().find(|t| t.space == space))
             .map(|t| t.id);
         if let Some(next) = next {
             self.activate(next);
@@ -328,25 +361,145 @@ impl TabStrip {
         tab.pinned = src.pinned;
         tab.pinned_url = src.pinned_url.clone();
         tab.group = src.group;
-        Some(self.insert(index + 1, tab))
+        tab.space = src.space;
+        Some(self.insert_raw(index + 1, tab))
     }
 
-    /// Next/previous tab with wrap-around (Ctrl+Tab / Ctrl+Shift+Tab).
+    /// The tabs of the current space, in order.
+    pub fn space_tabs(&self) -> Vec<&Tab> {
+        self.tabs.iter().filter(|t| t.space == self.active_space).collect()
+    }
+
+    /// Next/previous tab of the current space with wrap-around (Ctrl+Tab / Ctrl+Shift+Tab).
     pub fn cycle(&self, forward: bool) -> Option<TabId> {
-        let n = self.tabs.len();
-        let current = self.active.and_then(|a| self.index_of(a))?;
+        let tabs = self.space_tabs();
+        let n = tabs.len();
+        let current = tabs.iter().position(|t| Some(t.id) == self.active)?;
         let next = if forward { (current + 1) % n } else { (current + n - 1) % n };
-        Some(self.tabs[next].id)
+        Some(tabs[next].id)
     }
 
-    /// Ctrl+1..8 select by position, Ctrl+9 selects the last tab.
+    /// Ctrl+1..8 select by position in the current space, Ctrl+9 selects its last tab.
     pub fn by_shortcut(&self, digit: usize) -> Option<TabId> {
+        let tabs = self.space_tabs();
         match digit {
-            9 => self.tabs.last(),
-            1..=8 => self.tabs.get(digit - 1),
+            9 => tabs.last().copied(),
+            1..=8 => tabs.get(digit - 1).copied(),
             _ => None,
         }
         .map(|t| t.id)
+    }
+
+    // ───────────────────────────── Spaces ─────────────────────────────
+
+    pub fn spaces(&self) -> &[Space] {
+        &self.spaces
+    }
+
+    pub fn active_space(&self) -> u32 {
+        self.active_space
+    }
+
+    pub fn space_mut(&mut self, id: u32) -> Option<&mut Space> {
+        self.spaces.iter_mut().find(|s| s.id == id)
+    }
+
+    pub fn space_tab_count(&self, id: u32) -> usize {
+        self.tabs.iter().filter(|t| t.space == id).count()
+    }
+
+    /// Adds a space (not switched to). Returns its id.
+    pub fn create_space(&mut self, name: &str) -> u32 {
+        let id = self.spaces.iter().map(|s| s.id).max().unwrap_or(0) + 1;
+        let used: Vec<&str> = self.spaces.iter().map(|s| s.color.as_str()).collect();
+        let color = SPACE_COLORS.iter().find(|c| !used.contains(c)).unwrap_or(&SPACE_COLORS[id as usize % SPACE_COLORS.len()]);
+        let icon = SPACE_ICONS[(id as usize) % SPACE_ICONS.len()];
+        self.spaces.push(Space { id, name: name.to_owned(), color: (*color).to_owned(), icon: icon.to_owned() });
+        id
+    }
+
+    /// Makes `id` the current space and activates its most recent tab. Returns that tab, or
+    /// `None` when the space has no tabs yet (the caller opens one; the old tab stays active
+    /// until then).
+    pub fn switch_space(&mut self, id: u32) -> Option<TabId> {
+        if !self.set_active_space(id) {
+            return None;
+        }
+        let tab = self.space_last_tab(id);
+        if let Some(t) = tab {
+            self.activate(t);
+        }
+        tab
+    }
+
+    /// The tab a space shows when switched to: its most recently active one.
+    pub fn space_last_tab(&self, id: u32) -> Option<TabId> {
+        self.activation_order
+            .iter()
+            .copied()
+            .find(|t| self.get(*t).is_some_and(|t| t.space == id))
+            .or_else(|| self.tabs.iter().find(|t| t.space == id).map(|t| t.id))
+    }
+
+    /// Makes `id` the current space without changing the active tab (new tabs go there).
+    pub fn set_active_space(&mut self, id: u32) -> bool {
+        if !self.spaces.iter().any(|s| s.id == id) {
+            return false;
+        }
+        self.active_space = id;
+        true
+    }
+
+    /// Removes a space; its tabs move to the nearest other space, which becomes current if the
+    /// removed one was. The last space cannot be removed.
+    pub fn delete_space(&mut self, id: u32) -> bool {
+        let Some(i) = self.spaces.iter().position(|s| s.id == id) else { return false };
+        if self.spaces.len() < 2 {
+            return false;
+        }
+        self.spaces.remove(i);
+        let to = self.spaces[i.saturating_sub(1).min(self.spaces.len() - 1)].id;
+        for t in &mut self.tabs {
+            if t.space == id {
+                t.space = to;
+            }
+        }
+        if self.active_space == id {
+            self.active_space = to;
+        }
+        true
+    }
+
+    /// Moves a tab to another space (out of its group). If it was the active tab, the most
+    /// recent other tab of the current space becomes active; returns that tab, or `None` when
+    /// the current space is left without tabs.
+    pub fn move_to_space(&mut self, tab: TabId, space: u32) -> Option<TabId> {
+        if !self.spaces.iter().any(|s| s.id == space) {
+            return self.active;
+        }
+        let Some(t) = self.get_mut(tab) else { return self.active };
+        if t.space == space {
+            return self.active;
+        }
+        t.space = space;
+        t.group = None;
+        self.prune_groups();
+        if self.active != Some(tab) {
+            return self.active;
+        }
+        let current = self.active_space;
+        let next = self
+            .activation_order
+            .iter()
+            .copied()
+            .find(|t| *t != tab && self.get(*t).is_some_and(|t| t.space == current));
+        if let Some(n) = next {
+            self.activate(n);
+        } else {
+            // Keep the moved tab as the active tab until the caller opens one here.
+            self.active = Some(tab);
+        }
+        next
     }
 
     /// Tabs ordered by how recently they were active (most recent first).
@@ -365,17 +518,25 @@ impl TabStrip {
                     pinned: t.pinned,
                     pinned_url: t.pinned_url.clone(),
                     group: t.group,
+                    space: t.space,
                 })
                 .collect(),
             active_index: self.active.and_then(|a| self.index_of(a)).unwrap_or(0),
             closed: self.closed.iter().cloned().collect(),
             groups: self.groups.clone(),
+            split: None,
+            spaces: if self.spaces.len() == 1 && self.spaces[0] == Space::main() { Vec::new() } else { self.spaces.clone() },
+            active_space: self.active_space,
         }
     }
 
     /// Rebuilds a strip from a snapshot. Returns the strip; the caller creates views.
     pub fn from_snapshot(snapshot: &WindowSnapshot) -> Self {
         let mut strip = Self::new();
+        if !snapshot.spaces.is_empty() {
+            strip.spaces = snapshot.spaces.clone();
+        }
+        let first_space = strip.spaces[0].id;
         for t in &snapshot.tabs {
             let mut tab = Tab::new(t.url.clone());
             tab.title = t.title.clone();
@@ -384,8 +545,11 @@ impl TabStrip {
                 tab.pinned_url = Some(t.pinned_url.clone().unwrap_or_else(|| t.url.clone()));
             }
             tab.group = t.group.filter(|g| !t.pinned && snapshot.groups.iter().any(|x| x.id == *g));
-            strip.push(tab);
+            tab.space = if strip.spaces.iter().any(|s| s.id == t.space) { t.space } else { first_space };
+            let at = strip.tabs.len();
+            strip.insert_raw(at, tab);
         }
+        strip.active_space = if strip.spaces.iter().any(|s| s.id == snapshot.active_space) { snapshot.active_space } else { first_space };
         if let Some(t) = strip.tabs.get(snapshot.active_index).map(|t| t.id) {
             strip.activate(t);
         }
@@ -569,5 +733,61 @@ mod tests {
         assert!(restored.tabs()[0].pinned);
         assert_eq!(restored.active(), Some(restored.tabs()[1].id));
         assert_eq!(restored.closed_tabs().count(), 1);
+    }
+
+    #[test]
+    fn spaces_keep_their_own_tabs() {
+        let (mut s, ids) = strip(&["https://a/", "https://b/"]);
+        let work = s.create_space("Work");
+        assert_eq!(s.switch_space(work), None, "a new space has no tabs");
+        let w1 = s.insert_after_active(Tab::new("https://w1/"));
+        s.activate(w1);
+        assert_eq!(s.active_space(), work);
+        assert_eq!(s.space_tabs().len(), 1);
+        assert_eq!(s.cycle(true), Some(w1), "cycling stays in the space");
+        assert_eq!(s.by_shortcut(9), Some(w1));
+        // Back to the main space: its last active tab returns.
+        s.activate(ids[1]);
+        s.activate(w1);
+        assert_eq!(s.switch_space(0), Some(ids[1]));
+        // Closing the space's only tab leaves no active tab in it.
+        s.switch_space(work);
+        assert_eq!(s.close(w1), None);
+        assert_eq!(s.active(), None);
+        assert_eq!(s.len(), 2);
+    }
+
+    #[test]
+    fn moving_and_deleting_spaces() {
+        let (mut s, ids) = strip(&["https://a/", "https://b/", "https://c/"]);
+        let music = s.create_space("Music");
+        s.activate(ids[0]);
+        s.activate(ids[2]);
+        // Moving the active tab away activates the previous one in this space.
+        assert_eq!(s.move_to_space(ids[2], music), Some(ids[0]));
+        assert_eq!(s.get(ids[2]).unwrap().space, music);
+        assert_eq!(s.space_tab_count(music), 1);
+        // Deleting a space moves its tabs back.
+        assert!(s.delete_space(music));
+        assert_eq!(s.get(ids[2]).unwrap().space, 0);
+        assert!(!s.delete_space(0), "the last space stays");
+    }
+
+    #[test]
+    fn spaces_survive_a_snapshot() {
+        let (mut s, _) = strip(&["https://a/"]);
+        let work = s.create_space("Work");
+        s.switch_space(work);
+        let w = s.push(Tab::new("https://w/"));
+        s.activate(w);
+        let snap = s.snapshot();
+        assert_eq!(snap.spaces.len(), 2);
+        let r = TabStrip::from_snapshot(&snap);
+        assert_eq!(r.active_space(), work);
+        assert_eq!(r.space_tab_count(work), 1);
+        assert_eq!(r.get(r.active().unwrap()).unwrap().url, "https://w/");
+        // A window with only the main space stores nothing extra.
+        let (plain, _) = strip(&["https://a/"]);
+        assert!(plain.snapshot().spaces.is_empty());
     }
 }

@@ -127,13 +127,18 @@ impl App {
                 w.state_dirty = true;
             }
         }
+        // Moving between the two halves of a split keeps both on screen.
+        let in_split = |t: TabId| w.split.is_some_and(|s| s.left == t || s.right == t);
+        let both_split = previous.is_some_and(in_split) && in_split(tab);
         if let Some(prev) = previous.filter(|p| *p != tab) {
             if let Some(v) = w.tabs.get(&prev).and_then(|t| t.view.clone()) {
                 v.find_stop();
-                v.set_visible(false);
+                if !both_split {
+                    v.set_visible(false);
+                }
             }
         }
-        let content = w.content_rect();
+        let content = w.tab_rect(tab);
         if let Some(state) = w.tabs.get_mut(&tab) {
             state.last_active = Instant::now();
             if let Some(v) = &state.view {
@@ -151,13 +156,22 @@ impl App {
             }
         }
         w.flyout.hide();
+        w.sync_split();
         w.state_dirty = true;
         let needs_view = w.tabs.get(&tab).is_some_and(|t| t.view.is_none());
+        // A split restored from the last session: its other half loads lazily too.
+        let partner = w.split.filter(|_| w.split_visible()).and_then(|s| {
+            let other = if s.left == tab { s.right } else if s.right == tab { s.left } else { return None };
+            w.tabs.get(&other).is_some_and(|t| t.view.is_none()).then_some(other)
+        });
         let title = w.strip.get(tab).map(|t| t.title.clone()).unwrap_or_default();
         let hwnd = w.hwnd;
         crate::window::set_title(hwnd, &if title.is_empty() { "Mizu".to_owned() } else { format!("{title} – Mizu") });
         if needs_view {
             self.ensure_view(window, tab);
+        }
+        if let Some(other) = partner {
+            self.ensure_view(window, other);
         }
         self.session_dirty = true;
     }
@@ -257,8 +271,10 @@ impl App {
             view.close();
             return;
         };
+        // The other half of a split on screen is shown too, not only the active tab.
+        let in_split = w.split_visible() && w.split.is_some_and(|s| s.left == tab || s.right == tab);
         let active = w.strip.active() == Some(tab);
-        let content = w.content_rect();
+        let content = w.tab_rect(tab);
         let Some(state) = w.tabs.get_mut(&tab) else {
             view.close();
             return;
@@ -286,6 +302,9 @@ impl App {
             view.set_bounds(content);
             view.set_visible(true);
             view.focus();
+        } else if in_split {
+            view.set_bounds(content);
+            view.set_visible(true);
         } else {
             view.set_visible(false);
         }
@@ -350,6 +369,10 @@ impl App {
 
     pub fn close_tab(&mut self, window: WindowId, tab: TabId) {
         let Some(w) = self.window_mut(window) else { return };
+        // Closing either half ends the split; the other half becomes a normal tab.
+        if w.split.is_some_and(|s| s.left == tab || s.right == tab) {
+            w.split = None;
+        }
         let Some(state) = w.tabs.remove(&tab) else { return };
         if let Some(v) = state.view {
             // Closing a controller blocks for a moment: hide it now and close it after the
@@ -369,6 +392,9 @@ impl App {
         }
         if let Some(next) = next {
             self.activate_tab(window, next);
+        } else if self.window(window).is_some_and(|w| w.strip.active().is_none()) {
+            // The space's last tab closed while other spaces still have tabs.
+            self.open_tab(window, InternalPage::NewTab.url(), OpenOptions::foreground());
         }
         self.session_dirty = true;
     }
@@ -416,6 +442,16 @@ impl App {
 
     pub fn on_tab_event(&mut self, window: WindowId, tab: TabId, event: ViewEvent) {
         let private = self.window(window).is_some_and(|w| w.private);
+        // Clicking into the other half of a split makes it the active tab.
+        if matches!(event, ViewEvent::GotFocus) {
+            let switch = self.window(window).is_some_and(|w| {
+                w.split_visible() && w.active_tab() != Some(tab) && w.split.is_some_and(|s| s.left == tab || s.right == tab)
+            });
+            if switch {
+                self.activate_tab(window, tab);
+            }
+            return;
+        }
         // A new page in a tab starts with nothing playing.
         if matches!(event, ViewEvent::ContentLoading) && self.media.forget(tab.0) {
             self.media_dirty = true;
@@ -554,6 +590,7 @@ impl App {
                     "url": t.url,
                     "pinned": t.pinned,
                     "group": t.group,
+                    "space": t.space,
                     "away": t.away_from_pin(),
                     "loading": s.is_some_and(|s| s.loading),
                     "audible": s.is_some_and(|s| s.audible),
@@ -623,6 +660,9 @@ impl App {
             "media": { "count": media_count, "playing": media_playing, "on": self.settings.media.media_hub },
             "app": self.window(id).is_some_and(|w| w.app),
             "groups": self.window(id).map(|w| w.strip.groups().to_vec()).unwrap_or_default(),
+            "split": self.window(id).and_then(|w| w.split).map(|s| json!([s.left.0, s.right.0])),
+            "spaces": self.window(id).map(|w| w.strip.spaces().to_vec()).unwrap_or_default(),
+            "active_space": self.window(id).map(|w| w.strip.active_space()),
             "shield": { "session": session_blocked },
             "update": match &self.update {
                 crate::update::UpdateState::Ready { version, .. } => serde_json::Value::String(version.clone()),
@@ -641,8 +681,13 @@ impl App {
     pub fn sleep_background_tabs(&mut self) {
         let efficiency = self.settings.performance.efficiency_mode;
         for w in &mut self.windows {
+            // Both halves of a split on screen count as active.
+            let shown = w.split.filter(|_| w.split_visible()).map(|s| [s.left, s.right]);
             let active = w.strip.active();
             for (id, s) in w.tabs.iter_mut() {
+                if shown.is_some_and(|x| x.contains(id)) {
+                    continue;
+                }
                 let idle = s.last_active.elapsed() >= LOW_MEMORY_AFTER;
                 if efficiency && Some(*id) != active && !s.low_memory && !s.audible && idle {
                     if let Some(v) = &s.view {
@@ -657,10 +702,11 @@ impl App {
         }
         let after = Duration::from_secs(u64::from(self.settings.tabs.sleep_after_minutes) * 60);
         for w in &mut self.windows {
+            let shown = w.split.filter(|_| w.split_visible()).map(|s| [s.left, s.right]);
             let active = w.strip.active();
             let mut changed = false;
             for (id, s) in w.tabs.iter_mut() {
-                if Some(*id) == active || s.sleeping || s.audible || s.loading {
+                if Some(*id) == active || shown.is_some_and(|x| x.contains(id)) || s.sleeping || s.audible || s.loading {
                     continue;
                 }
                 if let Some(v) = &s.view {

@@ -12,7 +12,11 @@ impl App {
             .windows
             .iter()
             .filter(|w| !w.private && !w.closing && !w.app)
-            .map(|w| w.strip.snapshot())
+            .map(|w| {
+                let mut snap = w.strip.snapshot();
+                snap.split = w.split.and_then(|s| Some((w.strip.index_of(s.left)?, w.strip.index_of(s.right)?, s.ratio)));
+                snap
+            })
             .filter(|s| !s.tabs.is_empty())
             .collect();
         if windows.is_empty() {

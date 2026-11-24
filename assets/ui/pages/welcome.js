@@ -123,7 +123,7 @@ function screen() {
             btn.disabled = true;
             btn.textContent = i18n.tr('Importing…');
             try {
-              const r = await mizu.request('import_run', { id: src.id, bookmarks: true, history: true, engines: true });
+              const r = await mizu.request('import_run', { id: src.id, bookmarks: true, history: true, engines: true, to_bar: false, bar_name: i18n.tr('Bookmarks bar') });
               btn.replaceWith(h('span', { class: 'wl-done-chip' }, icon('check', { size: 14 }), h('span', { text: `${r.bookmarks + r.history} items` })));
             } catch (e) {
               btn.disabled = false;

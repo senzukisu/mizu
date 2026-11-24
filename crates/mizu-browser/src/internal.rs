@@ -510,11 +510,11 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 .collect();
             data(list)
         }
-        Command::ImportRun { id, bookmarks, history, engines } => {
+        Command::ImportRun { id, bookmarks, history, engines, to_bar, bar_name } => {
             let src = mizu_storage::import::detect().into_iter().find(|s| s.id == id).ok_or("That browser profile is no longer there")?;
             tracing::info!(browser = %src.browser, bookmarks, history, engines, "importing");
             let d = mizu_storage::import::read(&src);
-            let added_bm = if bookmarks { app.storage.import_bookmarks(&src.browser, &d).map_err(storage_err)? } else { 0 };
+            let added_bm = if bookmarks { app.storage.import_bookmarks(&src.browser, &d, to_bar, &bar_name).map_err(storage_err)? } else { 0 };
             let added_h = if history { app.storage.import_history(&d.history).map_err(storage_err)? } else { 0 };
             let mut added_e = 0;
             if engines {

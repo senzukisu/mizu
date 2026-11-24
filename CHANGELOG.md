@@ -3,6 +3,26 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.3.2] — 2026-11-24
+
+### Added
+- **Spaces:** separate sets of tabs in one window (Work, Music, Study…), each with a name, a colour and an icon.
+  Only the current space's tabs show; new tabs open in it, and each space remembers its last tab. Switch with the
+  buttons at the bottom of the side tabs, or the space button at the start of the tab strip. Menu → **New space**;
+  right-click a tab → **Move to…** another space. Spaces are restored with the session.
+- **Split view:** two tabs side by side in one window. Right-click a tab → **Open in split view** (or **Split with a
+  new tab**); drag the divider to resize, **Swap sides** or **Close split view** from the tab menu. The split is
+  restored with the session.
+
+### Changed
+- **Importing bookmarks no longer fills Mizu's bookmarks bar.** Everything goes into an "Imported from…" folder in
+  Other bookmarks (the other browser's bar becomes a subfolder). A new option on the import page puts its bar on
+  Mizu's bar if you want that.
+- "Close other tabs", "Close tabs to the right", Ctrl+Tab and Ctrl+1…9 work within the current space.
+
+### Fixed
+- A tab restored from the last session as half of a split now loads and shows right away.
+
 ## [0.3.1] — 2026-11-24
 
 ### Added

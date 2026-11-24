@@ -5,7 +5,7 @@
 const main = document.getElementById('main');
 let sources = [];
 let chosen = null;
-const what = { bookmarks: true, history: true, engines: true };
+const what = { bookmarks: true, history: true, engines: true, to_bar: false };
 
 const BROWSER_ICONS = { Firefox: 'globe' };
 
@@ -42,7 +42,7 @@ function render() {
   if (chosen) {
     const check = (key, label, n, note) => {
       const input = h('input', { type: 'checkbox' });
-      input.checked = what[key] && n > 0;
+      input.checked = !!what[key] && n > 0;
       input.disabled = n === 0;
       input.addEventListener('change', () => (what[key] = input.checked));
       return h('label', { class: 'setting imp-check' }, h('div', { class: 'txt' }, h('div', { class: 't', text: label }), h('div', { class: 'd', text: note })), input);
@@ -53,7 +53,7 @@ function render() {
       go.disabled = true;
       status.textContent = 'Importing…';
       try {
-        const r = await mizu.request('import_run', { id: chosen.id, bookmarks: what.bookmarks, history: what.history, engines: what.engines });
+        const r = await mizu.request('import_run', { id: chosen.id, bookmarks: what.bookmarks, history: what.history, engines: what.engines, to_bar: what.to_bar && what.bookmarks, bar_name: i18n.tr('Bookmarks bar') });
         status.textContent = '';
         done(r);
       } catch (e) {
@@ -62,7 +62,8 @@ function render() {
       }
     });
     parts.push(card(`From ${chosen.browser} · ${chosen.profile}`,
-      check('bookmarks', 'Bookmarks', chosen.counts.bookmarks, 'Its bookmarks bar goes onto Mizu’s bar; everything else into an "Imported from…" folder in Other bookmarks.'),
+      check('bookmarks', 'Bookmarks', chosen.counts.bookmarks, 'Into an "Imported from…" folder in Other bookmarks; its bookmarks bar becomes a subfolder there.'),
+      check('to_bar', 'Also put its bar on Mizu’s bookmarks bar', chosen.counts.bookmarks, 'Off by default: Mizu’s bar shows only what you put there.'),
       check('history', 'History', chosen.counts.history, 'Recent pages, merged with Mizu’s history. Address bar suggestions use them right away.'),
       chosen.kind === 'chromium' ? check('engines', 'Search engines', chosen.counts.engines, 'Added to your list in Settings → Search; your default engine stays the same.') : null,
       h('div', { class: 'setting' }, h('div', { class: 'txt' }, status), go)));

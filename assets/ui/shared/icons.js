@@ -67,6 +67,8 @@ const ICONS = {
   moon: [['path', { d: 'M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z' }]],
   sidebar: [['rect', { x: 3.5, y: 4.5, width: 17, height: 15, rx: 2.5 }], ['path', { d: 'M9.5 4.5v15' }], ['path', { d: 'M6 8.5h1.5M6 11.5h1.5' }]],
   more: [['circle', { cx: 6, cy: 12, r: 1.3 }], ['circle', { cx: 12, cy: 12, r: 1.3 }], ['circle', { cx: 18, cy: 12, r: 1.3 }]],
+  split: [['rect', { x: 3.5, y: 5, width: 17, height: 14, rx: 2.5 }], ['path', { d: 'M12 5v14' }]],
+  swap: [['path', { d: 'M7 8h11l-3-3M17 16H6l3 3' }]],
   music: [['path', { d: 'M9 18V5.5l11-2V16' }], ['circle', { cx: 6.5, cy: 18, r: 2.5 }], ['circle', { cx: 17.5, cy: 16, r: 2.5 }]],
   'skip-back': [['path', { d: 'M18.5 6v12L10 12z' }], ['path', { d: 'M6.5 6v12' }]],
   'skip-forward': [['path', { d: 'M5.5 6v12L14 12z' }], ['path', { d: 'M17.5 6v12' }]],
@@ -79,6 +81,9 @@ const ICONS = {
   tabs: [['rect', { x: 3.5, y: 6.5, width: 17, height: 13, rx: 2 }], ['path', { d: 'M3.5 10.5h17M8 6.5V4.5h8v2' }]],
   gauge: [['path', { d: 'M4.5 16a7.5 7.5 0 1 1 15 0' }], ['path', { d: 'M12 16l3.5-4.5' }]],
   keyboard: [['rect', { x: 2.5, y: 6, width: 19, height: 12, rx: 2.5 }], ['path', { d: 'M6 9.5h.01M9.5 9.5h.01M13 9.5h.01M16.5 9.5h.01M6 12.5h.01M18 12.5h.01M9.5 12.5h5M8 15h8' }]],
+  briefcase: [['rect', { x: 3.5, y: 7.5, width: 17, height: 12, rx: 2.5 }], ['path', { d: 'M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5M3.5 12.5h17' }]],
+  gamepad: [['path', { d: 'M7.5 8h9a4.5 4.5 0 0 1 4.4 5.4l-.6 3a2.6 2.6 0 0 1-4.5 1.2L14 16h-4l-1.8 1.6a2.6 2.6 0 0 1-4.5-1.2l-.6-3A4.5 4.5 0 0 1 7.5 8z' }], ['path', { d: 'M8 11v3M6.5 12.5h3M15.5 11.5h.01M17.5 13h.01' }]],
+  book: [['path', { d: 'M5 5.5A1.5 1.5 0 0 1 6.5 4H19v14H6.5A1.5 1.5 0 0 0 5 19.5z' }], ['path', { d: 'M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3' }], ['path', { d: 'M9 8h6' }]],
   sliders: [['path', { d: 'M5 7h9M18 7h1M5 17h1M10 17h9' }], ['circle', { cx: 16, cy: 7, r: 2 }], ['circle', { cx: 8, cy: 17, r: 2 }]],
 };
 

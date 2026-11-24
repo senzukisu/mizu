@@ -17,6 +17,32 @@ pub struct TabSnapshot {
     pub pinned_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<u32>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub space: u32,
+}
+
+fn is_zero(v: &u32) -> bool {
+    *v == 0
+}
+
+/// A named set of tabs in a window (work, music, …): only the current space's tabs show.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Space {
+    pub id: u32,
+    /// Empty for the first space, which the interface calls "Main".
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub color: String,
+    #[serde(default)]
+    pub icon: String,
+}
+
+impl Space {
+    /// The space every window starts with.
+    pub fn main() -> Self {
+        Self { id: 0, name: String::new(), color: "blue".into(), icon: "home".into() }
+    }
 }
 
 /// A named, coloured group of neighbouring tabs.
@@ -52,6 +78,14 @@ pub struct WindowSnapshot {
     pub closed: Vec<ClosedTab>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub groups: Vec<TabGroup>,
+    /// Split view: (left tab index, right tab index, ratio).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub split: Option<(usize, usize, f64)>,
+    /// Spaces; empty while the window only has the main one.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub spaces: Vec<Space>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub active_space: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

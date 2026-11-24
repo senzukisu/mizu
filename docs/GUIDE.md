@@ -48,6 +48,12 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
   - Nothing goes to history.
   - Cookies are separate from normal windows, and everything is erased when the last private window closes.
 
+- **Spaces.** Menu → **New space** makes a separate set of tabs in the same window (say Work and Music). Switch
+  with the buttons at the bottom of the side tabs or the space button at the start of the tab strip; click the
+  current space's button (or right-click any) to rename it, pick a colour and an icon, add or delete a space.
+  Right-click a tab → **Move to…** sends it to another space. Deleting a space moves its tabs to the one before.
+- **Split view.** Right-click a tab → **Open in split view** to see it next to the current tab (or **Split with a
+  new tab**). Drag the divider between them; the tab menu has **Swap sides** and **Close split view**.
 - **Tab groups.** Right-click a tab → **Add to new group** (or to an existing one). Click the group's chip to
   collapse or expand it; right-click the chip to name it, pick a colour, ungroup or close its tabs. Drag a tab
   between grouped tabs to add it, or out of the group to remove it.

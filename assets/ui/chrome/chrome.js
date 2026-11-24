@@ -75,9 +75,14 @@ if (SIDEBAR) {
   });
   grip.addEventListener('dblclick', () => mizu.send('sidebar_resize', { width: 252, commit: true }));
   const count = h('span', { class: 'vt-count' });
+  els.spaces = h('div', { class: 'vt-spaces' });
   // The top-chrome parts stay in the DOM (listeners below expect them) but are hidden by CSS.
-  els.app.append(h('div', { id: 'vt' }, list, h('div', { class: 'vt-foot' }, count, collapse)), grip);
+  els.app.append(h('div', { id: 'vt' }, list, h('div', { class: 'vt-foot' }, h('div', { class: 'vt-foot-row' }, count, collapse), els.spaces)), grip);
 }
+
+els.space = h('div', { id: 'space', hidden: true });
+// (In the sidebar the tab list has moved into the sidebar, which has its own switcher.)
+if (!SIDEBAR) document.getElementById('tabstrip').insertBefore(els.space, els.tabs);
 
 // ── Static buttons ───────────────────────────────────────────
 $('new-tab').append(icon('plus'));
@@ -348,8 +353,47 @@ function groupChip(g) {
   return chip;
 }
 
+// Spaces: the strip shows the current space's tabs only.
+const spaceTabs = () => (state?.tabs || []).filter((t) => (t.space ?? 0) === (state.active_space ?? 0));
+const spaceName = (s) => s.name || (s.id === 0 ? i18n.tr('Main') : i18n.tr(`Space ${s.id + 1}`));
+
+// The switcher: a button per space (sidebar footer) or one button for the current space
+// (top strip, only once there is more than one). Right-click opens the space menu.
+function spaceButton(s, active) {
+  const b = h('button', { class: `space-btn g-${s.color}${active ? ' on' : ''}`, title: spaceName(s), dataset: { space: String(s.id) } }, icon(s.icon || 'home'));
+  b.addEventListener('click', () => (active ? flyout('space_menu', b) : mizu.send('space_switch', { id: s.id })));
+  b.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (!active) mizu.send('space_switch', { id: s.id });
+    flyout('space_menu', b);
+  });
+  return b;
+}
+let lastSpaceSig = '';
+function renderSpaces() {
+  const spaces = state.spaces || [];
+  const sig = JSON.stringify(spaces) + (state.active_space ?? 0) + (SIDEBAR ? 's' : sideLayout ? 'h' : 't');
+  if (sig === lastSpaceSig) return;
+  lastSpaceSig = sig;
+  if (SIDEBAR) {
+    const add = h('button', { class: 'space-btn space-add', title: 'New space' }, icon('plus'));
+    add.addEventListener('click', () => mizu.send('space_create', {}));
+    els.spaces.replaceChildren(...spaces.map((s) => spaceButton(s, s.id === (state.active_space ?? 0))), add);
+    return;
+  }
+  const cur = spaces.find((s) => s.id === (state.active_space ?? 0));
+  const show = !sideLayout && spaces.length > 1 && cur;
+  els.space.hidden = !show;
+  if (show) {
+    const b = spaceButton(cur, true);
+    b.append(h('span', { class: 'space-name', text: spaceName(cur) }));
+    els.space.replaceChildren(b);
+  }
+}
+
 function renderTabs() {
-  const tabs = state.tabs;
+  renderSpaces();
+  const tabs = spaceTabs();
   const order = tabs.map((t) => t.id).join(',');
   const structural = order !== lastOrder;
   lastOrder = order;
@@ -389,6 +433,7 @@ function renderTabs() {
       for (const c of [...el.classList]) if (c.startsWith('g-')) el.classList.remove(c);
       if (g) el.classList.add(`g-${g.color}`);
       el.classList.toggle('g-hidden', !!(g && g.collapsed && t.id !== state.active));
+      el.classList.toggle('in-split', Array.isArray(state.split) && state.split.includes(t.id));
     }
     const sig = JSON.stringify(state.groups || []) + order + tabs.map((t) => t.group).join(',');
     if (structural || sig !== lastGroupSig) {
@@ -849,7 +894,8 @@ function renderSidebar() {
   const c = document.querySelector('.vt-collapse');
   if (c) c.title = settings?.appearance?.sidebar_collapsed ? 'Expand sidebar' : 'Collapse sidebar';
   const n = document.querySelector('.vt-count');
-  if (n) n.textContent = `${state.tabs.length} ${state.tabs.length === 1 ? 'tab' : 'tabs'}`;
+  const count = spaceTabs().length;
+  if (n) n.textContent = `${count} ${count === 1 ? 'tab' : 'tabs'}`;
   renderTabs();
 }
 
@@ -906,6 +952,7 @@ function render() {
   $('cap-max').replaceChildren(icon(state.maximized ? 'restore' : 'maximize'));
   $('cap-max').title = state.maximized ? 'Restore' : 'Maximize';
   if (!sideLayout) renderTabs();
+  else renderSpaces();
   renderNav();
   renderDownloads();
   renderUpdate();

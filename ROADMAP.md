@@ -16,7 +16,8 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 | 0.2 | Clear Water | Cookies, links to apps, find bar, pinned sidebar tabs, polish | ✅ Released |
 | 0.3 | Currents | Import, welcome tour, tab groups, quick actions | ✅ Released |
 | 0.3.1 | Currents | Site settings, cookie cleanup, Open with, crash reports | ✅ Released |
-| **0.3.x** | Currents | Spaces, split view, faster loading, accessibility, updater rollback | 🔜 Next |
+| 0.3.2 | Currents | Spaces, split view | ✅ Released |
+| **0.3.x** | Currents | Tree tabs, faster loading, accessibility, updater rollback | 🔜 Next |
 | 0.4 | Deep Water | Privacy and data: fingerprinting defence, backups | Planned |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
 | 0.6 | Estuary | Built-in tools: PDF, translation, media hub | Planned |
@@ -74,11 +75,12 @@ Released 2026-11-23 (details in the [changelog](CHANGELOG.md)):
 **0.3.1 ✅** (2026-11-24): site settings page (Shield, cookies, "keep me signed in", forget the site, permissions),
 automatic cookie cleanup, "Open with…" for downloads, local crash reports.
 
+**0.3.2 ✅** (2026-11-24): spaces (separate tab sets with a name, colour and icon) and split view; importing no
+longer fills Mizu's bookmarks bar.
+
 Still to come, roughly in this order:
 
 **Organise**
-- **Spaces:** named tab sets (Work, Study, Play) with a colour and an icon; each restores separately.
-- **Split view:** two tabs side by side.
 - **Tree tabs** in the sidebar (tabs opened from a page sit under it), on top of the session format with groups.
 - **New tab:** folders of shortcuts.
 

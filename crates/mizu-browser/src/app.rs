@@ -738,8 +738,13 @@ impl App {
 
         let mut strip = mizu_tabs::TabStrip::new();
         let mut tabs = HashMap::new();
+        let mut split = None;
         if let Some(snap) = snapshot {
             strip = mizu_tabs::TabStrip::from_snapshot(snap);
+            split = snap.split.and_then(|(l, r, ratio)| {
+                let (l, r) = (strip.tabs().get(l)?.id, strip.tabs().get(r)?.id);
+                (l != r).then_some(window::Split { left: l, right: r, ratio: ratio.clamp(0.2, 0.8) })
+            });
             for t in strip.tabs() {
                 tabs.insert(t.id, window::TabState::new(Some(t.url.clone())));
                 hot::register(t.id.0, Role::Tab { window: id, tab: t.id }, private);
@@ -777,6 +782,8 @@ impl App {
             sidebar_collapsed: self.settings.appearance.sidebar_collapsed,
             sidebar_width: f64::from(self.settings.appearance.sidebar_width),
             app: app_mode,
+            split,
+            split_drag: false,
         });
 
         self.create_surface_views(id);

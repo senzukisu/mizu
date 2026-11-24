@@ -73,6 +73,30 @@ pub enum Command {
     FindClose,
     MoveTab { id: u64, index: usize },
     PinTab { id: u64, pinned: bool },
+    /// Split view: show `tab` next to the active tab (the active tab itself: next to a new
+    /// tab); swap the sides; end the split.
+    SplitOpen { tab: u64 },
+    SplitSwap,
+    SplitClose,
+    /// Spaces: switch, create (optionally moving a tab there), change, delete, move a tab.
+    SpaceSwitch { id: u32 },
+    SpaceCreate {
+        #[serde(default)]
+        tab: Option<u64>,
+        #[serde(default)]
+        name: String,
+    },
+    SpaceUpdate {
+        id: u32,
+        #[serde(default)]
+        name: Option<String>,
+        #[serde(default)]
+        color: Option<String>,
+        #[serde(default)]
+        icon: Option<String>,
+    },
+    SpaceDelete { id: u32 },
+    TabToSpace { tab: u64, space: u32 },
     /// Tab groups: start a group with a tab, move a tab in or out, change, ungroup, close.
     GroupCreate { tab: u64 },
     GroupSet {
@@ -173,6 +197,12 @@ pub enum Command {
         history: bool,
         #[serde(default)]
         engines: bool,
+        /// Put the source's bookmarks bar onto Mizu's bar (off unless chosen).
+        #[serde(default)]
+        to_bar: bool,
+        /// Name of the subfolder for the source's bar, in the interface language.
+        #[serde(default)]
+        bar_name: String,
     },
     /// Opens the folder downloads are saved to.
     DownloadsOpenFolder,
@@ -383,6 +413,8 @@ pub enum FlyoutKind {
     Media,
     /// Menu of a tab group (`tab_id` carries the group id).
     GroupMenu,
+    /// Spaces: switch, name, colour, icon, add, delete.
+    SpaceMenu,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]

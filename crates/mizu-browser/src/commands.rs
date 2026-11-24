@@ -256,6 +256,111 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             app.close_tab(window, tab_id(id));
             ok()
         }
+        Command::SplitOpen { tab } => {
+            let active = app.window(window).and_then(|w| w.active_tab());
+            let Some(active) = active else { return ok() };
+            let partner = if active.0 == tab {
+                // Split with a new tab: open it next to the active one, then put them side by side.
+                app.open_tab(window, InternalPage::NewTab.url(), OpenOptions::background());
+                app.window(window).and_then(|w| {
+                    let i = w.strip.index_of(active)?;
+                    w.strip.tabs().get(i + 1).map(|t| t.id)
+                })
+            } else {
+                Some(tab_id(tab))
+            };
+            if let (Some(partner), Some(w)) = (partner, app.window_mut(window)) {
+                w.split = Some(crate::window::Split { left: active, right: partner, ratio: 0.5 });
+                w.state_dirty = true;
+            }
+            if let Some(p) = partner {
+                app.ensure_view(window, p);
+            }
+            if let Some(w) = app.window(window) {
+                w.layout();
+            }
+            ok()
+        }
+        Command::SplitSwap => {
+            if let Some(w) = app.window_mut(window) {
+                if let Some(s) = &mut w.split {
+                    std::mem::swap(&mut s.left, &mut s.right);
+                    s.ratio = 1.0 - s.ratio;
+                }
+                w.state_dirty = true;
+                w.layout();
+            }
+            ok()
+        }
+        Command::SplitClose => {
+            if let Some(w) = app.window_mut(window) {
+                let active = w.active_tab();
+                if let Some(s) = w.split.take() {
+                    for t in [s.left, s.right] {
+                        if Some(t) != active {
+                            if let Some(v) = w.tabs.get(&t).and_then(|x| x.view.clone()) {
+                                v.set_visible(false);
+                            }
+                        }
+                    }
+                }
+                w.state_dirty = true;
+                w.layout();
+            }
+            ok()
+        }
+        Command::SpaceSwitch { id } => {
+            switch_space(app, window, id);
+            ok()
+        }
+        Command::SpaceCreate { tab, name } => {
+            let Some(w) = app.window_mut(window) else { return ok() };
+            let name: String = name.trim().chars().take(30).collect();
+            let id = w.strip.create_space(&name);
+            w.state_dirty = true;
+            match tab {
+                // "Move to a new space": the tab goes there and you follow it.
+                Some(t) => {
+                    move_to_space(app, window, tab_id(t), id);
+                    switch_space(app, window, id);
+                }
+                None => switch_space(app, window, id),
+            }
+            app.session_dirty = true;
+            ok()
+        }
+        Command::SpaceUpdate { id, name, color, icon } => {
+            if let Some(w) = app.window_mut(window) {
+                if let Some(s) = w.strip.space_mut(id) {
+                    if let Some(n) = name {
+                        s.name = n.trim().chars().take(30).collect();
+                    }
+                    if let Some(c) = color.filter(|c| mizu_tabs::SPACE_COLORS.contains(&c.as_str())) {
+                        s.color = c;
+                    }
+                    if let Some(i) = icon.filter(|i| mizu_tabs::SPACE_ICONS.contains(&i.as_str())) {
+                        s.icon = i;
+                    }
+                }
+                w.state_dirty = true;
+            }
+            app.session_dirty = true;
+            ok()
+        }
+        Command::SpaceDelete { id } => {
+            if let Some(w) = app.window_mut(window) {
+                w.strip.delete_space(id);
+                w.state_dirty = true;
+                w.layout();
+            }
+            app.session_dirty = true;
+            ok()
+        }
+        Command::TabToSpace { tab, space } => {
+            move_to_space(app, window, tab_id(tab), space);
+            app.session_dirty = true;
+            ok()
+        }
         Command::GroupCreate { tab } => {
             if let Some(w) = app.window_mut(window) {
                 if let Some(g) = w.strip.create_group(tab_id(tab), "") {
@@ -291,7 +396,8 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
                 }
                 // Collapsing the group of the active tab moves on to a tab outside it.
                 if collapsed == Some(true) && active_in_group {
-                    let next = w.strip.tabs().iter().find(|t| t.group != Some(id)).map(|t| t.id);
+                    let space = w.strip.active_space();
+                    let next = w.strip.tabs().iter().find(|t| t.group != Some(id) && t.space == space).map(|t| t.id);
                     if let Some(next) = next {
                         app.activate_tab(window, next);
                     }
@@ -417,7 +523,7 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
         Command::CloseOtherTabs { id } => {
             let others: Vec<TabId> = app
                 .window(window)
-                .map(|w| w.strip.tabs().iter().filter(|t| t.id.0 != id && !t.pinned).map(|t| t.id).collect())
+                .map(|w| w.strip.space_tabs().iter().filter(|t| t.id.0 != id && !t.pinned).map(|t| t.id).collect())
                 .unwrap_or_default();
             for t in others {
                 app.close_tab(window, t);
@@ -428,7 +534,7 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             let right: Vec<TabId> = app
                 .window(window)
                 .map(|w| {
-                    let tabs = w.strip.tabs();
+                    let tabs = w.strip.space_tabs();
                     let pos = tabs.iter().position(|t| t.id.0 == id).unwrap_or(tabs.len());
                     tabs.iter().skip(pos + 1).map(|t| t.id).collect()
                 })
@@ -720,15 +826,31 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
             json!({ "group": g, "count": count, "colors": mizu_tabs::GROUP_COLORS })
         }
         FlyoutKind::Media => json!({ "items": app.media.to_json(private), "pause_others": app.settings.media.pause_others }),
+        FlyoutKind::SpaceMenu => {
+            let Some(w) = app.window(window) else { return Value::Null };
+            let spaces: Vec<Value> = w
+                .strip
+                .spaces()
+                .iter()
+                .map(|s| json!({ "id": s.id, "name": s.name, "color": s.color, "icon": s.icon, "count": w.strip.space_tab_count(s.id) }))
+                .collect();
+            json!({ "spaces": spaces, "active": w.strip.active_space(), "colors": mizu_tabs::SPACE_COLORS, "icons": mizu_tabs::SPACE_ICONS })
+        }
         FlyoutKind::TabMenu => {
             let tab = tab_id.and_then(|id| app.window(window)?.strip.get(TabId(id)).cloned());
             let state = tab_id.and_then(|id| app.window(window)?.tabs.get(&TabId(id)));
-            let count = app.window(window).map(|w| w.strip.len()).unwrap_or(0);
+            let count = app.window(window).map(|w| w.strip.space_tabs().len()).unwrap_or(0);
             json!({
                 "id": tab_id,
                 "pinned": tab.as_ref().is_some_and(|t| t.pinned),
                 "group": tab.as_ref().and_then(|t| t.group),
-                "groups": app.window(window).map(|w| w.strip.groups().to_vec()).unwrap_or_default(),
+                "split": app.window(window).and_then(|w| w.split).map(|s| json!([s.left.0, s.right.0])),
+                "groups": app.window(window).map(|w| {
+                    let space = w.strip.active_space();
+                    w.strip.groups().iter().filter(|g| w.strip.tabs().iter().any(|t| t.group == Some(g.id) && t.space == space)).cloned().collect::<Vec<_>>()
+                }).unwrap_or_default(),
+                "space": tab.as_ref().map(|t| t.space),
+                "spaces": app.window(window).map(|w| w.strip.spaces().to_vec()).unwrap_or_default(),
                 "away": tab.as_ref().is_some_and(mizu_tabs::Tab::away_from_pin),
                 "home": tab.as_ref().and_then(|t| t.pinned_url.clone()),
                 "muted": state.is_some_and(|s| s.muted),
@@ -1118,5 +1240,55 @@ pub fn run_shortcut(app: &mut App, window: WindowId, s: Shortcut) {
                 w.post_chrome(&Event::FindShow { step }.to_json());
             }
         }
+    }
+}
+
+/// Shows another space: its last active tab, or a new tab when it has none.
+fn switch_space(app: &mut App, window: WindowId, id: u32) {
+    let Some(w) = app.window_mut(window) else { return };
+    if w.strip.active_space() == id && w.active_tab().and_then(|t| w.strip.get(t)).is_some_and(|t| t.space == id) {
+        return;
+    }
+    let target = w.strip.space_last_tab(id);
+    if !w.strip.set_active_space(id) {
+        return;
+    }
+    w.state_dirty = true;
+    match target {
+        Some(t) => app.activate_tab(window, t),
+        None => {
+            app.open_tab(window, InternalPage::NewTab.url(), OpenOptions::foreground());
+        }
+    }
+    app.session_dirty = true;
+}
+
+/// Moves a tab to another space. When it was the tab on screen, the current space's previous
+/// tab takes its place (or a new tab, if the space is now empty).
+fn move_to_space(app: &mut App, window: WindowId, tab: TabId, space: u32) {
+    let Some(w) = app.window_mut(window) else { return };
+    let was_active = w.active_tab() == Some(tab);
+    if w.split.is_some_and(|s| s.left == tab || s.right == tab) {
+        w.split = None;
+    }
+    let next = w.strip.move_to_space(tab, space);
+    w.state_dirty = true;
+    if !was_active {
+        return;
+    }
+    match next {
+        Some(n) => {
+            if let Some(v) = w.tabs.get(&tab).and_then(|s| s.view.clone()) {
+                v.set_visible(false);
+            }
+            // The strip already points at `n`; show its view.
+            app.activate_tab(window, n);
+        }
+        None => {
+            app.open_tab(window, InternalPage::NewTab.url(), OpenOptions::foreground());
+        }
+    }
+    if let Some(w) = app.window(window) {
+        w.layout();
     }
 }

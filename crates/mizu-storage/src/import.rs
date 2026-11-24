@@ -310,22 +310,30 @@ fn read_firefox(dir: &Path) -> ImportData {
 // ───────────────────────────── Writing into Mizu ─────────────────────────────
 
 impl Storage {
-    /// Adds bookmarks: the source's bar goes onto Mizu's bar (skipping addresses already
-    /// there), the rest into a new "Imported from …" folder in Other bookmarks. Returns how
-    /// many bookmarks were added.
-    pub fn import_bookmarks(&mut self, browser: &str, data: &ImportData) -> Result<usize> {
+    /// Adds bookmarks into a new "Imported from …" folder in Other bookmarks; the source's
+    /// bar becomes a subfolder named `bar_name`. Only with `to_bar` do the bar's items go onto
+    /// Mizu's own bar (skipping addresses already there): Mizu's bar is never filled unasked.
+    /// Returns how many bookmarks were added.
+    pub fn import_bookmarks(&mut self, browser: &str, data: &ImportData, to_bar: bool, bar_name: &str) -> Result<usize> {
         let mut added = 0;
-        let on_bar: Vec<String> = self.bookmark_children(BOOKMARKS_BAR_ID)?.into_iter().filter_map(|b| b.url).collect();
-        for n in &data.bar {
-            match n {
-                Node::Url { url, .. } if on_bar.contains(url) => {}
-                _ => added += self.add_nodes(BOOKMARKS_BAR_ID, std::slice::from_ref(n))?,
+        if data.bar.is_empty() && data.other.is_empty() {
+            return Ok(0);
+        }
+        if to_bar {
+            let on_bar: Vec<String> = self.bookmark_children(BOOKMARKS_BAR_ID)?.into_iter().filter_map(|b| b.url).collect();
+            for n in &data.bar {
+                match n {
+                    Node::Url { url, .. } if on_bar.contains(url) => {}
+                    _ => added += self.add_nodes(BOOKMARKS_BAR_ID, std::slice::from_ref(n))?,
+                }
             }
         }
-        if !data.other.is_empty() {
-            let folder = self.add_bookmark_folder(OTHER_BOOKMARKS_ID, &format!("Imported from {browser}"))?;
-            added += self.add_nodes(folder, &data.other)?;
+        let folder = self.add_bookmark_folder(OTHER_BOOKMARKS_ID, &format!("Imported from {browser}"))?;
+        if !to_bar && !data.bar.is_empty() {
+            let bar = self.add_bookmark_folder(folder, if bar_name.trim().is_empty() { "Bookmarks bar" } else { bar_name })?;
+            added += self.add_nodes(bar, &data.bar)?;
         }
+        added += self.add_nodes(folder, &data.other)?;
         Ok(added)
     }
 
@@ -404,10 +412,14 @@ mod tests {
             other: vec![Node::Folder { title: "Work".into(), children: vec![Node::Url { title: "Mail".into(), url: "https://mail.example.com/".into() }] }],
             ..Default::default()
         };
-        assert_eq!(s.import_bookmarks("Chrome", &data).unwrap(), 2);
-        assert_eq!(s.bookmark_children(BOOKMARKS_BAR_ID).unwrap().len(), 2);
+        // By default Mizu's bar is left alone: everything goes into the folder.
+        assert_eq!(s.import_bookmarks("Chrome", &data, false, "Bookmarks bar").unwrap(), 3);
+        assert_eq!(s.bookmark_children(BOOKMARKS_BAR_ID).unwrap().len(), 1);
         let folder = s.bookmark_children(OTHER_BOOKMARKS_ID).unwrap();
         assert_eq!(folder[0].title, "Imported from Chrome");
+        // Asked to, the bar items join Mizu's bar without duplicates.
+        assert_eq!(s.import_bookmarks("Chrome", &data, true, "").unwrap(), 2);
+        assert_eq!(s.bookmark_children(BOOKMARKS_BAR_ID).unwrap().len(), 2);
     }
 
     /// Lists what would be imported on this PC (read-only): cargo test -p mizu-storage detect_on_this_pc -- --ignored --nocapture

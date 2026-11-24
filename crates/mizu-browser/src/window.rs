@@ -129,7 +129,22 @@ pub struct BrowserWindow {
     /// A single-page window (the welcome tour): no tabs or toolbar, only the window
     /// buttons; not saved in the session.
     pub app: bool,
+    /// Split view: two tabs side by side while one of them is active.
+    pub split: Option<Split>,
+    /// The split divider is being dragged.
+    pub split_drag: bool,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Split {
+    pub left: TabId,
+    pub right: TabId,
+    /// Share of the width given to the left page (0.2–0.8).
+    pub ratio: f64,
+}
+
+/// Gap between the two pages of a split, in device-independent pixels; it is the divider.
+const SPLIT_GAP: f64 = 8.0;
 
 /// Collapsed (icons only) sidebar width in CSS pixels.
 const SIDEBAR_COLLAPSED: f64 = 56.0;
@@ -184,9 +199,81 @@ impl BrowserWindow {
             sidebar.set_visible(side > 0);
             sidebar.set_bounds(RECT { left: 0, top: top + chrome_px, right: side, bottom: rc.bottom });
         }
-        if let Some(view) = self.active_view() {
-            view.set_bounds(self.content_rect());
+        if let Some(tab) = self.active_tab() {
+            if let Some(view) = self.tabs.get(&tab).and_then(|t| t.view.clone()) {
+                view.set_bounds(self.tab_rect(tab));
+            }
         }
+        self.sync_split();
+    }
+
+    /// The split is on screen: it exists and its tabs include the active one.
+    pub fn split_visible(&self) -> bool {
+        match (self.split, self.active_tab()) {
+            (Some(s), Some(a)) => s.left == a || s.right == a,
+            _ => false,
+        }
+    }
+
+    /// Left and right page rectangles of the split, and the divider between them.
+    pub fn split_rects(&self) -> Option<(RECT, RECT, RECT)> {
+        let s = self.split?;
+        let c = self.content_rect();
+        let gap = (SPLIT_GAP * dpi_scale(self.hwnd)).round() as i32;
+        let width = (c.right - c.left - gap).max(2);
+        let lw = ((f64::from(width)) * s.ratio).round() as i32;
+        let left = RECT { right: c.left + lw, ..c };
+        let right = RECT { left: c.left + lw + gap, ..c };
+        let divider = RECT { left: left.right, right: right.left, ..c };
+        Some((left, right, divider))
+    }
+
+    /// Where a tab's page goes: its half of the split, or the whole content area.
+    pub fn tab_rect(&self, tab: TabId) -> RECT {
+        if self.split_visible() {
+            if let (Some(s), Some((l, r, _))) = (self.split, self.split_rects()) {
+                if tab == s.left {
+                    return l;
+                }
+                if tab == s.right {
+                    return r;
+                }
+            }
+        }
+        self.content_rect()
+    }
+
+    /// Shows or hides the inactive half of the split to match `split_visible`.
+    pub fn sync_split(&self) {
+        let Some(s) = self.split else { return };
+        let active = self.active_tab();
+        let visible = self.split_visible() && !self.fullscreen.active();
+        for t in [s.left, s.right] {
+            if Some(t) == active {
+                continue;
+            }
+            if let Some(v) = self.tabs.get(&t).and_then(|x| x.view.clone()) {
+                if visible {
+                    v.set_bounds(self.tab_rect(t));
+                }
+                v.set_visible(visible);
+            }
+        }
+    }
+
+    /// The point (client coordinates) is on the split divider.
+    pub fn on_divider(&self, x: i32, y: i32) -> bool {
+        self.split_visible() && self.split_rects().is_some_and(|(_, _, d)| x >= d.left - 2 && x <= d.right + 2 && y >= d.top && y <= d.bottom)
+    }
+
+    /// Dragging the divider to `x` (client coordinates) sets the split ratio.
+    pub fn drag_divider(&mut self, x: i32) {
+        let c = self.content_rect();
+        let width = f64::from((c.right - c.left).max(1));
+        if let Some(s) = &mut self.split {
+            s.ratio = (f64::from(x - c.left) / width).clamp(0.2, 0.8);
+        }
+        self.layout();
     }
 
     pub fn content_rect(&self) -> RECT {
@@ -433,6 +520,56 @@ extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM)
                 return LRESULT(0);
             }
             WM_ERASEBKGND => return LRESULT(1),
+            // Split view divider: the gap between the two pages belongs to this window.
+            WM_SETCURSOR if (lparam.0 & 0xffff) as u32 == HTCLIENT => {
+                let mut pt = POINT::default();
+                let _ = GetCursorPos(&mut pt);
+                let _ = ScreenToClient(hwnd, &mut pt);
+                let on = id.and_then(|i| app::with(|a| a.window(i).is_some_and(|w| w.on_divider(pt.x, pt.y)))).unwrap_or(false);
+                if on {
+                    let _ = SetCursor(LoadCursorW(None, IDC_SIZEWE).ok());
+                    return LRESULT(1);
+                }
+                return DefWindowProcW(hwnd, msg, wparam, lparam);
+            }
+            WM_LBUTTONDOWN => {
+                let (x, y) = ((lparam.0 & 0xffff) as i16 as i32, ((lparam.0 >> 16) & 0xffff) as i16 as i32);
+                let started = id.and_then(|i| app::with(|a| match a.window_mut(i) {
+                    Some(w) if w.on_divider(x, y) => {
+                        w.split_drag = true;
+                        true
+                    }
+                    _ => false,
+                })).unwrap_or(false);
+                if started {
+                    let _ = windows::Win32::UI::Input::KeyboardAndMouse::SetCapture(hwnd);
+                }
+                return LRESULT(0);
+            }
+            WM_MOUSEMOVE => {
+                let x = (lparam.0 & 0xffff) as i16 as i32;
+                if let Some(i) = id {
+                    let _ = app::with(|a| {
+                        if let Some(w) = a.window_mut(i).filter(|w| w.split_drag) {
+                            w.drag_divider(x);
+                        }
+                    });
+                }
+                return LRESULT(0);
+            }
+            WM_LBUTTONUP | WM_CAPTURECHANGED => {
+                if let Some(i) = id {
+                    let _ = app::with(|a| {
+                        if let Some(w) = a.window_mut(i) {
+                            w.split_drag = false;
+                        }
+                    });
+                }
+                if msg == WM_LBUTTONUP {
+                    let _ = windows::Win32::UI::Input::KeyboardAndMouse::ReleaseCapture();
+                }
+                return LRESULT(0);
+            }
             // Only real size changes: WM_WINDOWPOSCHANGED also fires for z-order/activation
             // changes (e.g. when a flyout opens), which must not close the flyout.
             WM_SIZE => {

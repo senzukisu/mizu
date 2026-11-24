@@ -62,6 +62,7 @@ function renderMenu(d) {
     item('plus', 'New tab', () => mizu.send('new_tab'), { kbd: 'Ctrl+T' }),
     item('window', 'New window', () => mizu.send('new_window', { private: false }), { kbd: 'Ctrl+N' }),
     item('private', 'New private window', () => mizu.send('new_window', { private: true }), { kbd: 'Ctrl+Shift+N' }),
+    d.private ? null : item('sparkle', 'New space', () => mizu.send('space_create', {})),
     sep(),
     h('div', { class: 'zoom-row' }, h('span', { class: 'label', text: 'Zoom' }), zoomBtn('zoom-out', -1, 'Zoom out (Ctrl+−)'), zoomVal, zoomBtn('zoom-in', 1, 'Zoom in (Ctrl++)'), fs),
     sep(),
@@ -92,6 +93,8 @@ function renderTabMenu(d) {
     item('reload', 'Reload', () => mizu.send('reload_tab', { id }), { kbd: 'Ctrl+R' }),
     item('copy', 'Duplicate', () => mizu.send('duplicate_tab', { id })),
     item('pin', d.pinned ? 'Unpin' : 'Pin', () => mizu.send('pin_tab', { id, pinned: !d.pinned })),
+    ...splitItems(d),
+    ...spaceItems(d),
     !d.pinned ? sep() : null,
     !d.pinned && d.group == null ? item('folder', 'Add to new group', () => mizu.send('group_create', { tab: id })) : null,
     ...(!d.pinned ? (d.groups || []).filter((g) => g.id !== d.group).slice(0, 6).map((g) => item(null, `Add to ${g.name || groupColorName(g.color)}`, () => mizu.send('group_set', { tab: id, group: g.id }), { dot: g.color })) : []),
@@ -335,6 +338,77 @@ function siteCookies() {
   return box;
 }
 
+// Split view entries of the tab menu.
+function splitItems(d) {
+  const id = d.id;
+  const inSplit = Array.isArray(d.split) && d.split.includes(id);
+  if (inSplit) {
+    return [
+      item('swap', 'Swap sides', () => mizu.send('split_swap')),
+      item('close', 'Close split view', () => mizu.send('split_close')),
+    ];
+  }
+  if (d.active) return [item('split', 'Split with a new tab', () => mizu.send('split_open', { tab: id }))];
+  return [item('split', 'Open in split view', () => mizu.send('split_open', { tab: id }))];
+}
+
+// "Move to space" entries of the tab menu.
+const spaceLabel = (s) => s.name || (s.id === 0 ? i18n.tr('Main') : i18n.tr(`Space ${s.id + 1}`));
+function spaceItems(d) {
+  const others = (d.spaces || []).filter((s) => s.id !== d.space);
+  return [
+    ...others.slice(0, 6).map((s) => item(s.icon || 'home', i18n.tr(`Move to ${spaceLabel(s)}`), () => mizu.send('tab_to_space', { tab: d.id, space: s.id }))),
+    item('plus', 'Move to a new space', () => mizu.send('space_create', { tab: d.id })),
+  ];
+}
+
+// ── Space menu ───────────────────────────────────────────────
+function renderSpaceMenu(d) {
+  const spaces = d.spaces || [];
+  const cur = spaces.find((s) => s.id === d.active);
+  if (!cur) return h('div', { class: 'menu' }, h('div', { class: 'empty', text: 'This space is gone.' }));
+  const list = h('div', { class: 'sm-list' }, ...spaces.map((s) => {
+    const b = h('button', { class: `item sm-row g-${s.color}${s.id === d.active ? ' on' : ''}` },
+      h('span', { class: 'sm-icon' }, icon(s.icon || 'home')),
+      h('span', { class: 'label', text: spaceLabel(s) }),
+      h('span', { class: 'kbd', text: String(s.count) }));
+    b.addEventListener('click', () => {
+      if (s.id !== d.active) mizu.send('space_switch', { id: s.id });
+      close();
+    });
+    return b;
+  }));
+  const send = (patch) => mizu.send('space_update', { id: cur.id, ...patch });
+  const name = h('input', { type: 'text', value: cur.name || '', placeholder: spaceLabel(cur), maxlength: '30' });
+  name.addEventListener('input', () => send({ name: name.value }));
+  name.addEventListener('keydown', (e) => e.key === 'Enter' && close());
+  const colors = h('div', { class: 'gcolors' }, ...(d.colors || []).map((c) => {
+    const b = h('button', { class: `gdot big g-${c}${c === cur.color ? ' on' : ''}`, title: groupColorName(c) });
+    b.addEventListener('click', () => {
+      for (const x of colors.children) x.classList.toggle('on', x === b);
+      for (const x of icons.children) x.className = x.className.replace(/g-\w+/, `g-${c}`);
+      send({ color: c });
+    });
+    return b;
+  }));
+  const icons = h('div', { class: 'sm-icons' }, ...(d.icons || []).map((n) => {
+    const b = h('button', { class: `sm-ico g-${cur.color}${n === cur.icon ? ' on' : ''}`, title: n }, icon(n));
+    b.addEventListener('click', () => {
+      for (const x of icons.children) x.classList.toggle('on', x === b);
+      send({ icon: n });
+    });
+    return b;
+  }));
+  const others = spaces.filter((s) => s.id !== cur.id);
+  return h('div', { class: 'menu gmenu smenu', style: { width: '280px' } },
+    list,
+    sep(),
+    h('div', { class: 'gm-head' }, name, colors, icons),
+    sep(),
+    item('plus', 'New space', () => mizu.send('space_create', {})),
+    others.length ? item('trash', i18n.tr(`Delete space (tabs move to ${spaceLabel(others[Math.max(0, spaces.indexOf(cur) - 1)] || others[0])})`), () => mizu.send('space_delete', { id: cur.id }), { danger: true }) : null);
+}
+
 // ── Tab group menu ───────────────────────────────────────────
 function renderGroupMenu(d) {
   const g = d.group;
@@ -512,6 +586,7 @@ const RENDERERS = {
   menu: renderMenu,
   tab_menu: renderTabMenu,
   group_menu: renderGroupMenu,
+  space_menu: renderSpaceMenu,
   bookmark_menu: renderBookmarkMenu,
   downloads: renderDownloads,
   media: renderMedia,
