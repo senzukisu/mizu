@@ -116,6 +116,12 @@ pub fn document_script(h: &mut Hot, key: ViewKey, uri: &str) -> Option<String> {
         h.cosmetic_pages.remove(&key);
     }
 
+    // A page that paints no background of its own gets the system page colour for its own
+    // colour scheme (white for normal pages, dark for `color-scheme: dark`), like in other
+    // browsers; Mizu's dark backdrop would leave black text unreadable. Checked once the page
+    // has its styles, so dark sites never flash white.
+    parts.push(PAGE_BACKGROUND_SCRIPT.into());
+
     // The shortcut always works; the hover button follows the settings.
     parts.push(PIP_SCRIPT.replace("__MIZU_PIP__", &h.pip_config));
 
@@ -338,6 +344,10 @@ pub fn pip_config(m: &mizu_settings::MediaSettings) -> String {
     let position = if m.pip_position == "top-left" { "top-left" } else { "top-right" };
     serde_json::json!({ "button": m.pip_button, "position": position, "compact": m.pip_compact, "controls": m.pip_controls }).to_string()
 }
+
+/// Gives pages without any background the `Canvas` colour (it follows their colour scheme),
+/// as a first, lowest-priority rule that the page's own styles override.
+const PAGE_BACKGROUND_SCRIPT: &str = r#"(()=>{const fix=()=>{const d=document.documentElement;if(!d||document.getElementById('__mizu_bg'))return;const none=(e)=>{if(!e)return true;const c=getComputedStyle(e);return(c.backgroundColor==='rgba(0, 0, 0, 0)'||c.backgroundColor==='transparent')&&c.backgroundImage==='none';};if(none(d)&&none(document.body)){const s=document.createElement('style');s.id='__mizu_bg';s.textContent=':root{background-color:Canvas}';(document.head||d).prepend(s);}};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fix,{once:true});else fix();addEventListener('load',fix,{once:true});})();"#;
 
 /// Procedural cosmetic filters, uBlock syntax as parsed by the engine: each filter is a chain of
 /// operators (css-selector, has-text, matches-attr, matches-css[-before|-after], matches-path,

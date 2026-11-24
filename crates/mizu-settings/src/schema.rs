@@ -100,6 +100,10 @@ pub struct GeneralSettings {
     pub update_channel: String,
     /// A version that failed to start after updating; it is not offered again.
     pub skipped_update: String,
+    /// Open "What's new" once after each update.
+    pub whats_new: bool,
+    /// The version Mizu last started as (to notice updates).
+    pub seen_version: String,
 }
 
 /// Bump to show the welcome tour once more to everyone (0.3.0 introduced it).
@@ -118,6 +122,8 @@ impl Default for GeneralSettings {
             welcome_version: 0,
             update_channel: "stable".into(),
             skipped_update: String::new(),
+            whats_new: true,
+            seen_version: String::new(),
         }
     }
 }
@@ -443,13 +449,21 @@ impl Default for SecuritySettings {
 
 // ───────────────────────────── Downloads ─────────────────────────────
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct DownloadSettings {
     /// Empty means the system Downloads folder.
     pub directory: String,
     pub ask_where_to_save: bool,
     pub open_panel_on_start: bool,
+    /// PDFs, pictures, video, music and text open in a Mizu tab; other files in their app.
+    pub open_in_mizu: bool,
+}
+
+impl Default for DownloadSettings {
+    fn default() -> Self {
+        Self { directory: String::new(), ask_where_to_save: false, open_panel_on_start: false, open_in_mizu: true }
+    }
 }
 
 // ───────────────────────────── Tabs ─────────────────────────────

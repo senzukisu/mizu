@@ -456,6 +456,8 @@ pub enum DownloadAction {
     Cancel,
     Retry,
     Open,
+    /// In the Windows app for its type, even when Mizu could show it.
+    OpenSystem,
     /// The Windows "Open with" dialog: choose the program for this file.
     OpenWith,
     Show,

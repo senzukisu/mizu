@@ -231,6 +231,7 @@ impl Downloads {
                         "can_resume": i.can_resume,
                         "live": i.op.is_some(),
                         "exists": i.state == DownloadState::Completed && Path::new(&i.path).exists(),
+                        "viewable": crate::internal::viewable_file_url(&i.path).is_some(),
                         "private": i.private,
                         "started": i.started,
                     })

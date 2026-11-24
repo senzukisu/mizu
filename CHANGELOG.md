@@ -6,6 +6,30 @@ How to use a feature is in the [user guide](docs/GUIDE.md); what comes next is i
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.6] — 2026-11-25
+
+### Added
+- **What's new** (`mizu://whatsnew`): after every update Mizu opens a page with what the new version brings — once, in
+  the language Mizu uses, with the versions you skipped listed as a timeline. Turn it off on the page itself, in
+  Settings → General → Updates, or in the welcome tour. About Mizu links to it too.
+- **Downloads open in Mizu:** clicking a finished PDF, picture, video, song or text file opens it in a new tab
+  (Settings → Downloads to turn it off). Other files open in their Windows app; **Open in Windows app** and
+  **Open with…** are always there.
+- **"Prism"**: a new animated style for that page — a slow psychedelic sun of warm-to-violet bands, drawn in the
+  background so the page stays smooth.
+
+### Changed
+- The experimental **Dark mode for every site** only applies with the dark theme; with the light theme sites stay as
+  they are.
+- The 0.4 plan in the roadmap is broken into steps (HTTPS-First and Shield dashboard, fingerprinting defence, report
+  and strict mode, encrypted backup) with a test list of sites.
+
+### Fixed
+- Sites now follow Mizu's light or dark theme again: pages without a background of their own get the page colour of
+  their own colour scheme once loaded, instead of a white backdrop from the start (which flashed white on dark sites).
+- **Restart Mizu** after changing an engine setting could leave the browser unable to show anything: it now waits for
+  the engine to close and, if needed, starts once more by itself.
+
 ## [0.3.5] — 2026-11-25
 
 ### Added
@@ -101,7 +125,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   skipped and says where to find it later; the language can be switched on the first screen. The browser window
   opens when the tour is finished or closed.
 - **Import from other browsers** (`mizu://import/`, Settings → General, the bookmarks manager): Chrome, Edge,
-  Yandex Browser, Brave, Vivaldi, Chromium, Opera, Opera GX and Firefox profiles on this PC. Bookmarks (the source's
+  Brave, Vivaldi, Chromium, Opera, Opera GX and Firefox profiles on this PC. Bookmarks (the source's
   bar onto Mizu's bar without duplicates, the rest into an "Imported from …" folder), up to 50 000 recent history
   entries, and search engines from Chromium browsers. The other browser can stay open and is never changed.
 - **Tab groups** in both layouts: Add to new group / Add to … / Remove from group in the tab menu; click the chip to
@@ -126,7 +150,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - **Music and video hub.** A music button appears in the toolbar while a tab plays (its bars move while something
   is playing). Its panel lists every tab with sound or video, with the track, artist and cover art the site
   publishes, a progress bar, previous / play-pause / next, a volume slider and "Go to tab".
-  - Previous/next use the site's own controls (YouTube, YouTube Music, Spotify, SoundCloud, VK and others), as the
+  - Previous/next use the site's own controls (YouTube, YouTube Music, Spotify, SoundCloud and others), as the
     keyboard's media keys would.
   - **Volume per site**, remembered and applied every time the site plays; listed in Settings → Media.
   - **One sound at a time** (optional): when a tab starts playing, the others pause.
@@ -249,7 +273,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 - **Customisable keyboard shortcuts** in Settings → Shortcuts. Each action can be re-recorded or reset, and conflicts are resolved automatically.
-- **Search suggestions** from the selected search engine (DuckDuckGo, Google, Bing, Brave, Ecosia, Yandex, Wikipedia). There is a separate switch, and they are never used in private windows.
+- **Search suggestions** from the selected search engine (DuckDuckGo, Google, Bing, Brave, Ecosia, Wikipedia). There is a separate switch, and they are never used in private windows.
 - Picture in picture:
   - previous/next video and 10-second skip buttons in the floating window;
   - settings for the button position and an icon-only button.

@@ -38,7 +38,6 @@ pub fn suggest_template(engine_id: &str) -> Option<&'static str> {
         "bing" => "https://api.bing.com/osjson.aspx?query={searchTerms}",
         "brave" => "https://search.brave.com/api/suggest?q={searchTerms}",
         "ecosia" => "https://ac.ecosia.org/autocomplete?type=list&q={searchTerms}",
-        "yandex" => "https://suggest.yandex.ru/suggest-ff.cgi?part={searchTerms}",
         "wikipedia" => "https://en.wikipedia.org/w/api.php?action=opensearch&format=json&limit=6&search={searchTerms}",
         _ => return None,
     })
@@ -54,7 +53,6 @@ pub fn builtin_search_engines() -> Vec<SearchEngine> {
         SearchEngine::builtin("brave", "Brave Search", "https://search.brave.com/search?q={searchTerms}", "@brave"),
         SearchEngine::builtin("startpage", "Startpage", "https://www.startpage.com/do/search?q={searchTerms}", "@sp"),
         SearchEngine::builtin("ecosia", "Ecosia", "https://www.ecosia.org/search?q={searchTerms}", "@eco"),
-        SearchEngine::builtin("yandex", "Yandex", "https://yandex.ru/search/?text={searchTerms}", "@ya"),
         SearchEngine::builtin("wikipedia", "Wikipedia", "https://en.wikipedia.org/w/index.php?search={searchTerms}", "@w"),
         SearchEngine::builtin("github", "GitHub", "https://github.com/search?q={searchTerms}", "@gh"),
     ]

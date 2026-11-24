@@ -42,7 +42,7 @@ Everything you can do in Mizu, grouped by task. Short on time? Read [Quick start
 
 | I want to… | Where |
 |---|---|
-| bring over bookmarks and history from Chrome, Edge, Yandex, Firefox… | Settings → General → **Import** ([more](#import-from-another-browser)) |
+| bring over bookmarks and history from Chrome, Edge, Firefox… | Settings → General → **Import** ([more](#import-from-another-browser)) |
 | make Mizu my default browser | Settings → General → **Default browser** |
 | put tabs on the side | Settings → Tabs → **Tab layout → Side** ([more](#side-tabs-and-pinned-sites)) |
 | keep work and personal tabs apart | Menu → **New space** ([more](#spaces)) |
@@ -172,7 +172,7 @@ the last private window closes. Extensions don't run there.
 
 ### Import from another browser
 
-Settings → General → **Import** (or `mizu://import/`). Mizu lists the profiles it finds: Chrome, Edge, Yandex, Brave,
+Settings → General → **Import** (or `mizu://import/`). Mizu lists the profiles it finds: Chrome, Edge, Brave,
 Vivaldi, Chromium, Opera, Opera GX and Firefox. Pick what to bring: bookmarks, history, search engines.
 
 - Imported bookmarks go into a folder **Imported from …** in Other bookmarks; the other browser's bookmarks bar becomes
@@ -205,7 +205,8 @@ Vivaldi, Chromium, Opera, Opera GX and Firefox. Pick what to bring: bookmarks, h
 ### Downloads
 
 **Ctrl+J.** Each download shows speed and time left and can be paused, resumed or retried. Finished files: click to
-open, **Open with…** to pick a program. Settings → Downloads chooses the folder or makes Mizu ask every time.
+open — PDFs, pictures, video, music and text open in a Mizu tab, other files in their Windows app; **Open in Windows
+app** and **Open with…** pick otherwise. Settings → Downloads chooses the folder or makes Mizu ask every time.
 
 ---
 
@@ -345,7 +346,7 @@ Tampermonkey/Greasemonkey format. Menu → **Scripts & extensions** (`mizu://scr
 
 Settings → **Experimental**: features being tried out — they may change or go away, and turning one off undoes it.
 
-- **Dark mode for every site** — the engine darkens light pages (restart).
+- **Dark mode for every site** — with the dark theme, the engine darkens light pages (restart).
 - **Thin scrollbars** — slim, Windows 11–style scrollbars (restart).
 - **Parallel downloading** — big files over several connections (restart).
 - **Double-click closes a tab** and **Mouse wheel switches tabs** (with side tabs, hold Shift).
@@ -357,6 +358,8 @@ Settings → **Experimental**: features being tried out — they may change or g
 - **Settings → General → Updates → Update Mizu automatically:** Mizu checks shortly after start and every few hours,
   downloads and verifies the update, then asks **Update now / Later**. "Update now" restarts Mizu with your tabs.
 - **Check for updates** checks right away.
+- **What's new:** after each update a page shows what the new version brings (once, in Mizu's language). Turn it
+  off there, in Settings → General → Updates, or in the welcome tour; `mizu://whatsnew` opens it any time.
 - **Update channel:** Stable or **Beta** (gets new versions earlier, for testing).
 - **If an update fails to start,** Mizu goes back to the previous version by itself and tells you; that version is not
   offered again.
@@ -422,6 +425,7 @@ Type these in the address bar:
 | `mizu://media` | Codecs and hardware decoding |
 | `mizu://about` | Version, engine, updates, crash reports |
 | `mizu://welcome` | The welcome tour again |
+| `mizu://whatsnew` | What the latest versions brought |
 
 ---
 

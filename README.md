@@ -21,7 +21,7 @@
 
 ## Install in a minute
 
-1. Download **`MizuSetup-0.3.5.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest).
+1. Download **`MizuSetup-0.3.6.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest).
 2. Run it and press **Install**. No administrator rights are needed.
 3. The welcome tour lets you import from your old browser and make Mizu the default — or skip both and do it later in
    Settings → General.
@@ -52,7 +52,7 @@ Windows 11 and most Windows 10 PCs. A **portable** zip is on the same page (no a
 | **Passwords** | Save after sign-in, fill from the address bar, CSV import/export |
 | **Music and video** | Media panel for every playing tab · per-site volume · media keys · picture in picture · open in VLC / mpv / PotPlayer / MPC |
 | **New tab** | Your own tiles and folders · 13 backgrounds or your picture · clock, now playing, recent tabs, notes |
-| **Moving in** | Import from Chrome, Edge, Yandex, Brave, Vivaldi, Opera or Firefox |
+| **Moving in** | Import from Chrome, Edge, Brave, Vivaldi, Opera or Firefox |
 | **Add-ons** | Tampermonkey-style userscripts · Chrome Web Store extensions (Manifest V3) |
 | **Engine and updates** | Microsoft Edge WebView2 (current Chromium, H.264/AAC/AV1, hardware decoding) · signed automatic updates that ask first · English and Russian |
 

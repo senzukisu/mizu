@@ -6,7 +6,7 @@ technical dependencies. There are no dates: a version ships when its "done when"
 **Principles:** stability → security → performance → maintainability → extensibility. A new feature never makes
 the first three worse.
 
-**Where we are:** 0.3.5 is out. What's left of 0.3.x is technical: integration tests and a code-signed installer;
+**Where we are:** 0.3.6 is out. What's left of 0.3.x is technical: integration tests and a code-signed installer;
 then 0.4.
 What already shipped is listed version by version in the [changelog](CHANGELOG.md).
 
@@ -24,6 +24,7 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 | 0.3.3 | Currents | Tree tabs, new tab folders, per-site zoom | ✅ Released |
 | 0.3.4 | Currents | Generic and procedural cosmetic filters, open in media player | ✅ Released |
 | 0.3.5 | Currents | Faster loading, updater rollback and beta, new settings, experimental features | ✅ Released |
+| 0.3.6 | Currents | What's new after updates, sites follow the theme, restart fix | ✅ Released |
 | **0.3.x** | Currents | Integration tests, code-signed installer | 🔜 Next |
 | 0.4 | Deep Water | Privacy and data: fingerprinting defence, backups | Planned |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
@@ -70,7 +71,7 @@ loading improvements, "Open with…", automatic cookie cleanup, CI, updater roll
 
 Released 2026-11-23 (details in the [changelog](CHANGELOG.md)):
 
-- **Move in:** import bookmarks, history and search engines from Chrome, Edge, Yandex Browser, Brave, Vivaldi, Opera
+- **Move in:** import bookmarks, history and search engines from Chrome, Edge, Brave, Vivaldi, Opera
   and Firefox, with a preview of what each profile holds.
 - **Welcome to Mizu:** a one-time tour in its own window: style, default browser, import.
 - **Tab groups** with names and colours in both layouts, kept with the session.
@@ -107,15 +108,32 @@ Still to come, roughly in this order:
 
 ## 0.4 — "Deep Water": privacy and data
 
-**Goal:** stronger protection with no breakage.
+**Goal:** stronger protection with no breakage, and your data safe even if this PC is not.
 
-- **Shield dashboard v2:** a per-site breakdown, a timeline of blocked requests, and a fingerprinting report.
-- **Fingerprinting defence:** protective values for high-entropy APIs (canvas and audio noise, bucketed hardware
-  details). Mizu won't claim anonymity it can't provide.
-- **HTTPS-First mode**, with a warning when a site works only over HTTP.
-- **Encrypted local backup** of the profile with a passphrase (Argon2id + XChaCha20-Poly1305, audited crates).
+Shipped in steps, each one usable on its own:
 
-**Done when:** popular sites work with fingerprinting defence on, and a backup restores bit for bit.
+| Step | What you get | How it works |
+|---|---|---|
+| **0.4.0** | **HTTPS-First** · Shield dashboard v2 | Top-level `http://` navigations are retried as `https://` (on failure Mizu shows a clear "this site has no secure version — continue?" page, remembered per site). The Shield page gains a per-site breakdown and a timeline from the counters Mizu already keeps. |
+| **0.4.1** | **Fingerprinting defence** (standard) | A document-start script gives high-entropy APIs protective values: small per-site, per-session noise for canvas readback and audio, bucketed `hardwareConcurrency`/`deviceMemory`, no battery API, a common font list. Off per site from the lock icon. |
+| **0.4.2** | Fingerprinting report · strict mode | Shield shows which scripts read which APIs on the page. Strict mode also hides WebGL details and screen size precision. |
+| **0.4.3** | **Encrypted backup and restore** | One file with bookmarks, history, passwords, settings, scripts and tiles; key from a passphrase with Argon2id, sealed with XChaCha20-Poly1305 (RustCrypto crates, no own crypto). Restore checks integrity first and never half-applies. Optional scheduled backup to a folder you pick. |
+
+**Ground rules**
+
+- Every protection has a per-site exception in Site settings, and a short "what this may break" note.
+- Nothing claims anonymity: the guide says plainly what fingerprinting defence can and cannot do.
+- New settings land on existing pages (Mizu Shield, Privacy, Passwords & security); nothing new is on by default until
+  it has passed the site list below.
+
+**Test list for "no breakage":** Google and Microsoft sign-in, YouTube, Twitch, Discord, GitHub, Figma, Notion,
+two banks, two shops with 3-D Secure, Cloudflare and hCaptcha checks.
+
+**Done when:**
+- the test list works with HTTPS-First and standard fingerprinting defence on;
+- the noise is stable within a site and a session, and different across sites (checked by a test page);
+- a backup restores bit for bit on a clean profile, and a wrong passphrase or a damaged file is refused with a clear
+  message.
 
 ## 0.5 — "Tide": passwords and sync
 

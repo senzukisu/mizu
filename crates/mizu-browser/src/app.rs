@@ -142,7 +142,8 @@ fn engine_args(settings: &Settings) -> Vec<String> {
     // Experimental engine features go into one --enable-features switch.
     let labs = &settings.labs;
     let features: Vec<&str> = [
-        (labs.force_dark_pages, "WebContentsForceDark"),
+        // Sites follow Mizu's theme: forced darkening only while the theme is dark.
+        (labs.force_dark_pages && crate::theme::is_dark(settings), "WebContentsForceDark"),
         (labs.overlay_scrollbars, "OverlayScrollbar,msOverlayScrollbarWinStyle,msOverlayScrollbarWinStyleAnimation"),
         (labs.parallel_downloads, "ParallelDownloading"),
     ]
@@ -365,7 +366,9 @@ pub fn shutdown() {
         drop(app);
         // Let the engine flush cookies and site storage before the process ends.
         if let Some(w) = waiter {
-            let clean = w.wait(std::time::Duration::from_secs(4));
+            // A restart waits longer: the next start must not meet this engine still running.
+            let restarting = RELAUNCH.load(std::sync::atomic::Ordering::SeqCst);
+            let clean = w.wait(std::time::Duration::from_secs(if restarting { 15 } else { 4 }));
             tracing::info!(clean, "engine shut down");
         }
     }
@@ -731,7 +734,23 @@ impl App {
         }
     }
 
+    /// Notes the running version; returns the previous one when Mizu was just updated (and
+    /// not on a fresh install, where the welcome tour shows instead).
+    fn note_version(&mut self) -> Option<String> {
+        let g = &mut self.settings.general;
+        let now = mizu_core::VERSION;
+        if g.seen_version == now {
+            return None;
+        }
+        // Copies from before 0.3.6 have no seen_version; a completed tour means a returning user.
+        let previous = if g.seen_version.is_empty() { (g.welcome_version > 0).then(String::new) } else { Some(g.seen_version.clone()) };
+        g.seen_version = now.to_owned();
+        self.persist_settings();
+        previous
+    }
+
     fn open_initial_windows(&mut self, args: &LaunchArgs) {
+        let updated_from = self.note_version();
         // Welcome tour: first run, and once after an update that brings a new tour. It opens
         // alone; the browser window follows when the tour is finished or closed. A launch with
         // a link (from another app) opens the browser at once and leaves the tour for later.
@@ -741,6 +760,13 @@ impl App {
             return;
         }
         self.open_startup_windows(args);
+        if let Some(from) = updated_from.filter(|_| self.settings.general.whats_new && !args.private) {
+            if let Some(id) = self.main_window(false) {
+                let url = if from.is_empty() { "mizu://whatsnew/".to_owned() } else { format!("mizu://whatsnew/?from={from}") };
+                tracing::info!(from, "updated: showing what's new");
+                self.open_tab(id, url, crate::tabs::OpenOptions::foreground());
+            }
+        }
     }
 
     fn open_startup_windows(&mut self, args: &LaunchArgs) {
@@ -908,7 +934,22 @@ impl App {
                         None => view.close(),
                     }
                 }
-                Err(e) => tracing::error!(error = %e, "chrome view failed"),
+                Err(e) => {
+                    tracing::error!(error = %e, "chrome view failed");
+                    // The engine of a previous run was still shutting down with other settings
+                    // (after "Restart Mizu"): start once more when it has gone, instead of
+                    // leaving a window that cannot show anything.
+                    if std::env::var_os("MIZU_RETRIED").is_none() && app.windows.iter().all(|w| !w.chrome_ready) {
+                        tracing::warn!("restarting once: the engine could not create the browser view");
+                        // SAFETY: only this process reads the variable, before any thread uses it.
+                        unsafe { std::env::set_var("MIZU_RETRIED", "1") };
+                        RELAUNCH.store(true, std::sync::atomic::Ordering::SeqCst);
+                        let ids: Vec<_> = app.windows.iter().map(|w| w.id).collect();
+                        for wid in ids {
+                            app.close_window(wid);
+                        }
+                    }
+                }
             });
         });
     }

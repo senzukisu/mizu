@@ -123,6 +123,8 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
                             let ms = crate::STARTED.get().map_or(0, |t| t.elapsed().as_millis());
                             tracing::info!(ms, tabs = w.strip.len(), "window ready");
                             crate::update::confirm_started();
+                            // SAFETY: read only on this thread at start-up.
+                            unsafe { std::env::remove_var("MIZU_RETRIED") };
                         }
                         w.chrome_ready = true;
                         w.layout();

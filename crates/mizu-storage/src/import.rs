@@ -1,6 +1,6 @@
 //! Import from other browsers on this PC: bookmarks, history and search engines.
 //!
-//! Chromium-based browsers (Chrome, Edge, Yandex, Brave, Vivaldi, Opera) keep bookmarks in a
+//! Chromium-based browsers (Chrome, Edge, Brave, Vivaldi, Opera) keep bookmarks in a
 //! JSON file and history / search engines in SQLite; Firefox keeps both in `places.sqlite`.
 //! Databases are copied to a temporary folder first, so a running browser's lock does not
 //! matter and its files are never modified. Passwords are not read: browsers encrypt them for
@@ -90,13 +90,14 @@ pub fn detect() -> Vec<ImportSource> {
     let chromium: [(&str, Option<PathBuf>, bool); 8] = [
         ("Google Chrome", local.as_ref().map(|d| d.join(r"Google\Chrome\User Data")), false),
         ("Microsoft Edge", local.as_ref().map(|d| d.join(r"Microsoft\Edge\User Data")), false),
-        ("Yandex Browser", local.as_ref().map(|d| d.join(r"Yandex\YandexBrowser\User Data")), false),
         ("Brave", local.as_ref().map(|d| d.join(r"BraveSoftware\Brave-Browser\User Data")), false),
         ("Vivaldi", local.as_ref().map(|d| d.join(r"Vivaldi\User Data")), false),
         ("Chromium", local.as_ref().map(|d| d.join(r"Chromium\User Data")), false),
         // Opera keeps a single profile directly in its folder.
         ("Opera", roaming.as_ref().map(|d| d.join(r"Opera Software\Opera Stable")), true),
         ("Opera GX", roaming.as_ref().map(|d| d.join(r"Opera Software\Opera GX Stable")), true),
+        // Always last in the list.
+        ("Yandex Browser", local.as_ref().map(|d| d.join(r"Yandex\YandexBrowser\User Data")), false),
     ];
     for (browser, dir, single) in chromium {
         let Some(dir) = dir.filter(|d| d.is_dir()) else { continue };

@@ -23,6 +23,7 @@ pub enum InternalPage {
     Passwords,
     Import,
     Welcome,
+    WhatsNew,
     Site,
     Blocked,
 }
@@ -59,6 +60,7 @@ impl InternalPage {
             Self::Passwords => "passwords",
             Self::Import => "import",
             Self::Welcome => "welcome",
+            Self::WhatsNew => "whatsnew",
             Self::Site => "site",
             Self::Blocked => "blocked",
         }
@@ -82,6 +84,7 @@ impl InternalPage {
             Self::Passwords => "Passwords",
             Self::Import => "Import from another browser",
             Self::Welcome => "Welcome to Mizu",
+            Self::WhatsNew => "What's new",
             Self::Site => "Site settings",
             Self::Blocked => "Page blocked",
         }

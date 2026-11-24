@@ -19,7 +19,7 @@ const FEATURES = [
 
 // Highlights of the current release line (the full list is in the changelog).
 const WHATS_NEW = [
-  ['import', 'Move in from another browser', 'Bookmarks, history and search engines from Chrome, Edge, Yandex, Brave, Vivaldi, Opera or Firefox.'],
+  ['import', 'Move in from another browser', 'Bookmarks, history and search engines from Chrome, Edge, Brave, Vivaldi, Opera or Firefox.'],
   ['folder', 'Tab groups', 'Named, coloured groups in both layouts; collapse them to a chip with a count.'],
   ['sparkle', 'Quick actions', 'Type > in the address bar: clear a site\u2019s data, mute all tabs, unload the rest and more.'],
   ['sliders', 'Units in the address bar', '10 km in mi, 70 f to c, 2 kg to lb: the answer appears as you type.'],
@@ -158,6 +158,7 @@ bootPage(() => {
         h('div', { class: 'about-links' },
           link('code', 'Source code', REPO),
           link('warning', 'Report a problem', `${REPO}/issues`),
+          link('sparkle', 'What’s new', 'mizu://whatsnew/'),
           link('file', 'Changelog', `${REPO}/blob/main/CHANGELOG.md`),
           link('sparkle', 'Roadmap', `${REPO}/blob/main/ROADMAP.md`),
           link('download', 'All releases', `${REPO}/releases`)),

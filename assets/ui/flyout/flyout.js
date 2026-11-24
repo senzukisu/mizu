@@ -170,7 +170,7 @@ function downloadRow(d, compact) {
   const acts = h('div', { class: 'acts' });
   if (d.state === 'in_progress' && d.live) acts.append(act('pause', 'Pause', 'pause'), act('close', 'Cancel', 'cancel'));
   else if (d.state === 'paused' && d.live) acts.append(act('play', 'Resume', 'resume'), act('close', 'Cancel', 'cancel'));
-  else if (d.state === 'completed' && d.exists) acts.append(act('more', 'Open with…', 'open_with'), act('folder', 'Show in folder', 'show'));
+  else if (d.state === 'completed' && d.exists) acts.append(...(d.viewable ? [act('window', 'Open in Windows app', 'open_system')] : []), act('more', 'Open with…', 'open_with'), act('folder', 'Show in folder', 'show'));
   else if (d.state !== 'in_progress') acts.append(act('reload', 'Retry', 'retry'));
   const failed = ['failed', 'cancelled', 'interrupted'].includes(d.state);
   const name = h('div', { class: `name${d.state === 'completed' && d.exists ? ' done' : ''}`, text: d.file || d.url, title: d.path });

@@ -151,6 +151,10 @@ function screen() {
     default:
       return [
         h('div', { class: 'wl-hero' }, h('div', { class: 'wl-check' }, icon('check', { size: 34 })), h('h1', { text: 'All set' }), h('p', { text: 'Enjoy Mizu. Press Ctrl+T for a new tab, Ctrl+F to find on a page, and look for the music button while something plays.' })),
+        h('label', { class: 'wl-opt' }, switchInput(s.general.whats_new !== false, (v) => {
+          s.general.whats_new = v;
+          save();
+        }, { label: 'Show what’s new after each update' }), h('span', null, h('b', { text: 'Show what’s new after each update' }), h('small', { text: 'A short page once per update. You can change this in Settings → General.' }))),
         nav('Start browsing', finish),
       ];
   }

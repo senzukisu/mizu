@@ -135,7 +135,7 @@ function general() {
     card('Import', null, (() => {
       const b = h('button', { class: 'btn' }, icon('import'), h('span', { text: 'Import from another browser' }));
       b.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://import/', disposition: 'current' }));
-      return h('div', { class: 'setting' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Bookmarks, history and search engines' }), h('div', { class: 'd', text: 'From Chrome, Edge, Yandex Browser, Brave, Vivaldi, Opera or Firefox on this PC.' })), b);
+      return h('div', { class: 'setting' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Bookmarks, history and search engines' }), h('div', { class: 'd', text: 'From Chrome, Edge, Brave, Vivaldi, Opera or Firefox on this PC.' })), b);
     })()),
     updatesCard(g),
   ];
@@ -582,6 +582,7 @@ function downloads() {
       setting('Save files to', null, h('div', { style: { display: 'flex', gap: '10px', alignItems: 'center', minWidth: 0 } }, path, change)),
       toggle('Ask where to save each file', null, () => d.ask_where_to_save, (v) => (d.ask_where_to_save = v)),
       toggle('Show downloads when a download starts', null, () => d.open_panel_on_start, (v) => (d.open_panel_on_start = v)),
+      toggle('Open PDFs, pictures, video and music in Mizu', 'Clicking such a finished download opens it in a new tab. Other files open in their Windows app; "Open with…" is always there.', () => d.open_in_mizu !== false, (v) => (d.open_in_mizu = v)),
     ),
   ];
 }
@@ -773,6 +774,7 @@ function updatesCard(g) {
   return card('Updates', null,
     h('div', { class: 'setting' }, h('div', { class: 'txt' }, version, status), h('div', { class: 'upd-btns' }, check, install)),
     toggle('Update Mizu automatically', 'Checks for new versions when Mizu starts and every few hours, then asks before installing.', () => g.auto_update, (v) => (g.auto_update = v)),
+    toggle('Show “What’s new” after each update', 'A page with what the new version brings, once, in your language.', () => g.whats_new !== false, (v) => (g.whats_new = v)),
     setting('Update channel', 'Beta gets new versions earlier, for testing. If an update fails to start, Mizu goes back to the previous version by itself.', seg([['stable', 'Stable'], ['beta', 'Beta']], g.update_channel || 'stable', (v) => {
       g.update_channel = v;
       save();
@@ -952,7 +954,7 @@ function labs() {
     card(null, null, h('div', { class: 'labs-note' }, icon('sparkle', { size: 18 }), h('span', { text: 'These features are still being tested. If something misbehaves, turn it off again — nothing else changes.' }))),
     card('Pages',
       null,
-      toggle('Dark mode for every site', 'The engine darkens light websites itself. Some pages may look odd. Requires restart.', () => !!l.force_dark_pages, (v) => (l.force_dark_pages = v)),
+      toggle('Dark mode for every site', 'With the dark theme, the engine darkens light websites itself; with the light theme sites stay as they are. Some pages may look odd. Requires restart.', () => !!l.force_dark_pages, (v) => (l.force_dark_pages = v)),
       toggle('Thin scrollbars', 'Slim scrollbars that widen when you point at them, like Windows 11. Requires restart.', () => !!l.overlay_scrollbars, (v) => (l.overlay_scrollbars = v)),
     ),
     card('Downloads', null,

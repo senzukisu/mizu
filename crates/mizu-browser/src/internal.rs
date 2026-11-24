@@ -99,6 +99,7 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 || old.advanced.extensions != app.settings.advanced.extensions
                 || old.general.language != app.settings.general.language
                 || old.labs.force_dark_pages != app.settings.labs.force_dark_pages
+                || (app.settings.labs.force_dark_pages && crate::theme::is_dark(&old) != crate::theme::is_dark(&app.settings))
                 || old.labs.overlay_scrollbars != app.settings.labs.overlay_scrollbars
                 || old.labs.parallel_downloads != app.settings.labs.parallel_downloads;
             app.persist_settings();
@@ -824,6 +825,16 @@ pub fn download_action(app: &mut App, window: WindowId, id: u64, action: Downloa
         }
         DownloadAction::Open => {
             if state == DownloadState::Completed {
+                match viewable_file_url(&path).filter(|_| app.settings.downloads.open_in_mizu) {
+                    Some(url) => {
+                        app.open_tab(window, url, crate::tabs::OpenOptions::foreground());
+                    }
+                    None => crate::win::shell_open(&path),
+                }
+            }
+        }
+        DownloadAction::OpenSystem => {
+            if state == DownloadState::Completed {
                 crate::win::shell_open(&path);
             }
         }
@@ -845,6 +856,19 @@ thread_local! {
 
 /// A web view of a normal (non-private) window, for profile-wide engine calls (cookies,
 /// site storage).
+/// Files the web engine shows well itself open in a Mizu tab (as a `file:` address).
+const VIEWABLE: &[&str] = &[
+    "pdf", "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "svg", "ico", "mp4", "webm", "m4v", "mov", "mp3", "m4a", "aac", "ogg", "oga", "opus", "flac", "wav", "txt", "log", "md", "json", "csv", "xml",
+];
+
+pub fn viewable_file_url(path: &str) -> Option<String> {
+    let ext = std::path::Path::new(path).extension()?.to_string_lossy().to_ascii_lowercase();
+    if !VIEWABLE.contains(&ext.as_str()) {
+        return None;
+    }
+    url::Url::from_file_path(path).ok().map(String::from)
+}
+
 pub fn any_normal_view(app: &App) -> Option<mizu_engine::View> {
     app.windows.iter().filter(|w| !w.private).flat_map(|w| w.tabs.values()).find_map(|t| t.view.clone())
 }
