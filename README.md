@@ -60,7 +60,7 @@
 
 ## Install
 
-1. Download **`MizuSetup-0.3.3.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest).
+1. Download **`MizuSetup-0.3.4.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest).
 2. Run it, choose a folder (or keep the default) and press **Install**. No administrator rights are needed.
 
 A **portable** zip is also available. It runs from any folder but doesn't update itself.

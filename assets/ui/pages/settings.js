@@ -583,6 +583,23 @@ function downloads() {
   ];
 }
 
+// "Open in media player": the players found on this PC, Automatic, or Off.
+function playerSelect(m) {
+  const sel = h('select', null, h('option', { value: '', text: 'Automatic' }), h('option', { value: 'off', text: 'Off' }));
+  sel.value = m.player || '';
+  mizu.request('media_players').then((r) => {
+    const players = r?.players || [];
+    for (const p of players) sel.append(h('option', { value: p.id, text: p.name, translate: 'no' }));
+    if (!players.length) sel.append(h('option', { value: '-', text: 'No player found', disabled: true }));
+    sel.value = m.player || '';
+  }).catch(() => {});
+  sel.addEventListener('change', () => {
+    m.player = sel.value;
+    save();
+  });
+  return sel;
+}
+
 function tabs() {
   const t = s.tabs;
   return [
@@ -642,6 +659,9 @@ function media() {
       toggle('Media panel and media keys', 'The toolbar button, the "Now playing" card on the new tab, and the keyboard media keys while Mizu is focused. Reload open pages to apply.', () => m.media_hub !== false, (v) => (m.media_hub = v)),
       toggle('One sound at a time', 'When a tab starts playing, the others pause. Handy with music in the background.', () => !!m.pause_others, (v) => (m.pause_others = v)),
       h('div', { class: 'setting col' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Site volumes' }), h('div', { class: 'd', text: 'Set from the music panel and applied every time the site plays.' })), volList),
+    ),
+    card('Media player', 'Right-click a video or a link to a video or song → "Open in…" plays it in your media player (VLC, mpv, PotPlayer, MPC). Players open YouTube and Twitch pages themselves when they support them.',
+      setting('Open videos in', null, playerSelect(m)),
     ),
     card('Autoplay', null,
       setting('Media autoplay', 'Requires restart.', seg([['default', 'Muted autoplay allowed'], ['require_interaction', 'Only after I interact']], m.autoplay, (v) => {

@@ -27,6 +27,13 @@ impl Verdict {
 pub struct CosmeticBundle {
     pub css: String,
     pub script: String,
+    /// Procedural filters (`:has-text`, `:upward`, `:remove()`, …) as JSON objects, run by a
+    /// small in-page script.
+    pub procedural: Vec<String>,
+    /// Class/id selectors the page's generic rules must not hide (`#@#` exceptions).
+    pub exceptions: std::collections::HashSet<String>,
+    /// `$generichide`: no generic element hiding on this page.
+    pub generichide: bool,
 }
 
 impl CosmeticBundle {
@@ -151,11 +158,53 @@ impl ContentBlocker {
             css.push_str(sel);
             css.push_str("{display:none!important}\n");
         }
+        // Procedural and action filters: those that are plain CSS join the stylesheet, the rest
+        // go to the in-page script.
+        let mut procedural: Vec<String> = Vec::new();
+        let mut actions: Vec<&String> = res.procedural_actions.iter().collect();
+        actions.sort_unstable();
+        for json in actions {
+            let Ok(f) = serde_json::from_str::<adblock::cosmetic_filter_cache::ProceduralOrActionFilter>(json) else { continue };
+            match f.as_css() {
+                Some((sel, style)) if safe_css(&sel) && safe_css(&style) => {
+                    css.push_str(&sel);
+                    css.push('{');
+                    css.push_str(&style.replace("!important", "").replace(';', " !important;"));
+                    if !style.trim_end().ends_with(';') {
+                        css.push_str(" !important");
+                    }
+                    css.push_str("}\n");
+                }
+                Some(_) => {}
+                None => procedural.push(json.clone()),
+            }
+        }
         CosmeticBundle {
             css,
             script: res.injected_script,
+            procedural,
+            exceptions: res.exceptions,
+            generichide: res.generichide,
         }
     }
+
+    /// Generic element hiding (`##.ad-banner` for every site): CSS for the classes and ids the
+    /// page uses, minus its exceptions.
+    pub fn generic_css(&self, classes: &[String], ids: &[String], exceptions: &std::collections::HashSet<String>) -> String {
+        let mut css = String::new();
+        for sel in self.engine.hidden_class_id_selectors(classes, ids, exceptions) {
+            if safe_css(&sel) {
+                css.push_str(&sel);
+                css.push_str("{display:none!important}\n");
+            }
+        }
+        css
+    }
+}
+
+/// A selector or declaration that cannot break out of its rule.
+fn safe_css(s: &str) -> bool {
+    !(s.contains('{') || s.contains('}') || s.contains("</") || s.contains("@import") || s.contains("url("))
 }
 
 fn normalize_hosts(hosts: &[String]) -> HashSet<String> {
@@ -254,6 +303,20 @@ mod tests {
         assert!(c.css.contains(".ad-banner{display:none!important}"));
         assert!(!c.script.is_empty(), "scriptlet should be resolved from bundled resources");
         assert!(b.cosmetic("https://other.com/").css.is_empty());
+    }
+
+    #[test]
+    fn procedural_and_generic_filters() {
+        let b = blocker("example.com##.post:has-text(Sponsored)\nexample.com##.box:style(margin: 0)\n##.ad-banner\n###sidebar-ad\nexample.com#@#.ad-banner\n");
+        let c = b.cosmetic("https://example.com/");
+        assert_eq!(c.procedural.len(), 1, "has-text runs in the page");
+        assert!(c.procedural[0].contains("has-text"));
+        assert!(c.css.contains(".box{margin: 0 !important}"), "{}", c.css);
+        let css = b.generic_css(&["ad-banner".into()], &["sidebar-ad".into()], &c.exceptions);
+        assert!(css.contains("#sidebar-ad"));
+        assert!(!css.contains(".ad-banner"), "excepted on example.com");
+        let other = b.cosmetic("https://other.com/");
+        assert!(b.generic_css(&["ad-banner".into()], &[], &other.exceptions).contains(".ad-banner"));
     }
 
     #[test]

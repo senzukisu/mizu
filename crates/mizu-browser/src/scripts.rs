@@ -98,7 +98,22 @@ pub fn document_script(h: &mut Hot, key: ViewKey, uri: &str) -> Option<String> {
             if !cosmetic.script.is_empty() {
                 parts.push(format!("try{{\n{}\n}}catch(e){{}}", cosmetic.script));
             }
+            if !cosmetic.procedural.is_empty() {
+                let list = format!("[{}]", cosmetic.procedural.join(","));
+                parts.push(PROCEDURAL_SCRIPT.replace("__MIZU_FILTERS__", &list.replace("</", "<\\/")));
+            }
+            if cosmetic.generichide {
+                h.cosmetic_pages.remove(&key);
+            } else {
+                let token = random_token();
+                h.cosmetic_pages.insert(key, (token.clone(), cosmetic.exceptions));
+                parts.push(GENERIC_SCRIPT.replace("__MIZU_TOKEN__", &token));
+            }
+        } else {
+            h.cosmetic_pages.remove(&key);
         }
+    } else {
+        h.cosmetic_pages.remove(&key);
     }
 
     // The shortcut always works; the hover button follows the settings.
@@ -322,6 +337,67 @@ fn fetch(url: &str) -> Result<String, String> {
 pub fn pip_config(m: &mizu_settings::MediaSettings) -> String {
     let position = if m.pip_position == "top-left" { "top-left" } else { "top-right" };
     serde_json::json!({ "button": m.pip_button, "position": position, "compact": m.pip_compact, "controls": m.pip_controls }).to_string()
+}
+
+/// Procedural cosmetic filters, uBlock syntax as parsed by the engine: each filter is a chain of
+/// operators (css-selector, has-text, matches-attr, matches-css[-before|-after], matches-path,
+/// min-text-length, upward, xpath) and an optional action (remove, style, remove-attr,
+/// remove-class). Re-applied as the page changes, at most every 250 ms.
+const PROCEDURAL_SCRIPT: &str = r#"(()=>{const F=__MIZU_FILTERS__;
+const re=(a)=>{const m=/^\/(.+)\/([a-z]*)$/.exec(a);if(m){try{return new RegExp(m[1],m[2]);}catch(e){return null;}}return null;};
+const test=(a,s)=>{const r=re(a);return r?r.test(s):String(s).includes(a);};
+const pair=(a)=>{const m=/^\s*("?)([^"=:]+)\1\s*[=:]\s*("?)(.*?)\3\s*$/.exec(a);return m?[m[2].trim(),m[4]]:[a.replace(/"/g,'').trim(),null];};
+const css=(els,pseudo,a)=>{const[p,v]=pair(a);return els.filter(e=>{const s=getComputedStyle(e,pseudo).getPropertyValue(p);return v===null?!!s:test(v,s);});};
+const ops={
+'css-selector':(els,a,first)=>{if(first)return[...document.querySelectorAll(a)];const out=[];for(const e of els){try{out.push(...e.querySelectorAll(':scope '+a));}catch(x){}}return out;},
+'has-text':(els,a)=>els.filter(e=>test(a,e.textContent||'')),
+'matches-attr':(els,a)=>{const[n,v]=pair(a);const rn=re(n);return els.filter(e=>[...e.attributes].some(at=>(rn?rn.test(at.name):at.name===n)&&(v===null||test(v,at.value))));},
+'matches-css':(els,a)=>css(els,null,a),
+'matches-css-before':(els,a)=>css(els,'::before',a),
+'matches-css-after':(els,a)=>css(els,'::after',a),
+'matches-path':(els,a)=>test(a,location.pathname+location.search)?els:[],
+'min-text-length':(els,a)=>els.filter(e=>(e.textContent||'').length>=Number(a)),
+'upward':(els,a)=>{const n=Number(a);return els.map(e=>{if(n>0){let p=e;for(let i=0;i<n&&p;i++)p=p.parentElement;return p;}return e.parentElement&&e.parentElement.closest(a);}).filter(Boolean);},
+'xpath':(els,a,first)=>{const out=[];for(const ctx of(first?[document]:els)){try{const r=document.evaluate(a,ctx,null,7,null);for(let i=0;i<r.snapshotLength;i++)if(r.snapshotItem(i).nodeType===1)out.push(r.snapshotItem(i));}catch(x){}}return out;}};
+const act=(e,a)=>{if(!a){e.style.setProperty('display','none','important');return;}
+if(a.type==='remove')e.remove();else if(a.type==='remove-attr')e.removeAttribute(a.arg);else if(a.type==='remove-class')e.classList.remove(a.arg);
+else if(a.type==='style'){for(const d of String(a.arg).split(';')){const i=d.indexOf(':');if(i>0)e.style.setProperty(d.slice(0,i).trim(),d.slice(i+1).replace('!important','').trim(),'important');}}};
+const run=()=>{for(const f of F){try{let els=[];let first=true;for(const op of f.selector){const fn=ops[op.type];if(!fn){els=[];break;}els=fn(els,op.arg,first);first=false;if(!els.length)break;}for(const e of new Set(els))act(e,f.action);}catch(x){}}};
+let t=0;const later=()=>{if(t)return;t=setTimeout(()=>{t=0;run();},250);};
+const start=()=>{run();new MutationObserver(later).observe(document.documentElement,{childList:true,subtree:true});};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();})();"#;
+
+/// Generic element hiding: reports the classes and ids used on the page (new ones only, in
+/// batches) and adds the CSS Mizu Shield sends back.
+const GENERIC_SCRIPT: &str = r#"(()=>{const T='__MIZU_TOKEN__';const seenC=new Set(),seenI=new Set();let qc=[],qi=[],t=0;
+const post=(m)=>{try{window.chrome.webview.postMessage(m);}catch(e){}};
+let sheet=null;window['__mizuCos_'+T]=(css)=>{if(!css)return;if(!sheet){sheet=document.createElement('style');sheet.setAttribute('data-mizu','shield-generic');(document.head||document.documentElement).appendChild(sheet);}sheet.textContent+=css;};
+const flush=()=>{t=0;if(!qc.length&&!qi.length)return;post({mizu_cosmetic:{token:T,classes:qc.slice(0,1000),ids:qi.slice(0,1000)}});qc=[];qi=[];};
+const scan=(root)=>{const all=root.querySelectorAll?root.querySelectorAll('[class],[id]'):[];const add=(e)=>{if(e.id&&!seenI.has(e.id)){seenI.add(e.id);qi.push(e.id);}if(e.classList)for(const c of e.classList)if(!seenC.has(c)){seenC.add(c);qc.push(c);}};if(root.nodeType===1)add(root);for(const e of all)add(e);if((qc.length||qi.length)&&!t)t=setTimeout(flush,60);};
+const start=()=>{scan(document.documentElement);new MutationObserver((ms)=>{for(const m of ms){for(const n of m.addedNodes)if(n.nodeType===1)scan(n);if(m.type==='attributes'&&m.target.nodeType===1)scan(m.target);}}).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class','id']});};
+if(document.documentElement)start();else document.addEventListener('DOMContentLoaded',start,{once:true});})();"#;
+
+/// `{"mizu_cosmetic": {token, classes, ids}}` from a page: answer with generic hiding CSS.
+pub fn on_cosmetic(key: ViewKey, value: &serde_json::Value) {
+    let raw = &value["mizu_cosmetic"];
+    let token = raw["token"].as_str().unwrap_or_default();
+    let list = |k: &str| -> Vec<String> {
+        raw[k].as_array().map(|a| a.iter().filter_map(|v| v.as_str()).filter(|s| s.len() <= 200).take(1000).map(str::to_owned).collect()).unwrap_or_default()
+    };
+    let (classes, ids) = (list("classes"), list("ids"));
+    let css = crate::hot::with(|h| {
+        let (t, exceptions) = h.cosmetic_pages.get(&key)?;
+        if t != token {
+            return None;
+        }
+        Some(h.blocker.as_ref()?.generic_css(&classes, &ids, exceptions))
+    })
+    .flatten();
+    if let Some(css) = css.filter(|c| !c.is_empty()) {
+        if let Some(v) = crate::hot::view(key) {
+            v.execute_script(&format!("try{{window['__mizuCos_{token}']({})}}catch(e){{}}", js_str(&css)));
+        }
+    }
 }
 
 #[cfg(test)]

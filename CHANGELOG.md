@@ -3,6 +3,20 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.3.4] — 2026-11-24
+
+### Added
+- **Mizu Shield hides more:**
+  - **generic element hiding** — list rules that hide an ad element on every site (`##.ad-banner`) now work, including
+    on elements a page adds later; `#@#` exceptions and `$generichide` are respected;
+  - **procedural filters** — `:has-text()`, `:upward()`, `:xpath()`, `:matches-css()`, `:matches-attr()`,
+    `:matches-path()`, `:min-text-length()`, and the actions `:remove()`, `:style()`, `:remove-attr()`,
+    `:remove-class()`; they keep working as the page changes.
+  - Invalid CSS selectors in lists are now dropped instead of being passed to the page.
+- **Open in your media player:** right-click a video, or a link to a video or a song → **Open video in VLC** (or mpv,
+  PotPlayer, MPC-HC, MPC-BE — whichever is installed). YouTube, Twitch, Vimeo and SoundCloud pages are handed over as
+  pages, for players that can open them. Settings → Media → **Media player** picks the player or turns it off.
+
 ## [0.3.3] — 2026-11-24
 
 ### Added

@@ -244,8 +244,11 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         nav_started: HashMap::new(),
         pw_tokens: HashMap::new(),
         media_tokens: HashMap::new(),
+        cosmetic_pages: HashMap::new(),
         site_volumes: settings.media.site_volumes.iter().map(|(k, v)| (k.clone(), *v)).collect(),
         media_hub: settings.media.media_hub,
+        media_player: crate::players::chosen(&settings.media.player),
+        ui_ru: crate::theme::ui_language(&settings) == "ru",
         password_capture: settings.privacy.password_manager,
         pip_button: settings.media.pip_button,
         pip_config: crate::scripts::pip_config(&settings.media),
@@ -1214,6 +1217,8 @@ impl App {
             h.pip_button = self.settings.media.pip_button;
             h.pip_config = crate::scripts::pip_config(&self.settings.media);
             h.media_hub = self.settings.media.media_hub;
+            h.media_player = crate::players::chosen(&self.settings.media.player);
+            h.ui_ru = crate::theme::ui_language(&self.settings) == "ru";
             h.site_volumes = self.settings.media.site_volumes.iter().map(|(k, v)| (k.clone(), *v)).collect();
             h.bindings = crate::shortcuts::Bindings::build(&self.settings.shortcuts);
             h.allowlist = self.settings.privacy.allowlist.iter().map(|x| crate::shield::normalize_host(x)).collect();

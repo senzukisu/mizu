@@ -67,6 +67,35 @@ impl ViewHandler for Dispatcher {
         queue::push(Queued::View(key, event));
     }
 
+    fn context_items(&self, key: ViewKey, t: &mizu_engine::ContextTarget) -> Vec<mizu_engine::ContextItem> {
+        if !matches!(hot::role(key), Some(Role::Tab { .. })) {
+            return Vec::new();
+        }
+        let Some((Some(player), ru)) = hot::with(|h| (h.media_player.clone(), h.ui_ru)) else { return Vec::new() };
+        let mut items = Vec::new();
+        if t.media && crate::players::media_address(&t.source, &t.page).is_some() {
+            let label = if ru { format!("Открыть видео в {}", player.name) } else { format!("Open video in {}", player.name) };
+            items.push(mizu_engine::ContextItem { id: 1, label });
+        }
+        if crate::players::is_media_link(&t.link) {
+            let label = if ru { format!("Открыть ссылку в {}", player.name) } else { format!("Open link in {}", player.name) };
+            items.push(mizu_engine::ContextItem { id: 2, label });
+        }
+        items
+    }
+
+    fn on_context_item(&self, _key: ViewKey, id: u32, t: &mizu_engine::ContextTarget) {
+        let Some(Some(player)) = hot::with(|h| h.media_player.clone()) else { return };
+        let url = match id {
+            1 => crate::players::media_address(&t.source, &t.page),
+            2 => Some(t.link.clone()),
+            _ => None,
+        };
+        if let Some(url) = url {
+            crate::players::open(&player, &url);
+        }
+    }
+
     fn on_navigation_starting(&self, key: ViewKey, req: &NavigationRequest) -> NavigationDecision {
         let uri = req.uri.as_str();
         // A shortcut being recorded in Settings ends when the page goes away.

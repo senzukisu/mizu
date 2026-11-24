@@ -311,6 +311,9 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 "zoom_default": app.settings.appearance.zoom_percent,
             }))
         }
+        Command::MediaPlayers => data(json!({
+            "players": crate::players::installed().iter().map(|p| json!({ "id": p.id, "name": p.name })).collect::<Vec<_>>(),
+        })),
         Command::SiteZoomReset { host } => {
             let host = crate::shield::normalize_host(&host);
             if app.settings.appearance.site_zoom.remove(&host).is_some() {

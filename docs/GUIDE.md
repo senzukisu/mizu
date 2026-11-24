@@ -117,6 +117,8 @@ Mizu Shield blocks ads, trackers and known malicious sites using uBlock Origin-c
   - turn lists on or off (Annoyances and EasyList Cookie are off by default), or add any list by its HTTPS address;
   - write your own rules in uBlock syntax;
   - set the tracking prevention level and Global Privacy Control.
+- Element hiding covers site-specific rules, generic rules (`##.ad-banner` everywhere) and procedural rules
+  (`:has-text()`, `:upward()`, `:remove()`, `:style()` and others), also on content a page adds later.
 - **`mizu://shield`** shows statistics.
 - Lists update automatically. If a list shows "Update failed", it retries on its own and has a mirror for the uBlock
   lists. You can also press "Update lists now".
@@ -167,6 +169,8 @@ Userscripts in the Tampermonkey/Greasemonkey format. Open them from Menu → Scr
 - The keyboard's media keys work while Mizu is focused. Ctrl+Alt+Space plays or pauses, Ctrl+Alt+Right / Left switch
   tracks; change them in Settings → Shortcuts.
 - The new tab page can show **Now playing** (Customize → Widgets).
+- **Open in a media player.** With VLC, mpv, PotPlayer or MPC installed, right-click a video or a link to a video or
+  song → **Open video in …** / **Open link in …**. Settings → Media → Media player chooses the player or turns it off.
 
 ## Video and picture in picture
 

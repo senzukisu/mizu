@@ -574,6 +574,50 @@ impl View {
                 )?;
             }
 
+            if let Ok(wv11) = core.cast::<ICoreWebView2_11>() {
+                let h = handler.clone();
+                let env = self.inner.engine.environment().clone();
+                wv11.add_ContextMenuRequested(
+                    &ContextMenuRequestedEventHandler::create(Box::new(move |sender, args| {
+                        let Some(args) = args else { return Ok(()) };
+                        let target = args.ContextMenuTarget()?;
+                        let mut kind = COREWEBVIEW2_CONTEXT_MENU_TARGET_KIND_PAGE;
+                        target.Kind(&mut kind)?;
+                        let t = ContextTarget {
+                            link: if get_bool(|b| target.HasLinkUri(b)) { get_string(|p| target.LinkUri(p)) } else { String::new() },
+                            source: if get_bool(|b| target.HasSourceUri(b)) { get_string(|p| target.SourceUri(p)) } else { String::new() },
+                            media: kind == COREWEBVIEW2_CONTEXT_MENU_TARGET_KIND_AUDIO || kind == COREWEBVIEW2_CONTEXT_MENU_TARGET_KIND_VIDEO,
+                            page: sender.map(|s| get_string(|p| s.Source(p))).unwrap_or_default(),
+                        };
+                        let items = h.context_items(key, &t);
+                        if items.is_empty() {
+                            return Ok(());
+                        }
+                        let Ok(env9) = env.cast::<ICoreWebView2Environment9>() else { return Ok(()) };
+                        let list = args.MenuItems()?;
+                        let mut at = 0u32;
+                        for it in items {
+                            let item = env9.CreateContextMenuItem(&HSTRING::from(it.label.as_str()), None, COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND)?;
+                            let (h2, t2, id) = (h.clone(), t.clone(), it.id);
+                            let mut tok = 0i64;
+                            item.add_CustomItemSelected(
+                                &CustomItemSelectedEventHandler::create(Box::new(move |_, _| {
+                                    h2.on_context_item(key, id, &t2);
+                                    Ok(())
+                                })),
+                                &mut tok,
+                            )?;
+                            list.InsertValueAtIndex(at, &item)?;
+                            at += 1;
+                        }
+                        let sep = env9.CreateContextMenuItem(&HSTRING::new(), None, COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SEPARATOR)?;
+                        list.InsertValueAtIndex(at, &sep)?;
+                        Ok(())
+                    })),
+                    &mut token,
+                )?;
+            }
+
             if let Ok(wv18) = core.cast::<ICoreWebView2_18>() {
                 let h = handler.clone();
                 wv18.add_LaunchingExternalUriScheme(

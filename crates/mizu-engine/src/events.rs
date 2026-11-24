@@ -224,6 +224,26 @@ impl Drop for NewWindowRequest {
 
 /// Callbacks from a view. All methods run on the UI thread. Decision methods must return
 /// quickly; they block the engine's request pipeline.
+/// What was right-clicked on a page.
+#[derive(Debug, Clone, Default)]
+pub struct ContextTarget {
+    /// The link under the pointer (empty if none).
+    pub link: String,
+    /// The image, audio or video source (empty if none).
+    pub source: String,
+    /// The target is an audio or video element.
+    pub media: bool,
+    /// The page that was right-clicked.
+    pub page: String,
+}
+
+/// An entry the browser adds at the top of a page's context menu.
+#[derive(Debug, Clone)]
+pub struct ContextItem {
+    pub id: u32,
+    pub label: String,
+}
+
 pub trait ViewHandler {
     fn on_event(&self, key: ViewKey, event: ViewEvent);
 
@@ -258,6 +278,14 @@ pub trait ViewHandler {
     /// A JSON message posted by the page with `chrome.webview.postMessage`. `source` is the
     /// URL of the document that sent it – the browser decides how much to trust it.
     fn on_web_message(&self, _key: ViewKey, _source: &str, _json: &str) {}
+
+    /// Extra entries for a page's context menu (shown first, then a separator).
+    fn context_items(&self, _key: ViewKey, _target: &ContextTarget) -> Vec<ContextItem> {
+        Vec::new()
+    }
+
+    /// One of the entries from [`ViewHandler::context_items`] was chosen.
+    fn on_context_item(&self, _key: ViewKey, _id: u32, _target: &ContextTarget) {}
 
     /// Keyboard shortcut pressed while the view has focus. Return `true` if handled.
     fn on_accelerator(&self, _key: ViewKey, _vk: u32, _ctrl: bool, _shift: bool, _alt: bool) -> bool {

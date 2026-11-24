@@ -18,7 +18,8 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 | 0.3.1 | Currents | Site settings, cookie cleanup, Open with, crash reports | ✅ Released |
 | 0.3.2 | Currents | Spaces, split view | ✅ Released |
 | 0.3.3 | Currents | Tree tabs, new tab folders, per-site zoom | ✅ Released |
-| **0.3.x** | Currents | Cosmetic filters, faster loading, accessibility, updater rollback | 🔜 Next |
+| 0.3.4 | Currents | Generic and procedural cosmetic filters, open in media player | ✅ Released |
+| **0.3.x** | Currents | Faster loading, accessibility, updater rollback | 🔜 Next |
 | 0.4 | Deep Water | Privacy and data: fingerprinting defence, backups | Planned |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
 | 0.6 | Estuary | Built-in tools: PDF, translation, media hub | Planned |
@@ -81,14 +82,13 @@ longer fills Mizu's bookmarks bar.
 
 **0.3.3 ✅** (2026-11-24): tree tabs in the sidebar, folders of new tab shortcuts, per-site zoom.
 
-Still to come, roughly in this order:
+**0.3.4 ✅** (2026-11-24): generic and procedural cosmetic filters in Shield; "Open in media player" for videos and
+media links.
 
-**Privacy**
-- **Shield:** generic and procedural cosmetic filters.
+Still to come, roughly in this order:
 
 **Faster and handier**
 - Preconnect to the address being typed, a clearer progress bar, background tabs restored gradually.
-- **"Open with…"** for media links (downloads have it since 0.3.1).
 
 **Accessibility**
 - Screen reader support for visually hosted pages (Mizu's own UI Automation provider) and full keyboard navigation of

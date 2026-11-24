@@ -53,6 +53,10 @@ pub fn on_message(app: &mut App, key: ViewKey, source: &str, json: &str) {
                 crate::media::on_report(app, key, &value);
                 return;
             }
+            if value.get("mizu_cosmetic").is_some() {
+                crate::scripts::on_cosmetic(key, &value);
+                return;
+            }
             let action = hot::with(|h| crate::scripts::handle_gm_message(h, key, &value));
             if let Some(crate::scripts::GmAction::OpenTab { url, background }) = action {
                 let opts = if background { OpenOptions::background() } else { OpenOptions::foreground() };

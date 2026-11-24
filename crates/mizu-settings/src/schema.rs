@@ -524,6 +524,9 @@ pub struct MediaSettings {
     pub pause_others: bool,
     /// Volume chosen per site in the media panel, in percent (origins at 100% are absent).
     pub site_volumes: std::collections::BTreeMap<String, u32>,
+    /// "Open in media player" for videos and media links: "" picks the first player found,
+    /// "off" hides it, or a player id ("vlc", "mpv", "potplayer", "mpc-hc", "mpc-be").
+    pub player: String,
 }
 
 impl Default for MediaSettings {
@@ -537,6 +540,7 @@ impl Default for MediaSettings {
             media_hub: true,
             pause_others: false,
             site_volumes: std::collections::BTreeMap::new(),
+            player: String::new(),
         }
     }
 }

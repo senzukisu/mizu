@@ -14,6 +14,7 @@ mod extensions;
 mod cleanup;
 mod external;
 mod media;
+mod players;
 mod flyout;
 mod handler;
 mod hot;

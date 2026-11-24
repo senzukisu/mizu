@@ -50,8 +50,13 @@ pub struct Hot {
     pub pw_tokens: HashMap<ViewKey, String>,
     /// Media hub: per-document token of the media script, and remembered site volumes.
     pub media_tokens: HashMap<ViewKey, String>,
+    /// Generic element hiding: the page's token and its `#@#` exceptions.
+    pub cosmetic_pages: HashMap<ViewKey, (String, std::collections::HashSet<String>)>,
     pub site_volumes: HashMap<String, u32>,
     pub media_hub: bool,
+    /// "Open in media player" target, and whether the interface is in Russian.
+    pub media_player: Option<crate::players::Player>,
+    pub ui_ru: bool,
     /// Offer to save passwords (Mizu Passwords enabled).
     pub password_capture: bool,
     /// Picture-in-picture button on videos.
@@ -114,6 +119,7 @@ pub fn forget(key: ViewKey) {
         h.page_blocked.remove(&key);
         h.gm_tokens.remove(&key);
         h.pw_tokens.remove(&key);
+        h.cosmetic_pages.remove(&key);
     });
 }
 

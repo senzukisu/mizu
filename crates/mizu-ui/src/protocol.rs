@@ -96,6 +96,8 @@ pub enum Command {
         icon: Option<String>,
     },
     SpaceDelete { id: u32 },
+    /// Media players found on this PC (for "Open in media player").
+    MediaPlayers,
     /// Per-site zoom back to the default.
     SiteZoomReset { host: String },
     /// Tree tabs: fold or unfold a tab's children; close a tab with all its children.
