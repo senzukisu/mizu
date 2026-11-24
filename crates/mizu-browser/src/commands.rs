@@ -309,6 +309,35 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             }
             ok()
         }
+        Command::TabTreeToggle { id } => {
+            let Some(w) = app.window_mut(window) else { return ok() };
+            let before = w.active_tab();
+            let now = w.strip.toggle_tree(tab_id(id));
+            w.state_dirty = true;
+            if let (Some(prev), Some(t)) = (before, now) {
+                // The active tab was inside the folded branch: its top tab takes over.
+                if prev != t {
+                    if let Some(v) = w.tabs.get(&prev).and_then(|s| s.view.clone()) {
+                        v.set_visible(false);
+                    }
+                    app.activate_tab(window, t);
+                }
+            }
+            app.session_dirty = true;
+            ok()
+        }
+        Command::CloseBranch { id } => {
+            let root = tab_id(id);
+            let mut branch: Vec<TabId> = app
+                .window(window)
+                .map(|w| w.strip.tabs().iter().filter(|t| w.strip.is_descendant(t.id, root)).map(|t| t.id).collect())
+                .unwrap_or_default();
+            branch.push(root);
+            for t in branch {
+                app.close_tab(window, t);
+            }
+            ok()
+        }
         Command::SpaceSwitch { id } => {
             switch_space(app, window, id);
             ok()
@@ -512,7 +541,7 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
         Command::DuplicateTab { id } => {
             let url = app.window(window).and_then(|w| w.strip.get(tab_id(id))).map(|t| t.url.clone());
             if let Some(url) = url {
-                app.open_tab(window, url, OpenOptions { activate: true, popup: false, load_now: true, adjacent: true });
+                app.open_tab(window, url, OpenOptions { activate: true, popup: false, load_now: true, adjacent: true, parent: None });
             }
             ok()
         }
@@ -850,6 +879,7 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
                     w.strip.groups().iter().filter(|g| w.strip.tabs().iter().any(|t| t.group == Some(g.id) && t.space == space)).cloned().collect::<Vec<_>>()
                 }).unwrap_or_default(),
                 "space": tab.as_ref().map(|t| t.space),
+                "kids": app.window(window).map_or(0, |w| w.strip.children_count(TabId(tab_id.unwrap_or_default()))),
                 "spaces": app.window(window).map(|w| w.strip.spaces().to_vec()).unwrap_or_default(),
                 "away": tab.as_ref().is_some_and(mizu_tabs::Tab::away_from_pin),
                 "home": tab.as_ref().and_then(|t| t.pinned_url.clone()),
@@ -1085,7 +1115,7 @@ pub fn open_url(app: &mut App, window: WindowId, url: String, disposition: Dispo
     match disposition {
         Disposition::Current => app.navigate_active(window, &url),
         Disposition::NewTab => {
-            app.open_tab(window, url, OpenOptions { activate: true, popup: false, load_now: true, adjacent: true });
+            app.open_tab(window, url, OpenOptions { activate: true, popup: false, load_now: true, adjacent: true, parent: None });
         }
         Disposition::Background => {
             app.open_tab(window, url, OpenOptions::background());
@@ -1120,7 +1150,7 @@ fn open_internal(app: &mut App, window: WindowId, page: InternalPage) {
             if reuse_newtab {
                 app.navigate_active(window, &page.url());
             } else {
-                app.open_tab(window, page.url(), OpenOptions { activate: true, popup: false, load_now: true, adjacent: true });
+                app.open_tab(window, page.url(), OpenOptions { activate: true, popup: false, load_now: true, adjacent: true, parent: None });
             }
         }
     }

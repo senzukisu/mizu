@@ -190,10 +190,16 @@ function buildTab(t) {
   const title = h('div', { class: 'title' });
   const audio = h('button', { class: 'audio' });
   const close = h('button', { class: 'close', title: 'Close tab (Ctrl+W)' }, icon('close'));
-  el.append(fav, title, audio, close);
-  el._parts = { fav, title, audio, close, favKey: '', audioKey: '' };
+  // Tree tabs (sidebar): the arrow folds or unfolds the tabs opened from this one.
+  const twisty = h('button', { class: 'twisty', title: 'Fold or unfold' }, icon('chevron-down'));
+  twisty.addEventListener('click', (e) => {
+    e.stopPropagation();
+    mizu.send('tab_tree_toggle', { id: Number(el.dataset.id) });
+  });
+  el.append(twisty, fav, title, audio, close);
+  el._parts = { fav, title, audio, close, twisty, favKey: '', audioKey: '' };
 
-  for (const b of [audio, close]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+  for (const b of [audio, close, twisty]) b.addEventListener('pointerdown', (e) => e.stopPropagation());
   audio.addEventListener('click', (e) => {
     e.stopPropagation();
     mizu.send('mute_tab', { id: Number(el.dataset.id), muted: !el._muted });
@@ -379,6 +385,8 @@ function renderSpaces() {
     const add = h('button', { class: 'space-btn space-add', title: 'New space' }, icon('plus'));
     add.addEventListener('click', () => mizu.send('space_create', {}));
     els.spaces.replaceChildren(...spaces.map((s) => spaceButton(s, s.id === (state.active_space ?? 0))), add);
+    // One space: nothing to switch between (Menu → New space adds one).
+    els.spaces.hidden = spaces.length < 2;
     return;
   }
   const cur = spaces.find((s) => s.id === (state.active_space ?? 0));
@@ -434,6 +442,14 @@ function renderTabs() {
       if (g) el.classList.add(`g-${g.color}`);
       el.classList.toggle('g-hidden', !!(g && g.collapsed && t.id !== state.active));
       el.classList.toggle('in-split', Array.isArray(state.split) && state.split.includes(t.id));
+      if (VERTICAL) {
+        el.style.setProperty('--depth', String(t.depth || 0));
+        el.classList.toggle('tree-kid', (t.depth || 0) > 0);
+        el.classList.toggle('tree-parent', (t.kids || 0) > 0);
+        el.classList.toggle('tree-folded', !!t.tree_collapsed);
+        el.classList.toggle('tree-hidden', !!t.tree_hidden && t.id !== state.active);
+        el._parts.twisty.title = t.tree_collapsed ? i18n.tr(t.kids === 1 ? 'Show 1 tab' : `Show ${t.kids} tabs`) : i18n.tr('Fold');
+      }
     }
     const sig = JSON.stringify(state.groups || []) + order + tabs.map((t) => t.group).join(',');
     if (structural || sig !== lastGroupSig) {
@@ -459,6 +475,7 @@ function renderTabs() {
     update();
   }
   rendered = true;
+  if (VERTICAL) els.tabs.classList.toggle('has-tree', tabs.some((t) => (t.kids || 0) > 0));
   if (!VERTICAL) {
     updateStripOverflow();
     const active = state.active;

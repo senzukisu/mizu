@@ -66,6 +66,18 @@ function permissionsCard() {
   return card('Permissions', null, ...rows);
 }
 
+function zoomCard() {
+  const pct = info.zoom || info.zoom_default;
+  const reset = h('button', { class: 'btn', text: 'Reset' });
+  reset.disabled = !info.zoom;
+  reset.addEventListener('click', () => mizu.request('site_zoom_reset', { host }).then(() => {
+    info.zoom = null;
+    render();
+  }));
+  return card('Zoom', null,
+    row(i18n.tr(`Zoom: ${pct}%`), info.zoom ? 'Mizu remembers the zoom you choose for each site (Ctrl+plus, Ctrl+minus, Ctrl+wheel).' : 'The default zoom (Settings → Appearance). Zoom in on the site and Mizu remembers it here.', reset));
+}
+
 function historyCard() {
   const when = info.last_visit ? new Date(info.last_visit).toLocaleString(document.documentElement.lang || undefined, { dateStyle: 'medium', timeStyle: 'short' }) : null;
   const open = h('button', { class: 'btn', text: 'Open history' });
@@ -78,7 +90,7 @@ function render() {
   go.addEventListener('click', () => mizu.send('open_url', { url: `https://${host}/`, disposition: 'current' }));
   main.replaceChildren(h('div', { class: 'page', style: { maxWidth: '820px' } },
     h('div', { class: 'site-head' }, letterAvatar(`https://${host}/`, host), h('div', { class: 'grow' }, h('h1', { translate: 'no', text: host }), h('div', { class: 'd', text: 'Site settings' })), go),
-    shieldCard(), cookiesCard(), permissionsCard(), historyCard()));
+    shieldCard(), cookiesCard(), permissionsCard(), zoomCard(), historyCard()));
 }
 
 bootPage(() => {

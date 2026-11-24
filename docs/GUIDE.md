@@ -48,6 +48,9 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
   - Nothing goes to history.
   - Cookies are separate from normal windows, and everything is erased when the last private window closes.
 
+- **Tree tabs.** With tabs on the side, a tab opened from a page sits under it. The arrow folds a branch;
+  right-click → **Close tab and the tabs opened from it** closes the whole branch. Settings → Tabs → **Tree tabs**
+  turns it off.
 - **Spaces.** Menu → **New space** makes a separate set of tabs in the same window (say Work and Music). Switch
   with the buttons at the bottom of the side tabs or the space button at the start of the tab strip; click the
   current space's button (or right-click any) to rename it, pick a colour and an icon, add or delete a space.
@@ -92,7 +95,8 @@ How to use Mizu day to day. For installation see the [README](../README.md); for
     or hides it). **Other bookmarks** sits at its right end.
   - Right-click a bookmark on the bar to open it in a new tab, window or private window, copy its link or delete it.
 - **New tab page.** Its tiles are a list of their own, separate from bookmarks. "+" adds one, the pencil edits it, and
-  you can drag tiles to reorder them. **Customize** (bottom right) picks one of 13 backgrounds or your own picture (with a
+  you can drag tiles to reorder them. Drop a tile on the middle of another to make a **folder**; click a folder to
+  rename it, add shortcuts or take one out. **Customize** (bottom right) picks one of 13 backgrounds or your own picture (with a
   darkening slider) and shows or hides the clock, the tiles and the Shield counter.
 - **History.** Ctrl+H. Search, delete single entries, or clear the last hour, day, week, month or everything.
   Settings → Privacy can also clear data when Mizu closes.
@@ -188,6 +192,8 @@ Userscripts in the Tampermonkey/Greasemonkey format. Open them from Menu → Scr
   - five palettes and any accent colour;
   - density, soft or crisp style, and Mica translucency on Windows 11;
   - animations, default page zoom (Ctrl+0 resets a page), and tab layout.
+- **Zoom per site.** Zoom a site in or out and Mizu keeps that zoom for it; lock icon → **Site settings** → **Reset**
+  returns it to the default.
 - **Language.** Settings → General → Language: Automatic (follows Windows), English or Russian. A restart applies it
   everywhere.
 

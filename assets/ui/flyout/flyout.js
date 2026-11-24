@@ -108,6 +108,7 @@ function renderTabMenu(d) {
     d.others > 0 ? item(null, 'Unload other tabs', () => mizu.send('discard_tab', { id, others: true })) : null,
     sep(),
     item('close', 'Close tab', () => mizu.send('close_tab', { id }), { kbd: 'Ctrl+W' }),
+    d.kids > 0 ? item(null, 'Close tab and the tabs opened from it', () => mizu.send('close_branch', { id })) : null,
     d.count > 1 ? item(null, 'Close other tabs', () => mizu.send('close_other_tabs', { id })) : null,
     d.count > 1 ? item(null, 'Close tabs to the right', () => mizu.send('close_tabs_right', { id })) : null,
     d.closed ? item('history', 'Reopen closed tab', () => mizu.send('reopen_closed_tab'), { kbd: 'Ctrl+Shift+T' }) : null,

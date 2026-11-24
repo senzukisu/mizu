@@ -178,13 +178,22 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             mark_all_dirty(app);
             ok()
         }
-        Command::ShortcutAdd { title, url } => data(app.storage.add_shortcut(&title, &url).map_err(storage_err)?),
+        Command::ShortcutAdd { title, url, folder } => data(app.storage.add_shortcut_in(folder, &title, &url).map_err(storage_err)?),
+        Command::ShortcutFolder { id, onto, title } => {
+            let title: String = title.trim().chars().take(40).collect();
+            data(app.storage.make_shortcut_folder(id, onto, if title.is_empty() { "Folder" } else { &title }).map_err(storage_err)?)
+        }
         Command::ShortcutUpdate { id, title, url } => {
             app.storage.update_shortcut(id, &title, &url).map_err(storage_err)?;
             ok()
         }
-        Command::ShortcutMove { id, index } => {
-            app.storage.move_shortcut(id, index).map_err(storage_err)?;
+        Command::ShortcutMove { id, index, into } => {
+            match into {
+                Some(0) => app.storage.move_shortcut_to(id, None, index),
+                Some(f) => app.storage.move_shortcut_to(id, Some(f), index),
+                None => app.storage.move_shortcut(id, index),
+            }
+            .map_err(storage_err)?;
             ok()
         }
         Command::NewtabPrefs { background, clock, shield_stats, shortcuts, now_playing, recent, notes, tile_size, name } => {
@@ -298,7 +307,26 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 "cleanup_days": app.settings.privacy.cookie_cleanup_days,
                 "last_visit": last,
                 "visits": count,
+                "zoom": app.settings.appearance.site_zoom.get(&host),
+                "zoom_default": app.settings.appearance.zoom_percent,
             }))
+        }
+        Command::SiteZoomReset { host } => {
+            let host = crate::shield::normalize_host(&host);
+            if app.settings.appearance.site_zoom.remove(&host).is_some() {
+                app.persist_settings();
+            }
+            let z = f64::from(app.settings.appearance.zoom_percent) / 100.0;
+            for w in &app.windows {
+                for s in w.tabs.values() {
+                    if s.zoom_host == host {
+                        if let Some(v) = &s.view {
+                            v.set_zoom(z);
+                        }
+                    }
+                }
+            }
+            ok()
         }
         Command::SiteCookiesFor { host } => {
             let host = crate::shield::normalize_host(&host);
@@ -545,13 +573,20 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
         }
         Command::NewtabData => {
             // Speed dial: the new tab's own shortcuts (separate from the bookmarks bar).
-            let top: Vec<Value> = app
-                .storage
-                .shortcuts()
-                .unwrap_or_default()
-                .into_iter()
+            let all = app.storage.shortcuts().unwrap_or_default();
+            let tile = |s: &mizu_storage::Shortcut| json!({ "id": s.id, "url": s.url, "title": s.title, "host": mizu_core::omnibox::host_of(&s.url) });
+            let top: Vec<Value> = all
+                .iter()
+                .filter(|s| s.folder.is_none())
                 .take(24)
-                .map(|s| json!({ "id": s.id, "url": s.url, "title": s.title, "host": mizu_core::omnibox::host_of(&s.url) }))
+                .map(|s| {
+                    if s.is_folder {
+                        let items: Vec<Value> = all.iter().filter(|x| x.folder == Some(s.id)).map(tile).collect();
+                        json!({ "id": s.id, "title": s.title, "folder": true, "items": items })
+                    } else {
+                        tile(s)
+                    }
+                })
                 .collect();
             let engines: Vec<Value> = app
                 .settings

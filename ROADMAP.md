@@ -17,7 +17,8 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 | 0.3 | Currents | Import, welcome tour, tab groups, quick actions | ✅ Released |
 | 0.3.1 | Currents | Site settings, cookie cleanup, Open with, crash reports | ✅ Released |
 | 0.3.2 | Currents | Spaces, split view | ✅ Released |
-| **0.3.x** | Currents | Tree tabs, faster loading, accessibility, updater rollback | 🔜 Next |
+| 0.3.3 | Currents | Tree tabs, new tab folders, per-site zoom | ✅ Released |
+| **0.3.x** | Currents | Cosmetic filters, faster loading, accessibility, updater rollback | 🔜 Next |
 | 0.4 | Deep Water | Privacy and data: fingerprinting defence, backups | Planned |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
 | 0.6 | Estuary | Built-in tools: PDF, translation, media hub | Planned |
@@ -78,14 +79,12 @@ automatic cookie cleanup, "Open with…" for downloads, local crash reports.
 **0.3.2 ✅** (2026-11-24): spaces (separate tab sets with a name, colour and icon) and split view; importing no
 longer fills Mizu's bookmarks bar.
 
+**0.3.3 ✅** (2026-11-24): tree tabs in the sidebar, folders of new tab shortcuts, per-site zoom.
+
 Still to come, roughly in this order:
 
-**Organise**
-- **Tree tabs** in the sidebar (tabs opened from a page sit under it), on top of the session format with groups.
-- **New tab:** folders of shortcuts.
-
 **Privacy**
-- **Shield:** generic and procedural cosmetic filters; the site page gains per-site zoom.
+- **Shield:** generic and procedural cosmetic filters.
 
 **Faster and handier**
 - Preconnect to the address being typed, a clearer progress bar, background tabs restored gradually.

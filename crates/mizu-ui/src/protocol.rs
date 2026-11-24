@@ -96,6 +96,11 @@ pub enum Command {
         icon: Option<String>,
     },
     SpaceDelete { id: u32 },
+    /// Per-site zoom back to the default.
+    SiteZoomReset { host: String },
+    /// Tree tabs: fold or unfold a tab's children; close a tab with all its children.
+    TabTreeToggle { id: u64 },
+    CloseBranch { id: u64 },
     TabToSpace { tab: u64, space: u32 },
     /// Tab groups: start a group with a tab, move a tab in or out, change, ungroup, close.
     GroupCreate { tab: u64 },
@@ -238,10 +243,23 @@ pub enum Command {
     },
     BookmarkDelete { id: i64 },
     /// New tab shortcuts (their own list, not bookmarks).
-    ShortcutAdd { title: String, url: String },
+    ShortcutAdd {
+        title: String,
+        url: String,
+        #[serde(default)]
+        folder: Option<i64>,
+    },
     ShortcutUpdate { id: i64, title: String, url: String },
     ShortcutDelete { id: i64 },
-    ShortcutMove { id: i64, index: usize },
+    /// Reorder; with `into` set, move into that folder (or, `into: 0`, out to the top level).
+    ShortcutMove {
+        id: i64,
+        index: usize,
+        #[serde(default)]
+        into: Option<i64>,
+    },
+    /// Drop tile `id` onto tile `onto`: they make a folder.
+    ShortcutFolder { id: i64, onto: i64, title: String },
     /// New tab look, from its Customize panel.
     NewtabPrefs {
         background: String,

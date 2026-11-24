@@ -36,6 +36,10 @@ pub struct Tab {
     pub group: Option<u32>,
     /// The space this tab belongs to.
     pub space: u32,
+    /// Tree tabs: the tab this one was opened from (the sidebar shows it underneath).
+    pub parent: Option<TabId>,
+    /// Tree tabs: this tab's children are folded away.
+    pub tree_collapsed: bool,
 }
 
 impl Tab {
@@ -63,6 +67,8 @@ impl Tab {
             pinned_url: None,
             group: None,
             space: 0,
+            parent: None,
+            tree_collapsed: false,
         }
     }
 }
@@ -171,6 +177,13 @@ impl TabStrip {
         let Some(space) = self.get(id).map(|t| t.space) else { return false };
         self.active_space = space;
         self.active = Some(id);
+        // A tab inside a folded branch unfolds it.
+        let ancestors = self.ancestors(id);
+        for a in ancestors {
+            if let Some(t) = self.get_mut(a) {
+                t.tree_collapsed = false;
+            }
+        }
         self.activation_order.retain(|&t| t != id);
         self.activation_order.insert(0, id);
         true
@@ -180,6 +193,7 @@ impl TabStrip {
     /// the active tab changed.
     pub fn close(&mut self, id: TabId) -> Option<TabId> {
         let index = self.index_of(id)?;
+        self.promote_children(id);
         let tab = self.tabs.remove(index);
         self.prune_groups();
         self.activation_order.retain(|&t| t != id);
@@ -229,7 +243,9 @@ impl TabStrip {
     /// Moves a tab to `to`, clamped so pinned and unpinned tabs never interleave.
     pub fn move_tab(&mut self, id: TabId, to: usize) -> bool {
         let Some(from) = self.index_of(id) else { return false };
-        let tab = self.tabs.remove(from);
+        self.promote_children(id);
+        let mut tab = self.tabs.remove(from);
+        tab.parent = None;
         let pinned = self.pinned_count();
         let to = if tab.pinned {
             to.min(pinned)
@@ -339,7 +355,9 @@ impl TabStrip {
         if self.tabs[from].pinned == pinned {
             return false;
         }
+        self.promote_children(id);
         let mut tab = self.tabs.remove(from);
+        tab.parent = None;
         tab.pinned = pinned;
         tab.pinned_url = (pinned && !is_blank(&tab.url)).then(|| tab.url.clone());
         if pinned {
@@ -362,7 +380,97 @@ impl TabStrip {
         tab.pinned_url = src.pinned_url.clone();
         tab.group = src.group;
         tab.space = src.space;
-        Some(self.insert_raw(index + 1, tab))
+        tab.parent = src.parent;
+        let after = self.subtree_end(index);
+        Some(self.insert_raw(after, tab))
+    }
+
+    // ───────────────────────────── Tree tabs ─────────────────────────────
+
+    /// Inserts a tab opened from `parent` after the parent's branch, as its child (same space
+    /// and group). Pinned parents get no children: the tab goes after the pinned tabs.
+    pub fn insert_child(&mut self, parent: TabId, mut tab: Tab) -> TabId {
+        let Some(pi) = self.index_of(parent) else { return self.insert_after_active(tab) };
+        let p = &self.tabs[pi];
+        if p.pinned {
+            let at = self.pinned_count();
+            return self.insert(at, tab);
+        }
+        tab.parent = Some(parent);
+        tab.group = p.group;
+        tab.space = p.space;
+        let at = self.subtree_end(pi);
+        self.insert_raw(at, tab)
+    }
+
+    /// Index just past the branch that starts at `index` (its descendants follow it).
+    fn subtree_end(&self, index: usize) -> usize {
+        let root = self.tabs[index].id;
+        let mut end = index + 1;
+        while end < self.tabs.len() && self.is_descendant(self.tabs[end].id, root) {
+            end += 1;
+        }
+        end
+    }
+
+    /// Parent, grandparent, … of a tab (nearest first).
+    pub fn ancestors(&self, id: TabId) -> Vec<TabId> {
+        let mut out = Vec::new();
+        let mut cur = self.get(id).and_then(|t| t.parent);
+        while let Some(p) = cur {
+            if out.contains(&p) || out.len() > 64 {
+                break;
+            }
+            out.push(p);
+            cur = self.get(p).and_then(|t| t.parent);
+        }
+        out
+    }
+
+    pub fn is_descendant(&self, id: TabId, ancestor: TabId) -> bool {
+        self.ancestors(id).contains(&ancestor)
+    }
+
+    /// How deep a tab sits in its tree (0 for a top-level tab).
+    pub fn depth(&self, id: TabId) -> usize {
+        self.ancestors(id).len()
+    }
+
+    pub fn children_count(&self, id: TabId) -> usize {
+        self.tabs.iter().filter(|t| t.parent == Some(id)).count()
+    }
+
+    /// The tab is inside a folded branch.
+    pub fn tree_hidden(&self, id: TabId) -> bool {
+        self.ancestors(id).iter().any(|a| self.get(*a).is_some_and(|t| t.tree_collapsed))
+    }
+
+    /// Folds or unfolds a tab's children. Folding the branch of the active tab activates the
+    /// branch's top tab (returned).
+    pub fn toggle_tree(&mut self, id: TabId) -> Option<TabId> {
+        if self.children_count(id) == 0 {
+            return None;
+        }
+        let t = self.get_mut(id)?;
+        t.tree_collapsed = !t.tree_collapsed;
+        let folded = t.tree_collapsed;
+        if folded && self.active.is_some_and(|a| self.is_descendant(a, id)) {
+            self.active = Some(id);
+            self.activation_order.retain(|&t| t != id);
+            self.activation_order.insert(0, id);
+            return Some(id);
+        }
+        None
+    }
+
+    /// A tab leaves the tree: its children take its parent.
+    fn promote_children(&mut self, id: TabId) {
+        let parent = self.get(id).and_then(|t| t.parent);
+        for t in &mut self.tabs {
+            if t.parent == Some(id) {
+                t.parent = parent;
+            }
+        }
     }
 
     /// The tabs of the current space, in order.
@@ -483,6 +591,8 @@ impl TabStrip {
         }
         t.space = space;
         t.group = None;
+        t.parent = None;
+        self.promote_children(tab);
         self.prune_groups();
         if self.active != Some(tab) {
             return self.active;
@@ -519,6 +629,8 @@ impl TabStrip {
                     pinned_url: t.pinned_url.clone(),
                     group: t.group,
                     space: t.space,
+                    parent: t.parent.and_then(|p| self.index_of(p)),
+                    tree_collapsed: t.tree_collapsed,
                 })
                 .collect(),
             active_index: self.active.and_then(|a| self.index_of(a)).unwrap_or(0),
@@ -546,8 +658,17 @@ impl TabStrip {
             }
             tab.group = t.group.filter(|g| !t.pinned && snapshot.groups.iter().any(|x| x.id == *g));
             tab.space = if strip.spaces.iter().any(|s| s.id == t.space) { t.space } else { first_space };
+            tab.tree_collapsed = t.tree_collapsed;
             let at = strip.tabs.len();
             strip.insert_raw(at, tab);
+        }
+        // Parents by index; a link to itself or to a later tab is dropped (trees go forward).
+        let ids: Vec<TabId> = strip.tabs.iter().map(|t| t.id).collect();
+        for (i, t) in snapshot.tabs.iter().enumerate() {
+            let parent = t.parent.filter(|p| *p < i && !strip.tabs[*p].pinned && strip.tabs[*p].space == strip.tabs[i].space).map(|p| ids[p]);
+            if !strip.tabs[i].pinned {
+                strip.tabs[i].parent = parent;
+            }
         }
         strip.active_space = if strip.spaces.iter().any(|s| s.id == snapshot.active_space) { snapshot.active_space } else { first_space };
         if let Some(t) = strip.tabs.get(snapshot.active_index).map(|t| t.id) {
@@ -789,5 +910,32 @@ mod tests {
         // A window with only the main space stores nothing extra.
         let (plain, _) = strip(&["https://a/"]);
         assert!(plain.snapshot().spaces.is_empty());
+    }
+
+    #[test]
+    fn tree_tabs_nest_and_promote() {
+        let (mut s, ids) = strip(&["https://a/", "https://b/"]);
+        let c1 = s.insert_child(ids[0], Tab::new("https://a/1"));
+        let c2 = s.insert_child(ids[0], Tab::new("https://a/2"));
+        let g = s.insert_child(c1, Tab::new("https://a/1/x"));
+        // Order: a, a/1, a/1/x, a/2, b
+        let order: Vec<TabId> = s.tabs().iter().map(|t| t.id).collect();
+        assert_eq!(order, vec![ids[0], c1, g, c2, ids[1]]);
+        assert_eq!(s.depth(g), 2);
+        assert_eq!(s.children_count(ids[0]), 2);
+        // Folding hides the branch; activating a hidden tab unfolds it.
+        s.activate(g);
+        assert_eq!(s.toggle_tree(ids[0]), Some(ids[0]), "the active tab was inside");
+        assert!(s.tree_hidden(g));
+        s.activate(g);
+        assert!(!s.tree_hidden(g));
+        // Closing a parent moves its children up.
+        s.close(c1);
+        assert_eq!(s.get(g).unwrap().parent, Some(ids[0]));
+        // A snapshot keeps the tree.
+        let r = TabStrip::from_snapshot(&s.snapshot());
+        let rid: Vec<TabId> = r.tabs().iter().map(|t| t.id).collect();
+        assert_eq!(r.get(rid[1]).unwrap().parent, Some(rid[0]));
+        assert_eq!(r.depth(rid[1]), 1);
     }
 }

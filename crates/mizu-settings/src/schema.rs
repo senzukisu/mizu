@@ -178,6 +178,8 @@ pub struct AppearanceSettings {
     pub show_bookmarks_bar: bool,
     pub show_home_button: bool,
     pub zoom_percent: u32,
+    /// Zoom chosen per site (host → percent); sites at the default zoom are absent.
+    pub site_zoom: std::collections::BTreeMap<String, u32>,
     /// "top" (tab strip) or "side" (vertical tabs in a sidebar).
     pub tab_layout: String,
     /// Vertical tabs sidebar shows icons only.
@@ -223,6 +225,7 @@ impl Default for AppearanceSettings {
             show_bookmarks_bar: true,
             show_home_button: false,
             zoom_percent: 100,
+            site_zoom: std::collections::BTreeMap::new(),
             tab_layout: "top".into(),
             sidebar_collapsed: false,
             sidebar_width: 252,
@@ -455,6 +458,8 @@ pub struct TabSettings {
     pub sleeping_tabs: bool,
     pub sleep_after_minutes: u32,
     pub switch_to_new_tabs_from_links: bool,
+    /// Tree tabs: in the sidebar, tabs opened from a page sit under it.
+    pub tree_tabs: bool,
 }
 
 impl Default for TabSettings {
@@ -464,6 +469,7 @@ impl Default for TabSettings {
             sleeping_tabs: true,
             sleep_after_minutes: 30,
             switch_to_new_tabs_from_links: false,
+            tree_tabs: true,
         }
     }
 }

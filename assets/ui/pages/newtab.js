@@ -63,7 +63,7 @@ function searchForm() {
   return form;
 }
 
-function tileDialog(tile) {
+function tileDialog(tile, folder = null) {
   const title = h('input', { type: 'text', value: tile ? tile.title : '', placeholder: 'Name' });
   const url = h('input', { type: 'url', value: tile ? tile.url : '', placeholder: 'https://example.com' });
   const dlg = h('dialog', null, h('h3', { text: tile ? 'Edit shortcut' : 'Add shortcut' }),
@@ -75,7 +75,7 @@ function tileDialog(tile) {
       const name = title.value.trim() || hostOf(u) || u;
       try {
         if (tile) await mizu.request('shortcut_update', { id: tile.id, title: name, url: u });
-        else await mizu.request('shortcut_add', { title: name, url: u });
+        else await mizu.request('shortcut_add', { title: name, url: u, folder });
         dlg.close();
         load();
       } catch (e) {
@@ -88,56 +88,102 @@ function tileDialog(tile) {
   setTimeout(() => (tile ? title : url).focus(), 30);
 }
 
+const DRAG = 'text/x-mizu-shortcut';
+const tileLabel = (s) => s.title || (s.host || hostOf(s.url) || s.url).replace(/^www\./, '');
+const act = (iconName, title, fn) => {
+  const b = h('button', { class: 'nt-tile-act', title }, icon(iconName, { size: 13 }));
+  b.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fn();
+  });
+  return b;
+};
+
+// The middle of a tile makes a folder (or drops into one); its edges reorder.
+function dropZone(e, el) {
+  const r = el.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width;
+  return x > 0.25 && x < 0.75 ? 'merge' : 'order';
+}
+
+// A link tile. `folder` is the id of the folder it sits in (null at the top level).
+function linkTile(s, list, folder) {
+  const a = h('a', { class: 'nt-tile', href: s.url, title: s.url, translate: 'no', draggable: 'true' }, letterAvatar(s.url, s.title), h('span', { text: tileLabel(s) }));
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    mizu.send('open_url', { url: s.url, disposition: e.ctrlKey ? 'background' : 'current' });
+  });
+  a.addEventListener('auxclick', (e) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      mizu.send('open_url', { url: s.url, disposition: 'background' });
+    }
+  });
+  const acts = [act('edit', 'Edit', () => tileDialog(s))];
+  if (folder != null) acts.push(act('export', 'Take out of the folder', () => mizu.request('shortcut_move', { id: s.id, index: 999, into: 0 }).then(load)));
+  acts.push(act('close', 'Remove', () => mizu.request('shortcut_delete', { id: s.id }).then(load)));
+  a.append(h('div', { class: 'nt-tile-acts' }, ...acts));
+  dragTarget(a, s, list, folder);
+  return a;
+}
+
+// A folder tile: up to four little icons; click to open it.
+function folderTile(f, list) {
+  const items = f.items || [];
+  const mini = h('div', { class: 'fav nt-folder-fav' }, ...items.slice(0, 4).map((x) => letterAvatar(x.url, x.title)));
+  const a = h('a', { class: 'nt-tile is-folder', href: '#', title: f.title, draggable: 'true' }, mini, h('span', { text: f.title || i18n.tr('Folder') }));
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    openFolder(f.id);
+  });
+  a.append(h('div', { class: 'nt-tile-acts' },
+    act('close', 'Remove folder (keeps its shortcuts)', () => mizu.request('shortcut_delete', { id: f.id }).then(load))));
+  dragTarget(a, f, list, null);
+  return a;
+}
+
+function dragTarget(a, s, list, folder) {
+  a.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData(DRAG, JSON.stringify({ id: s.id, folder: !!s.folder }));
+    e.dataTransfer.effectAllowed = 'move';
+    a.classList.add('dragging');
+  });
+  a.addEventListener('dragend', () => a.classList.remove('dragging'));
+  a.addEventListener('dragover', (e) => {
+    if (!e.dataTransfer.types.includes(DRAG)) return;
+    e.preventDefault();
+    const merge = folder == null && dropZone(e, a) === 'merge';
+    a.classList.toggle('merge', merge);
+    a.classList.toggle('drop', !merge);
+  });
+  a.addEventListener('dragleave', () => a.classList.remove('drop', 'merge'));
+  a.addEventListener('drop', (e) => {
+    e.preventDefault();
+    a.classList.remove('drop', 'merge');
+    let src;
+    try {
+      src = JSON.parse(e.dataTransfer.getData(DRAG));
+    } catch {
+      return;
+    }
+    if (!src || src.id === s.id) return;
+    const index = list.findIndex((x) => x.id === s.id);
+    const merge = folder == null && dropZone(e, a) === 'merge' && !src.folder;
+    if (merge && s.folder) {
+      mizu.request('shortcut_move', { id: src.id, index: 999, into: s.id }).then(load);
+    } else if (merge) {
+      mizu.request('shortcut_folder', { id: src.id, onto: s.id, title: i18n.tr('Folder') }).then(load);
+    } else if (index >= 0) {
+      mizu.request('shortcut_move', { id: src.id, index, into: folder ?? 0 }).then(load);
+    }
+  });
+}
+
 function tiles() {
   const box = h('div', { class: 'nt-tiles' });
-  for (const s of data.top || []) {
-    const label = s.title || (s.host || hostOf(s.url) || s.url).replace(/^www\./, '');
-    const a = h('a', { class: 'nt-tile', href: s.url, title: s.url, translate: 'no' }, letterAvatar(s.url, s.title), h('span', { text: label }));
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      mizu.send('open_url', { url: s.url, disposition: e.ctrlKey ? 'background' : 'current' });
-    });
-    a.addEventListener('auxclick', (e) => {
-      if (e.button === 1) {
-        e.preventDefault();
-        mizu.send('open_url', { url: s.url, disposition: 'background' });
-      }
-    });
-    const edit = h('button', { class: 'nt-tile-act', title: 'Edit' }, icon('edit', { size: 13 }));
-    edit.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      tileDialog(s);
-    });
-    const del = h('button', { class: 'nt-tile-act', title: 'Remove' }, icon('close', { size: 13 }));
-    del.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      mizu.request('shortcut_delete', { id: s.id }).then(load);
-    });
-    a.append(h('div', { class: 'nt-tile-acts' }, edit, del));
-    // Drag a tile onto another to put it there.
-    a.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('text/x-mizu-shortcut', String(s.id));
-      e.dataTransfer.effectAllowed = 'move';
-      a.classList.add('dragging');
-    });
-    a.addEventListener('dragend', () => a.classList.remove('dragging'));
-    a.addEventListener('dragover', (e) => {
-      if (!e.dataTransfer.types.includes('text/x-mizu-shortcut')) return;
-      e.preventDefault();
-      a.classList.add('drop');
-    });
-    a.addEventListener('dragleave', () => a.classList.remove('drop'));
-    a.addEventListener('drop', (e) => {
-      e.preventDefault();
-      a.classList.remove('drop');
-      const id = Number(e.dataTransfer.getData('text/x-mizu-shortcut'));
-      const index = (data.top || []).findIndex((x) => x.id === s.id);
-      if (id && id !== s.id && index >= 0) mizu.request('shortcut_move', { id, index }).then(load);
-    });
-    box.append(a);
-  }
+  const list = data.top || [];
+  for (const s of list) box.append(s.folder ? folderTile(s, list) : linkTile(s, list, null));
   if (!info.private) {
     const add = h('button', { class: 'nt-tile add', title: 'Add shortcut' }, h('div', { class: 'fav' }, icon('plus', { size: 20 })), h('span', { text: 'Add' }));
     add.addEventListener('click', () => tileDialog(null));
@@ -146,6 +192,41 @@ function tiles() {
   return box;
 }
 
+// An open folder: its name (editable) and its tiles. Redrawn after every change.
+let folderView = null;
+function openFolder(id) {
+  const name = h('input', { type: 'text', class: 'nt-folder-name', maxlength: '40', 'aria-label': 'Folder name' });
+  const grid = h('div', { class: 'nt-tiles nt-folder-grid' });
+  const hint = h('div', { class: 'nt-folder-hint', text: 'Drag a tile onto another on the new tab page to make a folder. Drag here to reorder.' });
+  const done = h('button', { class: 'btn primary', text: 'Done', onclick: () => dlg.close() });
+  const dlg = h('dialog', { class: 'nt-folder' }, name, grid, h('div', { class: 'row' }, hint, done));
+  let saveT = 0;
+  name.addEventListener('input', () => {
+    clearTimeout(saveT);
+    saveT = setTimeout(() => mizu.request('shortcut_update', { id, title: name.value.trim() || i18n.tr('Folder'), url: '' }).then(load), 400);
+  });
+  name.addEventListener('keydown', (e) => e.key === 'Enter' && dlg.close());
+  const refresh = () => {
+    const f = (data.top || []).find((x) => x.id === id && x.folder);
+    if (!f) return dlg.close();
+    if (document.activeElement !== name) name.value = f.title || '';
+    const items = f.items || [];
+    grid.className = `nt-tiles nt-folder-grid size-${data.tile_size || 'medium'}`;
+    grid.replaceChildren(...items.map((x) => linkTile(x, items, id)));
+    const add = h('button', { class: 'nt-tile add', title: 'Add shortcut' }, h('div', { class: 'fav' }, icon('plus', { size: 20 })), h('span', { text: 'Add' }));
+    add.addEventListener('click', () => tileDialog(null, id));
+    grid.append(add);
+  };
+  folderView = { refresh };
+  document.body.append(dlg);
+  refresh();
+  dlg.showModal();
+  dlg.addEventListener('close', () => {
+    clearTimeout(saveT);
+    folderView = null;
+    dlg.remove();
+  });
+}
 
 function render() {
   const isPrivate = !!info.private || !!data.private || document.documentElement.hasAttribute('data-private');
@@ -457,7 +538,10 @@ function load() {
       data = d || {};
       if (!engineId) engineId = data.engine_id;
       render();
+      if (folderView) folderView.refresh();
       if (location.hash === '#customize') openCustomize();
+      const m = /^#folder=(\d+)$/.exec(location.hash);
+      if (m && !folderView) openFolder(Number(m[1]));
     })
     .catch(() => render());
 }

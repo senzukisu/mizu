@@ -19,6 +19,11 @@ pub struct TabSnapshot {
     pub group: Option<u32>,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub space: u32,
+    /// Tree tabs: index of the tab this one was opened from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<usize>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub tree_collapsed: bool,
 }
 
 fn is_zero(v: &u32) -> bool {

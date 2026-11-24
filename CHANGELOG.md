@@ -3,6 +3,23 @@
 All notable changes to Mizu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.3.3] — 2026-11-24
+
+### Added
+- **Tree tabs** (side tabs): a tab opened from a page sits under it, indented. The arrow next to a tab with children
+  folds or unfolds its branch; right-click → **Close tab and the tabs opened from it**. Closing a tab moves its
+  children up a level. The tree is restored with the session; turn it off in Settings → Tabs.
+- **Folders on the new tab page:** drag a tile onto the middle of another to make a folder (drag onto a folder's
+  middle to add to it; onto a tile's edge to reorder). Click a folder to open it, rename it, add or reorder its
+  shortcuts, or take one out. Removing a folder keeps its shortcuts.
+- **Per-site zoom:** Mizu remembers the zoom you choose on a site (Ctrl+plus/minus, Ctrl+wheel) and uses it on every
+  visit. The site page (lock icon → Site settings) shows it with a **Reset** button.
+
+### Changed
+- Tabs opened from links go right after the branch of the tab that opened them (with "Open new tabs: Next to
+  current").
+- The space switcher at the bottom of the side tabs only appears once there are two spaces.
+
 ## [0.3.2] — 2026-11-24
 
 ### Added

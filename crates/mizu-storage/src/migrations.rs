@@ -95,6 +95,12 @@ const MIGRATIONS: &[&str] = &[
         WHERE parent_id = 1 AND kind = 'url' AND url IS NOT NULL
         ORDER BY position LIMIT 24;
     "#,
+    // 4 – folders of new tab shortcuts: a folder is a shortcut row with kind 'folder';
+    // its tiles point at it through `folder`.
+    r#"
+    ALTER TABLE shortcuts ADD COLUMN kind TEXT NOT NULL DEFAULT 'link';
+    ALTER TABLE shortcuts ADD COLUMN folder INTEGER;
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {

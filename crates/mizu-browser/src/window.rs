@@ -42,6 +42,8 @@ pub struct TabState {
     /// Engine memory target lowered (efficiency mode, long-idle background tab).
     pub low_memory: bool,
     pub zoom: f64,
+    /// The site whose zoom the tab shows (per-site zoom follows navigation between sites).
+    pub zoom_host: String,
     pub last_active: Instant,
     /// Opened only to retry a download: close it once the download starts.
     pub close_if_download: bool,
@@ -65,6 +67,7 @@ impl TabState {
             sleeping: false,
             low_memory: false,
             zoom: 1.0,
+            zoom_host: String::new(),
             last_active: Instant::now(),
             close_if_download: false,
             http_status: 0,

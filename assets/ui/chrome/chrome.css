@@ -1328,10 +1328,75 @@ body.collapsed .vt-collapse svg.icon {
   gap: 4px;
   padding: 4px 0 2px;
 }
-.vt-spaces:has(.space-btn:only-child) {
+.vt-spaces[hidden] {
   display: none;
 }
 body.collapsed .vt-spaces {
   flex-direction: column;
   align-items: center;
+}
+
+/* ── Tree tabs (sidebar) ─────────────────────────────────────── */
+.tab .twisty {
+  display: none;
+}
+#vt .tab {
+  margin-left: calc(min(var(--depth, 0), 6) * 14px);
+  transition: margin-left 160ms ease;
+}
+#vt .tab.tree-kid::after {
+  content: '';
+  display: block !important;
+  position: absolute;
+  left: -8px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ink-3) 35%, transparent);
+}
+#vt #tabs.has-tree .tab {
+  padding-left: 26px;
+}
+#vt .tab.tree-parent .twisty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  flex: none;
+}
+#vt .tab.tree-parent .twisty .icon {
+  width: 13px;
+  height: 13px;
+  transition: transform 160ms ease;
+}
+#vt .tab.tree-folded .twisty .icon {
+  transform: rotate(-90deg);
+}
+#vt .tab .twisty:hover {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  color: var(--ink);
+}
+#vt .tab.tree-hidden {
+  display: none;
+}
+body.collapsed #vt .tab,
+body.collapsed #vt #tabs.has-tree .tab {
+  margin-left: 0;
+  padding: 0;
+}
+body.collapsed #vt .tab .twisty {
+  display: none !important;
 }

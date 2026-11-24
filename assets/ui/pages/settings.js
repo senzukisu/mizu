@@ -592,6 +592,7 @@ function tabs() {
         save();
       })),
       toggle('Switch to tabs opened from links', null, () => t.switch_to_new_tabs_from_links, (v) => (t.switch_to_new_tabs_from_links = v)),
+      toggle('Tree tabs', 'With tabs on the side, a tab opened from a page sits under it. Click the arrow to fold a branch.', () => t.tree_tabs, (v) => (t.tree_tabs = v)),
     ),
     card('Sleeping tabs', 'Background tabs you haven\'t used for a while are suspended to save memory and battery. Tabs playing audio never sleep.',
       toggle('Put inactive tabs to sleep', null, () => t.sleeping_tabs, (v) => (t.sleeping_tabs = v)),

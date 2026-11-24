@@ -27,14 +27,16 @@ pub struct OpenOptions {
     pub load_now: bool,
     /// Insert next to the active tab rather than at the end.
     pub adjacent: bool,
+    /// Opened from this tab (a link): with tree tabs it goes under it.
+    pub parent: Option<TabId>,
 }
 
 impl OpenOptions {
     pub fn foreground() -> Self {
-        Self { activate: true, popup: false, load_now: true, adjacent: false }
+        Self { activate: true, popup: false, load_now: true, adjacent: false, parent: None }
     }
     pub fn background() -> Self {
-        Self { activate: false, popup: false, load_now: true, adjacent: true }
+        Self { activate: false, popup: false, load_now: true, adjacent: true, parent: None }
     }
 }
 
@@ -77,6 +79,7 @@ impl App {
 
     pub fn open_tab(&mut self, window: WindowId, url: String, opts: OpenOptions) -> Option<TabId> {
         let position = self.settings.tabs.new_tab_position;
+        let tree = self.settings.tabs.tree_tabs;
         let settings = self.settings.clone();
         let w = self.window_mut(window)?;
         // Use the pre-created spare view if there is one: no engine start-up delay.
@@ -86,7 +89,9 @@ impl App {
             None => Tab::new(url.clone()),
         };
         let id = tab.id;
-        if opts.adjacent && position == NewTabPosition::AfterCurrent {
+        if let Some(parent) = opts.parent.filter(|_| tree && position == NewTabPosition::AfterCurrent) {
+            w.strip.insert_child(parent, tab);
+        } else if opts.adjacent && position == NewTabPosition::AfterCurrent {
             w.strip.insert_after_active(tab);
         } else {
             w.strip.push(tab);
@@ -456,6 +461,15 @@ impl App {
         if matches!(event, ViewEvent::ContentLoading) && self.media.forget(tab.0) {
             self.media_dirty = true;
         }
+        let default_zoom = f64::from(self.settings.appearance.zoom_percent) / 100.0;
+        let mut zoom_record: Option<(String, u32)> = None;
+        let site_zoom = match &event {
+            ViewEvent::SourceChanged { uri } => {
+                let host = zoom_host(uri);
+                Some((host.clone(), self.settings.appearance.site_zoom.get(&host).map_or(default_zoom, |p| f64::from(*p) / 100.0)))
+            }
+            _ => None,
+        };
         let Some(w) = self.window_mut(window) else { return };
         let active = w.strip.active() == Some(tab);
         let mut record: Option<(String, String)> = None;
@@ -467,6 +481,15 @@ impl App {
                 ViewEvent::SourceChanged { uri } => {
                     if let Some(t) = w.strip.get_mut(tab) {
                         t.url = uri.clone();
+                    }
+                    // Per-site zoom: a different site gets its own zoom (or the default).
+                    if let Some((host, z)) = site_zoom {
+                        if host != state.zoom_host {
+                            state.zoom_host = host;
+                            if let Some(v) = state.view.as_ref().filter(|_| (state.zoom - z).abs() > 0.004) {
+                                v.set_zoom(z);
+                            }
+                        }
                     }
                     if active && !w.flyout.is_open(FlyoutKind::Omnibox) {
                         w.flyout.hide();
@@ -534,12 +557,28 @@ impl App {
                     queue::with_app(move |a| a.close_tab(window, tab));
                 }
                 ViewEvent::StatusText { .. } | ViewEvent::GotFocus => {}
-                ViewEvent::ZoomChanged { factor } => state.zoom = factor,
+                ViewEvent::ZoomChanged { factor } => {
+                    state.zoom = factor;
+                    if !private && !state.zoom_host.is_empty() {
+                        zoom_record = Some((state.zoom_host.clone(), (factor * 100.0).round() as u32));
+                    }
+                }
             }
         }
         w.state_dirty = true;
         if session_dirty {
             self.session_dirty = true;
+        }
+        if let Some((host, pct)) = zoom_record {
+            let map = &mut self.settings.appearance.site_zoom;
+            let changed = if pct == self.settings.appearance.zoom_percent {
+                map.remove(&host).is_some()
+            } else {
+                map.insert(host, pct.clamp(25, 500)) != Some(pct)
+            };
+            if changed {
+                self.persist_settings();
+            }
         }
         if let Some((url, title)) = record {
             if !url.is_empty() {
@@ -576,6 +615,7 @@ impl App {
         let (dl_active, dl_progress) = self.downloads.summary();
         let (media_count, media_playing) = self.media.summary(self.window(id).is_some_and(|w| w.private));
         let session_blocked = hot::with(|h| h.stats.session_blocked).unwrap_or(0);
+        let tree = self.settings.tabs.tree_tabs;
         let Some(w) = self.window(id) else { return };
         let active = w.active_tab();
         let tabs: Vec<serde_json::Value> = w
@@ -591,6 +631,10 @@ impl App {
                     "pinned": t.pinned,
                     "group": t.group,
                     "space": t.space,
+                    "depth": if tree { w.strip.depth(t.id).min(6) } else { 0 },
+                    "kids": if tree { w.strip.children_count(t.id) } else { 0 },
+                    "tree_collapsed": tree && t.tree_collapsed,
+                    "tree_hidden": tree && w.strip.tree_hidden(t.id),
                     "away": t.away_from_pin(),
                     "loading": s.is_some_and(|s| s.loading),
                     "audible": s.is_some_and(|s| s.audible),
@@ -726,7 +770,7 @@ impl App {
     // ───────────────────────────── Pop-ups ─────────────────────────────
 
     pub fn on_new_window_request(&mut self, key: ViewKey, req: NewWindowRequest) {
-        let Some((window, _tab)) = self.locate(key) else {
+        let Some((window, opener)) = self.locate(key) else {
             req.block();
             return;
         };
@@ -739,7 +783,7 @@ impl App {
             return;
         }
         let activate = self.settings.tabs.switch_to_new_tabs_from_links || req.uri.is_empty() || req.uri == "about:blank";
-        let opts = OpenOptions { activate, popup: true, load_now: true, adjacent: true };
+        let opts = OpenOptions { activate, popup: true, load_now: true, adjacent: true, parent: Some(opener) };
         let url = req.uri.clone();
         if let Some(tab) = self.open_tab(window, url, opts) {
             if let Some(state) = self.window_mut(window).and_then(|w| w.tabs.get_mut(&tab)) {
@@ -956,4 +1000,13 @@ fn map_permission(k: mizu_engine::PermissionKind) -> PermissionKind {
         E::OtherSensors => PermissionKind::OtherSensors,
         E::Unknown => PermissionKind::Unknown,
     }
+}
+
+/// The key per-site zoom is stored under: the web site's host (no "www."), or empty for
+/// Mizu's own pages and other addresses (they use the default zoom).
+pub fn zoom_host(url: &str) -> String {
+    if !(url.starts_with("https://") || url.starts_with("http://")) {
+        return String::new();
+    }
+    crate::shield::normalize_host(&mizu_core::omnibox::host_of(url).unwrap_or_default())
 }
