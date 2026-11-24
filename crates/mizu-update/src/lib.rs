@@ -18,6 +18,9 @@ pub const RELEASE_PUBLIC_KEY: &str = "0u2eZTPr5TBpkzDuUoFAI9Y1ypf9O9myVlNmXkiFZY
 
 pub const MANIFEST_URL: &str = "https://github.com/senzukisu/mizu/releases/latest/download/mizu-update.json";
 pub const SIGNATURE_URL: &str = "https://github.com/senzukisu/mizu/releases/latest/download/mizu-update.json.sig";
+/// The beta channel: a pre-release tagged `beta`, replaced with each test build.
+pub const BETA_MANIFEST_URL: &str = "https://github.com/senzukisu/mizu/releases/download/beta/mizu-update.json";
+pub const BETA_SIGNATURE_URL: &str = "https://github.com/senzukisu/mizu/releases/download/beta/mizu-update.json.sig";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Manifest {

@@ -209,6 +209,12 @@ function buildTab(t) {
     closeTab(el);
   });
   el.addEventListener('pointerdown', (e) => onTabPointerDown(e, el));
+  // Experimental: double-click closes the tab.
+  el.addEventListener('dblclick', (e) => {
+    if (!settings?.labs?.double_click_closes_tab || e.target.closest('button')) return;
+    e.preventDefault();
+    closeTab(el);
+  });
   el.addEventListener('auxclick', (e) => {
     if (e.button === 1) {
       e.preventDefault();
@@ -513,6 +519,26 @@ function revealActiveTab() {
   const a = els.tabs.querySelector('.tab.active');
   if (a && els.tabs.scrollWidth > els.tabs.clientWidth) a.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: motionMs(1) ? 'smooth' : 'auto' });
 }
+// Experimental: the wheel over the tab strip switches tabs (top strip without overflow, and
+// the sidebar with Shift held).
+let wheelSwitchAt = 0;
+els.tabs.addEventListener('wheel', (e) => {
+  if (!settings?.labs?.wheel_switches_tabs || !state) return;
+  const overflow = VERTICAL ? !e.shiftKey : els.tabs.scrollWidth > els.tabs.clientWidth;
+  if (overflow) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  const now = Date.now();
+  if (now - wheelSwitchAt < 120) return;
+  wheelSwitchAt = now;
+  const tabs = spaceTabs().filter((t) => !t.tree_hidden);
+  const i = tabs.findIndex((t) => t.id === state.active);
+  const next = tabs[(i + (e.deltaY > 0 || e.deltaX > 0 ? 1 : -1) + tabs.length) % tabs.length];
+  if (next && next.id !== state.active) {
+    activateNow(next.id);
+    mizu.send('activate_tab', { id: next.id });
+  }
+}, { passive: false });
 if (!VERTICAL) {
   els.tabs.addEventListener('wheel', (e) => {
     if (els.tabs.scrollWidth <= els.tabs.clientWidth) return;
@@ -764,7 +790,45 @@ els.address.addEventListener('keydown', (e) => {
 // ── Rendering ───────────────────────────────────────────────
 const SITE_ICONS = { secure: 'lock', insecure: 'warning', internal: 'drop', file: 'file', other: 'globe' };
 let lastSite = '';
-let wasLoading = false;
+// The loading bar follows the page's real stages (request sent → response → document ready →
+// loaded) and creeps towards the next stage meanwhile, so a slow server looks slow and a fast
+// page finishes at once.
+const STAGES = [0.1, 0.35, 0.75, 1];
+let progTab = null;
+let progStage = -1;
+let progLoading = false;
+function drawProgress(nav) {
+  const bar = els.progress;
+  const tab = state.active;
+  if (tab !== progTab) {
+    // Another tab: jump to its state without animating from the old one.
+    progTab = tab;
+    progStage = -1;
+    progLoading = false;
+    bar.className = '';
+    bar.style.width = '0';
+  }
+  if (nav.loading) {
+    const p = Math.max(0.1, nav.progress || 0.1);
+    if (!progLoading) {
+      bar.className = '';
+      bar.style.width = '0';
+      void bar.offsetWidth;
+    }
+    if (p !== progStage) {
+      progStage = p;
+      const next = STAGES.find((x) => x > p + 0.001) || 0.97;
+      bar.className = 'loading';
+      bar.style.width = `${Math.round((p + (next - p) * 0.85) * 100)}%`;
+    }
+    progLoading = true;
+  } else if (progLoading) {
+    progLoading = false;
+    progStage = -1;
+    bar.className = 'done';
+    bar.style.width = '100%';
+  }
+}
 
 function renderNav() {
   const nav = state.nav || {};
@@ -811,14 +875,7 @@ function renderNav() {
   zb.hidden = !nav.zoom || nav.zoom === 100;
   zb.textContent = `${nav.zoom}%`;
 
-  if (nav.loading && !wasLoading) {
-    els.progress.className = '';
-    void els.progress.offsetWidth;
-    els.progress.className = 'loading';
-  } else if (!nav.loading && wasLoading) {
-    els.progress.className = 'done';
-  }
-  wasLoading = !!nav.loading;
+  drawProgress(nav);
 
   if (document.activeElement !== els.address) showUrl();
   els.address.placeholder = `Search ${settings?._engine || 'the web'} or enter address`;

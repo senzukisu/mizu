@@ -109,3 +109,5 @@ Use a fresh profile. Tick each line.
 
 - [ ] MizuSetup into a custom folder: Start menu entry, listed in Default apps, `uninstall.exe` removes it.
 - [ ] An installed copy sees a higher version: "Update now / Later"; "Update now" restarts into it with the tabs.
+- [ ] Rollback: run `MizuSetup-X.Y.Z.exe /S --relaunch` with `MIZU_TEST_FAIL_START=1` set — the installer restores
+  `mizu.prev` and leaves `update-failed`; the next normal start says the update was rolled back.

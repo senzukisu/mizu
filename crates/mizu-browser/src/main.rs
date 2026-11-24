@@ -116,13 +116,21 @@ fn write_crash_report(info: &std::panic::PanicHookInfo<'_>) {
     let _ = std::fs::write(dir.join(format!("crash-{secs}.txt")), report);
 }
 
+/// When the process started (for start-up timing in the log).
+pub static STARTED: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
 fn main() {
+    STARTED.get_or_init(std::time::Instant::now);
     let _log_guard = init_logging();
     std::panic::set_hook(Box::new(|info| {
         tracing::error!(%info, "panic");
         write_crash_report(info);
     }));
     tracing::info!(version = mizu_core::VERSION, "starting Mizu");
+    if std::env::var_os("MIZU_TEST_FAIL_START").is_some() {
+        tracing::error!("MIZU_TEST_FAIL_START is set: exiting to test the update rollback");
+        std::process::exit(3);
+    }
 
     // SAFETY: process-wide initialisation before any window exists.
     unsafe {

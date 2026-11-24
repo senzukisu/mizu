@@ -68,16 +68,29 @@ fn installed_location() -> Option<String> {
 
 pub const RELEASES_URL: &str = "https://github.com/senzukisu/mizu/releases/latest";
 
-fn run(sender: WorkerSender, reply: Option<(ViewKey, u64)>) {
+/// Downloads and verifies one channel's manifest.
+fn fetch_manifest(url: &str, sig_url: &str) -> Result<mizu_update::Manifest, String> {
+    let manifest = mizu_privacy::fetch_https_bytes(url, 64 * 1024).map_err(|e| e.to_string())?;
+    let sig = mizu_privacy::fetch_https_bytes(sig_url, 4 * 1024).map_err(|e| e.to_string())?;
+    let sig = String::from_utf8(sig).map_err(|_| "bad signature file".to_string())?;
+    mizu_update::verify(&manifest, &sig).map_err(|e| e.to_string())
+}
+
+fn run(sender: WorkerSender, reply: Option<(ViewKey, u64)>, beta: bool, skipped: String) {
     std::thread::Builder::new()
         .name("mizu-update".into())
         .spawn(move || {
             let result = (|| -> Result<Outcome, String> {
-                let manifest = mizu_privacy::fetch_https_bytes(mizu_update::MANIFEST_URL, 64 * 1024).map_err(|e| e.to_string())?;
-                let sig = mizu_privacy::fetch_https_bytes(mizu_update::SIGNATURE_URL, 4 * 1024).map_err(|e| e.to_string())?;
-                let sig = String::from_utf8(sig).map_err(|_| "bad signature file".to_string())?;
-                let m = mizu_update::verify(&manifest, &sig).map_err(|e| e.to_string())?;
-                if !mizu_update::is_newer(&m.version, mizu_core::VERSION) {
+                let mut m = fetch_manifest(mizu_update::MANIFEST_URL, mizu_update::SIGNATURE_URL)?;
+                if beta {
+                    // The beta wins when it is newer; a missing beta release is not an error.
+                    if let Ok(b) = fetch_manifest(mizu_update::BETA_MANIFEST_URL, mizu_update::BETA_SIGNATURE_URL) {
+                        if mizu_update::is_newer(&b.version, &m.version) {
+                            m = b;
+                        }
+                    }
+                }
+                if !mizu_update::is_newer(&m.version, mizu_core::VERSION) || m.version == skipped {
                     return Ok(Outcome::UpToDate);
                 }
                 if !is_installed_copy() {
@@ -104,7 +117,8 @@ impl App {
             return;
         }
         self.update = UpdateState::Checking;
-        run(self.worker.clone(), reply);
+        let beta = self.settings.general.update_channel == "beta";
+        run(self.worker.clone(), reply, beta, self.settings.general.skipped_update.clone());
     }
 
     pub fn finish_update_check(&mut self, result: Result<Outcome, String>, reply: Option<(ViewKey, u64)>) {
@@ -189,4 +203,27 @@ impl App {
         }
         Ok(())
     }
+}
+
+/// The installer leaves `update-pending` next to `mizu.exe` while a new version proves it
+/// starts; Mizu removes it once its first window is ready. If the new version fails, the
+/// installer puts the old one back and leaves `update-failed` with the version that failed.
+fn marker(name: &str) -> Option<PathBuf> {
+    std::env::current_exe().ok()?.parent().map(|d| d.join(name))
+}
+
+/// The first window is up: this version starts fine.
+pub fn confirm_started() {
+    if let Some(p) = marker("update-pending").filter(|p| p.exists()) {
+        let _ = std::fs::remove_file(p);
+        tracing::info!("update confirmed: the new version started");
+    }
+}
+
+/// After a rollback: the version that failed (the marker is consumed).
+pub fn take_failed_update() -> Option<String> {
+    let p = marker("update-failed").filter(|p| p.exists())?;
+    let v = std::fs::read_to_string(&p).ok().map(|s| s.trim().chars().take(32).collect::<String>());
+    let _ = std::fs::remove_file(&p);
+    v.filter(|v| !v.is_empty())
 }

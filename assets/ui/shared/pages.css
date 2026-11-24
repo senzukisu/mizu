@@ -3038,3 +3038,93 @@ dialog.nt-folder {
   color: var(--ink-3);
   font-size: var(--fs-sm);
 }
+
+/* ── Settings: grouped navigation, page intro, jump links ─────── */
+.set-nav-group {
+  margin: 10px 12px 2px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.set-nav-group:first-child {
+  margin-top: 4px;
+}
+.set-nav button {
+  height: 34px;
+}
+.set-nav button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.set-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 18px;
+}
+.set-head .set-title {
+  margin: 0;
+}
+.set-head-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+}
+.set-head-icon .icon {
+  width: 22px;
+  height: 22px;
+}
+.set-sub {
+  margin: 4px 0 0;
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+.set-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -4px 0 18px;
+}
+.set-jump .chip {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.set-jump .chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  color: var(--accent);
+}
+.set-content .card {
+  scroll-margin-top: 16px;
+}
+.keep-list > .d {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+
+.labs-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  color: var(--ink-2);
+}
+.labs-note .icon {
+  color: var(--accent);
+  flex: none;
+}

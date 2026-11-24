@@ -97,7 +97,10 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 || old.media.autoplay != app.settings.media.autoplay
                 || old.privacy.block_third_party_cookies != app.settings.privacy.block_third_party_cookies
                 || old.advanced.extensions != app.settings.advanced.extensions
-                || old.general.language != app.settings.general.language;
+                || old.general.language != app.settings.general.language
+                || old.labs.force_dark_pages != app.settings.labs.force_dark_pages
+                || old.labs.overlay_scrollbars != app.settings.labs.overlay_scrollbars
+                || old.labs.parallel_downloads != app.settings.labs.parallel_downloads;
             app.persist_settings();
             app.apply_settings_to_surfaces();
             if old.appearance.zoom_percent != app.settings.appearance.zoom_percent {

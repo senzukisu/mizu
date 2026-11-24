@@ -1,4 +1,4 @@
-// Settings: ten categories bound to the browser's settings object.
+// Settings: categories in three groups, bound to the browser's settings object.
 'use strict';
 
 const main = document.getElementById('main');
@@ -9,18 +9,21 @@ let saveTimer = 0;
 let query = '';
 let restartNeeded = false;
 
+// [id, title, icon, group, what the page is for]
 const CATEGORIES = [
-  ['general', 'General', 'sliders'],
-  ['appearance', 'Appearance', 'sun'],
-  ['search', 'Search', 'search'],
-  ['privacy', 'Privacy & Shield', 'shield'],
-  ['security', 'Security', 'lock'],
-  ['downloads', 'Downloads', 'download'],
-  ['tabs', 'Tabs', 'tabs'],
-  ['performance', 'Performance', 'gauge'],
-  ['media', 'Media', 'media'],
-  ['shortcuts', 'Shortcuts', 'keyboard'],
-  ['advanced', 'Advanced', 'code'],
+  ['general', 'General', 'sliders', 'Browser', 'Language, start-up, default browser, import and updates.'],
+  ['appearance', 'Appearance', 'sun', 'Browser', 'Theme, colours, toolbar, fonts and zoom.'],
+  ['tabs', 'Tabs', 'tabs', 'Browser', 'Where tabs sit, tree tabs and how new tabs open.'],
+  ['search', 'Search', 'search', 'Browser', 'Search engine, keywords and address bar suggestions.'],
+  ['shield', 'Mizu Shield', 'shield', 'Protection', 'Ad and tracker blocking: lists, your own rules, exceptions.'],
+  ['privacy', 'Privacy', 'eye-off', 'Protection', 'Cookies, tracking, site permissions and clearing data.'],
+  ['security', 'Passwords & security', 'key', 'Protection', 'Saved passwords, SmartScreen and pop-ups.'],
+  ['downloads', 'Downloads', 'download', 'More', 'Where files are saved.'],
+  ['media', 'Media', 'media', 'More', 'Music panel, media player, picture in picture, autoplay.'],
+  ['performance', 'Performance', 'gauge', 'More', 'Memory, sleeping tabs and faster loading.'],
+  ['shortcuts', 'Shortcuts', 'keyboard', 'More', 'Change any keyboard shortcut.'],
+  ['advanced', 'Advanced', 'code', 'More', 'Developer tools, extensions, engine and reset.'],
+  ['labs', 'Experimental', 'sparkle', 'More', 'Features we are trying out. They may change or go away.'],
 ];
 
 function save(immediate) {
@@ -107,7 +110,7 @@ function general() {
     save(true);
   });
   return [
-    card(null, null, setting('Language', 'Interface language. "Automatic" follows Windows.', lang)),
+    card('Language', null, setting('Interface language', '"Automatic" follows Windows. A restart applies it everywhere.', lang)),
     card('On startup', null,
       setting('When Mizu starts', null, seg([['restore_session', 'Continue where I left off'], ['new_tab', 'New tab'], ['home_page', 'Home page']], g.startup, (v) => {
         g.startup = v;
@@ -115,7 +118,6 @@ function general() {
       })),
       setting('Home page', 'Used by the Home button and on startup.', home),
       toggle('Offer to restore tabs after a crash', 'If Mizu didn\'t close normally, your tabs come back.', () => g.restore_after_crash, (v) => (g.restore_after_crash = v)),
-      toggle('Confirm before closing many tabs', null, () => g.confirm_close_multiple_tabs, (v) => (g.confirm_close_multiple_tabs = v)),
       toggle('Open windows maximized', 'Mizu starts full-size instead of in a smaller window.', () => g.start_maximized, (v) => (g.start_maximized = v)),
     ),
     card('Default browser', null, (() => {
@@ -259,6 +261,7 @@ function appearance() {
         save();
       })),
       toggle('Show Home button', null, () => a.show_home_button, (v) => (a.show_home_button = v)),
+      toggle('Show bookmarks bar', 'Ctrl+Shift+B. It also appears by itself once it has a bookmark.', () => a.show_bookmarks_bar, (v) => (a.show_bookmarks_bar = v)),
     ),
     card('Interface', null,
       setting('Style', 'Soft uses rounded, floating controls; Round makes them pill-shaped; Crisp is flatter.', seg([['soft', 'Soft'], ['round', 'Round'], ['crisp', 'Crisp']], a.style, (v) => {
@@ -272,12 +275,9 @@ function appearance() {
       })),
       toggle('Animations', 'Smooth transitions in the interface. Windows "reduce motion" is always respected.', () => a.animations, (v) => (a.animations = v)),
       toggle('Translucent window (Mica)', 'Lets the desktop colour show through the tab strip on Windows 11.', () => a.translucency, (v) => (a.translucency = v)),
-      setting('Tab layout', 'Vertical tabs live in a sidebar on the left; collapse it to icons with the arrow at its bottom.', seg([['top', 'Top'], ['side', 'Side']], a.tab_layout || 'top', (v) => {
-        a.tab_layout = v;
-        save(true);
-      })),
-      toggle('Show bookmarks bar', 'Ctrl+Shift+B', () => a.show_bookmarks_bar, (v) => (a.show_bookmarks_bar = v)),
-      setting('Default page zoom', null, zoom),
+    ),
+    card('Zoom', null,
+      setting('Default page zoom', 'Mizu also remembers the zoom you choose on each site (Ctrl+plus, Ctrl+minus, Ctrl+wheel); reset it from the lock icon → Site settings.', zoom),
     ),
   ];
 }
@@ -361,7 +361,7 @@ function filterLists() {
   return box;
 }
 
-function privacy() {
+function shield() {
   const p = s.privacy;
   const update = h('button', { class: 'btn', text: payload.filters_updating ? 'Updating…' : 'Update lists now', disabled: payload.filters_updating });
   update.addEventListener('click', () => {
@@ -410,8 +410,19 @@ function privacy() {
   }
 
   return [
-    card('Mizu Shield', 'Blocks ads, trackers and known malicious content with filter lists in uBlock Origin syntax, on top of the engine\'s own tracking prevention.',
-      toggle('Block ads and trackers', 'Network filtering, element hiding and scriptlets, like uBlock Origin.', () => p.content_blocking, (v) => (p.content_blocking = v)),
+    card('Mizu Shield', 'Blocks ads, trackers and known malicious content with filter lists in uBlock Origin syntax.',
+      toggle('Block ads and trackers', 'Network filtering, element hiding (site, generic and procedural rules) and scriptlets, like uBlock Origin.', () => p.content_blocking, (v) => (p.content_blocking = v)),
+    ),
+    card('Filter lists', 'Lists are downloaded over HTTPS directly from their maintainers and refreshed every few days.', filterLists(), h('div', { class: 'setting' }, h('div', { class: 'txt' }), addList, update)),
+    card('My rules', 'One rule per line in uBlock Origin syntax, for example example.com##.banner to hide an element.', h('div', { class: 'setting col' }, rules, h('div', null, saveRules))),
+    card('Sites where Shield is off', null, allow),
+  ];
+}
+
+function privacy() {
+  const p = s.privacy;
+  return [
+    card('Tracking', null,
       setting('Tracking prevention', 'Engine-level protection against cross-site tracking storage. Strict may break some sign-ins.', seg([['off', 'Off'], ['basic', 'Basic'], ['balanced', 'Balanced'], ['strict', 'Strict']], p.tracking_prevention, (v) => {
         p.tracking_prevention = v;
         save();
@@ -419,9 +430,9 @@ function privacy() {
       toggle('Block third-party cookies', 'Sites embedded in other sites (ads, trackers, widgets) cannot set or read cookies. A rare embedded sign-in may need it off. Requires restart.', () => p.block_third_party_cookies, (v) => (p.block_third_party_cookies = v)),
       toggle('Send Global Privacy Control', 'Tells websites not to sell or share your data (Sec-GPC header). Legally binding in some regions.', () => p.global_privacy_control, (v) => (p.global_privacy_control = v)),
     ),
-    card('Filter lists', 'Lists are downloaded over HTTPS directly from their maintainers and refreshed every few days.', filterLists(), h('div', { class: 'setting' }, h('div', { class: 'txt' }), addList, update)),
-    card('My rules', null, h('div', { class: 'setting col' }, rules, h('div', null, saveRules))),
-    card('Sites where Shield is off', null, allow),
+    cookieCleanupCard(),
+    permissionsCard(),
+    externalAppsCard(),
     clearDataCard(),
     card('Clear when Mizu closes', null,
       toggle('History', null, () => p.clear_on_exit.history, (v) => (p.clear_on_exit.history = v)),
@@ -429,18 +440,6 @@ function privacy() {
       toggle('Cached files', null, () => p.clear_on_exit.cache, (v) => (p.clear_on_exit.cache = v)),
       toggle('Site storage', 'Local storage, IndexedDB, service workers.', () => p.clear_on_exit.site_storage, (v) => (p.clear_on_exit.site_storage = v)),
       toggle('Download history', 'Files stay on disk.', () => p.clear_on_exit.downloads, (v) => (p.clear_on_exit.downloads = v)),
-    ),
-    permissionsCard(),
-    cookieCleanupCard(),
-    externalAppsCard(),
-    card('Passwords', 'Mizu Passwords stores logins encrypted with your Windows account (DPAPI) on this device only.',
-      toggle('Offer to save passwords', 'After you sign in, Mizu asks whether to remember the login. Fill it later with the key in the address bar.', () => p.password_manager, (v) => (p.password_manager = v)),
-      setting('Saved passwords', 'View, edit, import from other browsers or export.', (() => {
-        const b = h('button', { class: 'btn', text: 'Manage passwords' });
-        b.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://passwords/', disposition: 'new_tab' }));
-        return b;
-      })()),
-      toggle('Engine form autofill', 'Lets the web engine remember addresses and other form entries.', () => p.engine_autofill, (v) => (p.engine_autofill = v)),
     ),
   ];
 }
@@ -543,18 +542,22 @@ function externalAppsCard() {
 
 function security() {
   const sec = s.security;
+  const p = s.privacy;
   return [
-    card('Protection', null,
-      toggle('Microsoft Defender SmartScreen', 'Warns about phishing and malware sites and downloads. Addresses you visit are checked with Microsoft\'s service.', () => sec.smartscreen, (v) => (sec.smartscreen = v)),
-      toggle('Block pop-ups', 'Pop-ups that open without a click are blocked; you will see a notice.', () => sec.block_unrequested_popups, (v) => (sec.block_unrequested_popups = v)),
-    ),
-    card('Password manager', null,
-      setting('Mizu Passwords', 'Your saved logins, encrypted with your Windows account. View, edit, import or export them.', (() => {
+    card('Passwords', 'Mizu Passwords stores logins encrypted with your Windows account (DPAPI), on this device only.',
+      setting('Saved passwords', 'View, edit, import from other browsers or export.', (() => {
         const b = h('button', { class: 'btn primary' }, icon('key'), h('span', { text: 'Open password manager' }));
         b.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://passwords/', disposition: 'new_tab' }));
         return b;
       })()),
+      toggle('Offer to save passwords', 'After you sign in, Mizu asks whether to remember the login. Fill it later with the key in the address bar.', () => p.password_manager, (v) => (p.password_manager = v)),
+      toggle('Engine form autofill', 'Lets the web engine remember addresses and other form entries.', () => p.engine_autofill, (v) => (p.engine_autofill = v)),
     ),
+    card('Protection', null,
+      toggle('Microsoft Defender SmartScreen', 'Warns about phishing and malware sites and downloads. Addresses you visit are checked with Microsoft\'s service.', () => sec.smartscreen, (v) => (sec.smartscreen = v)),
+      toggle('Block pop-ups', 'Pop-ups that open without a click are blocked; you will see a notice.', () => sec.block_unrequested_popups, (v) => (sec.block_unrequested_popups = v)),
+    ),
+
     card('Always on', 'These protections cannot be turned off.',
       setting('Process sandbox and site isolation', 'Every site runs in a separate, sandboxed process of the Chromium engine.', h('span', { class: 'pill ok', text: 'On' })),
       setting('Certificate verification', 'Invalid HTTPS certificates are always rejected; there is no "proceed anyway".', h('span', { class: 'pill ok', text: 'On' })),
@@ -602,30 +605,42 @@ function playerSelect(m) {
 
 function tabs() {
   const t = s.tabs;
+  const a = s.appearance;
+  const g = s.general;
   return [
-    card('Tabs', null,
+    card('Layout', null,
+      setting('Tab layout', 'Side puts tabs in a sidebar on the left; collapse it to icons with the arrow at its bottom.', seg([['top', 'Top'], ['side', 'Side']], a.tab_layout || 'top', (v) => {
+        a.tab_layout = v;
+        save(true);
+      })),
+      toggle('Tree tabs', 'With tabs on the side, a tab opened from a page sits under it. Click the arrow to fold a branch.', () => t.tree_tabs, (v) => (t.tree_tabs = v)),
+    ),
+    card('New tabs', null,
       setting('Open new tabs', null, seg([['after_current', 'Next to current'], ['end', 'At the end']], t.new_tab_position, (v) => {
         t.new_tab_position = v;
         save();
       })),
       toggle('Switch to tabs opened from links', null, () => t.switch_to_new_tabs_from_links, (v) => (t.switch_to_new_tabs_from_links = v)),
-      toggle('Tree tabs', 'With tabs on the side, a tab opened from a page sits under it. Click the arrow to fold a branch.', () => t.tree_tabs, (v) => (t.tree_tabs = v)),
-    ),
-    card('Sleeping tabs', 'Background tabs you haven\'t used for a while are suspended to save memory and battery. Tabs playing audio never sleep.',
-      toggle('Put inactive tabs to sleep', null, () => t.sleeping_tabs, (v) => (t.sleeping_tabs = v)),
-      setting('After', null, select([[5, '5 minutes'], [15, '15 minutes'], [30, '30 minutes'], [60, '1 hour'], [120, '2 hours'], [360, '6 hours']], t.sleep_after_minutes, (v) => {
-        t.sleep_after_minutes = Number(v);
-        save();
-      })),
+      toggle('Confirm before closing many tabs', null, () => g.confirm_close_multiple_tabs, (v) => (g.confirm_close_multiple_tabs = v)),
     ),
   ];
 }
 
 function performance() {
   const p = s.performance;
+  const t = s.tabs;
   return [
-    card('Performance', null,
+    card('Memory', 'Tabs playing audio never sleep.',
+      toggle('Put inactive tabs to sleep', 'Background tabs you haven\u2019t used for a while are suspended to save memory and battery.', () => t.sleeping_tabs, (v) => (t.sleeping_tabs = v)),
+      setting('After', null, select([[5, '5 minutes'], [15, '15 minutes'], [30, '30 minutes'], [60, '1 hour'], [120, '2 hours'], [360, '6 hours']], t.sleep_after_minutes, (v) => {
+        t.sleep_after_minutes = Number(v);
+        save();
+      })),
       toggle('Efficiency mode', 'Asks the engine to keep memory low for tabs you are not looking at.', () => p.efficiency_mode, (v) => (p.efficiency_mode = v)),
+    ),
+    card('Speed', null,
+      toggle('Connect while I type', 'Opens the connection to the site you are typing (or your search engine) before you press Enter. Nothing is loaded or sent but the connection itself.', () => p.preconnect !== false, (v) => (p.preconnect = v)),
+      toggle('Load pinned tabs after start', 'Pinned sites (mail, music, chats) load one by one in the background, so they are ready when you click them. Other restored tabs load when you open them.', () => p.load_pinned_tabs !== false, (v) => (p.load_pinned_tabs = v)),
       toggle('Hardware acceleration', 'Uses the GPU for rendering and video. Requires restart.', () => p.hardware_acceleration, (v) => (p.hardware_acceleration = v)),
     ),
   ];
@@ -670,14 +685,13 @@ function media() {
       })),
     ),
     card('Picture in picture', null,
-      toggle('Picture-in-picture button on videos', 'Hover a video to pop it out into a floating window that stays on top. Works even where a site hides its own button.', () => m.pip_button, (v) => (m.pip_button = v)),
+      toggle('Picture-in-picture button on videos', 'Hover a video to pop it out into a floating window that stays on top. Alt+Shift+P works even with the button off.', () => m.pip_button, (v) => (m.pip_button = v)),
       setting('Button position', null, seg([['top-right', 'Top right'], ['top-left', 'Top left']], m.pip_position || 'top-right', (v) => {
         m.pip_position = v;
         save();
       })),
       toggle('Compact button', 'Show only the icon, without the "PiP" label.', () => m.pip_compact, (v) => (m.pip_compact = v)),
       toggle('Video switching in the floating window', "Adds previous/next video and 10-second skip buttons. On YouTube they use the player's own playlist; elsewhere they switch between the videos on the page.", () => m.pip_controls, (v) => (m.pip_controls = v)),
-      setting('Keyboard shortcut', 'Pops out the playing video on any page, even with the button turned off. Reload open pages to apply changes.', h('span', { class: 'kbd-combo' }, h('kbd', { text: 'Alt' }), h('span', { class: 'kbd-plus', text: '+' }), h('kbd', { text: 'Shift' }), h('span', { class: 'kbd-plus', text: '+' }), h('kbd', { text: 'P' }))),
     ),
     card('Codecs', 'See which video and audio formats this system can decode, and whether hardware acceleration is available.', h('div', { class: 'setting' }, h('div', { class: 'txt' }), diag)),
   ];
@@ -759,6 +773,10 @@ function updatesCard(g) {
   return card('Updates', null,
     h('div', { class: 'setting' }, h('div', { class: 'txt' }, version, status), h('div', { class: 'upd-btns' }, check, install)),
     toggle('Update Mizu automatically', 'Checks for new versions when Mizu starts and every few hours, then asks before installing.', () => g.auto_update, (v) => (g.auto_update = v)),
+    setting('Update channel', 'Beta gets new versions earlier, for testing. If an update fails to start, Mizu goes back to the previous version by itself.', seg([['stable', 'Stable'], ['beta', 'Beta']], g.update_channel || 'stable', (v) => {
+      g.update_channel = v;
+      save();
+    })),
   );
 }
 
@@ -927,7 +945,27 @@ function shortcuts() {
   ];
 }
 
-const RENDER = { general, appearance, search, privacy, security, downloads, tabs, performance, media, shortcuts, advanced };
+function labs() {
+  s.labs = s.labs || {};
+  const l = s.labs;
+  return [
+    card(null, null, h('div', { class: 'labs-note' }, icon('sparkle', { size: 18 }), h('span', { text: 'These features are still being tested. If something misbehaves, turn it off again — nothing else changes.' }))),
+    card('Pages',
+      null,
+      toggle('Dark mode for every site', 'The engine darkens light websites itself. Some pages may look odd. Requires restart.', () => !!l.force_dark_pages, (v) => (l.force_dark_pages = v)),
+      toggle('Thin scrollbars', 'Slim scrollbars that widen when you point at them, like Windows 11. Requires restart.', () => !!l.overlay_scrollbars, (v) => (l.overlay_scrollbars = v)),
+    ),
+    card('Downloads', null,
+      toggle('Parallel downloading', 'Large files download over several connections at once, which can be faster. Requires restart.', () => !!l.parallel_downloads, (v) => (l.parallel_downloads = v)),
+    ),
+    card('Tabs', null,
+      toggle('Double-click closes a tab', null, () => !!l.double_click_closes_tab, (v) => (l.double_click_closes_tab = v)),
+      toggle('Mouse wheel switches tabs', 'Scroll over the tab strip to move between tabs (with side tabs, hold Shift).', () => !!l.wheel_switches_tabs, (v) => (l.wheel_switches_tabs = v)),
+    ),
+  ];
+}
+
+const RENDER = { general, appearance, search, shield, privacy, security, downloads, tabs, performance, media, shortcuts, advanced, labs };
 
 // ── Layout ───────────────────────────────────────────────────
 const nav = h('nav', { class: 'set-nav' });
@@ -1013,7 +1051,12 @@ function renderSearch() {
 
 function renderNav() {
   nav.replaceChildren();
-  for (const [id, label, ic] of CATEGORIES) {
+  let group = '';
+  for (const [id, label, ic, grp] of CATEGORIES) {
+    if (grp !== group) {
+      group = grp;
+      nav.append(h('div', { class: 'set-nav-group', text: grp }));
+    }
     const b = h('button', { class: id === current && !query ? 'on' : '' }, icon(ic), h('span', { text: label }));
     b.addEventListener('click', () => {
       if (query) {
@@ -1032,8 +1075,18 @@ function renderNav() {
 function renderContent() {
   if (!s) return;
   if (query) return renderSearch();
-  const title = CATEGORIES.find((c) => c[0] === current) || CATEGORIES[0];
-  content.replaceChildren(h('h2', { class: 'set-title', text: title[1] }), ...(RENDER[title[0]] || general)());
+  const cat = CATEGORIES.find((c) => c[0] === current) || CATEGORIES[0];
+  const cards = (RENDER[cat[0]] || general)();
+  // Long pages get a row of links to their cards.
+  const titled = cards.filter((c) => c.querySelector && c.querySelector(':scope > h2'));
+  const jump = titled.length >= 4
+    ? h('div', { class: 'set-jump' }, ...titled.map((c) => {
+      const b = h('button', { class: 'chip', text: c.querySelector(':scope > h2').textContent });
+      b.addEventListener('click', () => c.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      return b;
+    }))
+    : null;
+  content.replaceChildren(h('div', { class: 'set-head' }, h('span', { class: 'set-head-icon' }, icon(cat[2])), h('div', null, h('h2', { class: 'set-title', text: cat[1] }), h('p', { class: 'set-sub', text: cat[4] }))), ...(jump ? [jump] : []), ...cards);
   content.scrollTop = 0;
 }
 

@@ -212,6 +212,8 @@ impl View {
                     };
                     if h.on_navigation_starting(key, &req) == NavigationDecision::Cancel {
                         args.SetCancel(true)?;
+                    } else {
+                        h.on_event(key, ViewEvent::NavigationStarting);
                     }
                     Ok(())
                 })),

@@ -17,7 +17,7 @@ async function render() {
     top.append(h('div', { class: 'list-row' }, letterAvatar(`https://${host}`, host), h('div', { class: 'main', translate: 'no' }, h('div', { class: 't', text: host }), h('div', { class: 'meter' }, h('div', { style: { width: `${(100 * n) / max}%` } }))), h('span', { class: 'when', text: String(n) })));
   }
   const settingsBtn = h('button', { class: 'btn', text: 'Shield settings' });
-  settingsBtn.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://settings/#privacy', disposition: 'current' }));
+  settingsBtn.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://settings/#shield', disposition: 'current' }));
   const update = h('button', { class: 'btn', text: 'Update filter lists' });
   update.addEventListener('click', () => {
     mizu.send('filters_update', { force: true });

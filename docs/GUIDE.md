@@ -14,7 +14,7 @@ Everything you can do in Mizu, grouped by task. Short on time? Read [Quick start
 7. [Passwords](#passwords)
 8. [Music and video](#music-and-video)
 9. [Scripts and extensions](#scripts-and-extensions)
-10. [Make it yours](#make-it-yours) — look, language, zoom, shortcuts
+10. [Make it yours](#make-it-yours) — look, language, zoom, speed, experimental features
 11. [Updates](#updates)
 12. [Keyboard shortcuts](#keyboard-shortcuts)
 13. [Mizu's pages](#mizus-pages)
@@ -34,7 +34,7 @@ Everything you can do in Mizu, grouped by task. Short on time? Read [Quick start
    - The **shield** in the address bar blocks ads. If a site breaks, click it and turn Shield off for that site.
    - The **lock** in the address bar opens the site's settings: cookies, permissions, "Keep me signed in".
    - **Menu (⋮) → Settings** has a search box: type what you are looking for.
-4. Prefer tabs on the side? **Settings → Appearance → Tab layout → Side.**
+4. Prefer tabs on the side? **Settings → Tabs → Tab layout → Side.**
 
 ---
 
@@ -44,11 +44,11 @@ Everything you can do in Mizu, grouped by task. Short on time? Read [Quick start
 |---|---|
 | bring over bookmarks and history from Chrome, Edge, Yandex, Firefox… | Settings → General → **Import** ([more](#import-from-another-browser)) |
 | make Mizu my default browser | Settings → General → **Default browser** |
-| put tabs on the side | Settings → Appearance → **Tab layout → Side** ([more](#side-tabs-and-pinned-sites)) |
+| put tabs on the side | Settings → Tabs → **Tab layout → Side** ([more](#side-tabs-and-pinned-sites)) |
 | keep work and personal tabs apart | Menu → **New space** ([more](#spaces)) |
 | see two pages side by side | right-click a tab → **Open in split view** ([more](#split-view)) |
 | free memory | right-click a tab → **Unload other tabs** ([more](#sleeping-and-unloaded-tabs)) |
-| block a site's annoying element | Settings → Privacy & Shield → **My rules** ([more](#mizu-shield)) |
+| block a site's annoying element | Settings → Mizu Shield → **My rules** ([more](#mizu-shield)) |
 | fix a site Shield breaks | click the **shield** → turn it off for the site |
 | sign out of one site / forget it | lock icon → **Site settings** → **Forget this site** |
 | stay signed in to a site forever | lock icon → **Site settings** → **Keep me signed in** |
@@ -80,12 +80,12 @@ Everything you can do in Mizu, grouped by task. Short on time? Read [Quick start
 
 - **Unload tab** (right-click a tab) closes its page to free memory; the tab stays and reloads when you open it.
   **Unload other tabs** does it for every other tab. Tabs playing sound are skipped.
-- **Sleeping tabs** (Settings → Tabs): background tabs you haven't used for a while are suspended automatically.
+- **Sleeping tabs** (Settings → Performance): background tabs you haven't used for a while are suspended automatically.
 - **Efficiency mode** (Settings → Performance): idle tabs use less memory after two minutes.
 
 ### Side tabs and pinned sites
 
-Settings → Appearance → **Tab layout → Side**. The top becomes one row: navigation, address bar, menu, window buttons.
+Settings → Tabs → **Tab layout → Side**. The top becomes one row: navigation, address bar, menu, window buttons.
 
 - Drag the sidebar's edge to resize it; double-click the edge to reset the width. The arrow at the bottom collapses it
   to icons.
@@ -200,7 +200,7 @@ Vivaldi, Chromium, Opera, Opera GX and Firefox. Pick what to bring: bookmarks, h
 ### History
 
 **Ctrl+H.** Search, delete single entries, or clear the last hour, day, week, month or everything. Settings → Privacy
-& Shield → **Clear when Mizu closes** can do it automatically.
+→ **Clear when Mizu closes** can do it automatically.
 
 ### Downloads
 
@@ -222,12 +222,11 @@ manifest on GitHub, and — only if you turn them on — your search engine's su
 Blocks ads, trackers and known malicious sites with uBlock Origin–compatible filter lists.
 
 - The **shield** in the address bar shows how many requests were blocked. Click it to turn Shield off for the site.
-- Settings → Privacy & Shield:
+- Settings → **Mizu Shield**:
   - **Filter lists:** turn lists on or off (Annoyances and EasyList Cookie are off by default) or add any list by its
     HTTPS address. Lists update by themselves; **Update lists now** forces it.
   - **My rules:** your own rules in uBlock syntax, e.g. `example.com##.cookie-banner` or
     `||ads.example^`.
-  - Tracking prevention level and **Global Privacy Control**.
 - What Shield understands: network rules, `$redirect`, `$removeparam`, scriptlets, and element hiding — per-site
   rules, generic rules (`##.ad-banner` on every site) and procedural rules (`:has-text()`, `:upward()`, `:xpath()`,
   `:remove()`, `:style()` and more), including content a page adds later.
@@ -245,8 +244,9 @@ Click the **lock** → **Site settings** (or `mizu://site/?host=example.com`):
 
 ### Cookies
 
-- **Third-party cookies** are blocked (Settings → Privacy & Shield; needs a restart). Turn this off only if an
+- **Third-party cookies** are blocked (Settings → Privacy; needs a restart). Turn this off only if an
   embedded sign-in stops working.
+- **Tracking:** Settings → Privacy sets the tracking prevention level and **Global Privacy Control**.
 - **Cookie cleanup:** forget sites you haven't visited for 7, 30 or 90 days, once a day. "Keep me signed in" sites are
   kept.
 - **Clear browsing data:** **Ctrl+Shift+Delete**.
@@ -254,7 +254,7 @@ Click the **lock** → **Site settings** (or `mizu://site/?host=example.com`):
 ### Links to apps
 
 When a site wants to open Steam, Telegram, Zoom, your mail app or another program, Mizu asks first. **Always allow**
-remembers the choice for that site; Settings → Privacy & Shield → **Opening apps from sites** lists and removes them.
+remembers the choice for that site; Settings → Privacy → **Opening apps from sites** lists and removes them.
 
 ### Crash reports
 
@@ -269,7 +269,7 @@ More detail: [SECURITY](SECURITY.md).
 
 - **Save:** after you sign in, Mizu asks whether to save the login. **Never for this site** stops it asking there.
 - **Fill:** click the **key** in the address bar and pick a login.
-- **Manage:** Settings → Security → **Open password manager** (or `mizu://passwords`): search, show, copy, edit.
+- **Manage:** Settings → Passwords & security → **Open password manager** (or `mizu://passwords`): search, show, copy, edit.
 - **Import / export:** CSV from Chrome, Edge, Firefox, Opera, Brave, Vivaldi or Bitwarden. An export is plain text —
   delete it after use.
 - Passwords are encrypted with your Windows account (DPAPI) and never leave your PC.
@@ -337,6 +337,18 @@ Tampermonkey/Greasemonkey format. Menu → **Scripts & extensions** (`mizu://scr
 - **Language:** Settings → General → Language: Automatic (follows Windows), English or Russian. Restart to apply
   everywhere.
 - **Settings that need a restart** show a **Restart Mizu** button; your tabs come back.
+- **Speed** (Settings → Performance): **Connect while I type** opens the connection to the site you are typing before
+  you press Enter; **Load pinned tabs after start** gets pinned sites ready in the background. The loading bar under
+  the address bar follows the page's real progress.
+
+### Experimental features
+
+Settings → **Experimental**: features being tried out — they may change or go away, and turning one off undoes it.
+
+- **Dark mode for every site** — the engine darkens light pages (restart).
+- **Thin scrollbars** — slim, Windows 11–style scrollbars (restart).
+- **Parallel downloading** — big files over several connections (restart).
+- **Double-click closes a tab** and **Mouse wheel switches tabs** (with side tabs, hold Shift).
 
 ---
 
@@ -345,6 +357,9 @@ Tampermonkey/Greasemonkey format. Menu → **Scripts & extensions** (`mizu://scr
 - **Settings → General → Updates → Update Mizu automatically:** Mizu checks shortly after start and every few hours,
   downloads and verifies the update, then asks **Update now / Later**. "Update now" restarts Mizu with your tabs.
 - **Check for updates** checks right away.
+- **Update channel:** Stable or **Beta** (gets new versions earlier, for testing).
+- **If an update fails to start,** Mizu goes back to the previous version by itself and tells you; that version is not
+  offered again.
 - The **portable** copy doesn't update itself; it tells you when a new version is out.
 - The web engine (WebView2) is updated by Windows.
 
@@ -415,9 +430,9 @@ Type these in the address bar:
 | Problem | What to do |
 |---|---|
 | A site looks broken | Click the shield and turn Shield off for the site. If that helps, report the site to the filter list's maintainers. |
-| A site keeps signing me out | Lock → Site settings → **Keep me signed in**. If it uses an embedded sign-in, try allowing third-party cookies (Settings → Privacy & Shield). |
+| A site keeps signing me out | Lock → Site settings → **Keep me signed in**. If it uses an embedded sign-in, try allowing third-party cookies (Settings → Privacy). |
 | Video stutters | Open `mizu://media`. If the codec isn't "Hardware", update the GPU driver; for HEVC install "HEVC Video Extensions". |
-| Slow with many tabs | Right-click a tab → **Unload other tabs**; keep sleeping tabs on (Settings → Tabs). |
+| Slow with many tabs | Right-click a tab → **Unload other tabs**; keep sleeping tabs on (Settings → Performance). |
 | A shortcut does nothing | Settings → Shortcuts: the keys may have moved to another action. **Reset all** if unsure. |
 | No search suggestions | Settings → Search → **Search suggestions** must be on; never in private windows; some engines have none. |
 | The bookmarks bar shows things I didn't add | Right-click them → Delete, or hide the bar with Ctrl+Shift+B. |

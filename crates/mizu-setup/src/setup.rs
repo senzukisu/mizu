@@ -19,7 +19,7 @@ const CLIENT_KEY: &str = r"Software\Clients\StartMenuInternet\Mizu";
 /// Files setup puts into the install folder (plus temporary `.new` copies). Uninstall removes
 /// exactly these and then the folder only if it is empty, so choosing a folder that already
 /// holds other files can never lose them.
-const OWNED_FILES: &[&str] = &["mizu.exe", "mizu.new", "uninstall.exe", "uninstall.new"];
+const OWNED_FILES: &[&str] = &["mizu.exe", "mizu.new", "mizu.prev", "uninstall.exe", "uninstall.new", "update-pending", "update-failed"];
 
 pub fn payload_len() -> usize {
     PAYLOAD.len()
@@ -481,4 +481,71 @@ pub fn open_default_apps() {
     unsafe {
         ShellExecuteW(None, &HSTRING::from("open"), &HSTRING::from("ms-settings:defaultapps?registeredAppUser=Mizu"), PCWSTR::null(), PCWSTR::null(), SW_SHOWNORMAL);
     }
+}
+
+// ───────────────────────────── Update with rollback ─────────────────────────────
+
+/// Keeps the installed `mizu.exe` as `mizu.prev` before an update replaces it.
+pub fn keep_previous(dir: &Path) -> bool {
+    let exe = dir.join("mizu.exe");
+    exe.exists() && std::fs::copy(&exe, dir.join("mizu.prev")).is_ok()
+}
+
+/// Starts the new version and waits for it to prove it starts (it deletes `update-pending`
+/// when its first window is ready). If it exits first, or nothing happens for two minutes
+/// while it is gone, the previous version is put back, `update-failed` records the version
+/// that failed, and the previous version is started.
+pub fn launch_and_confirm(exe: &Path, version: &str) {
+    let Some(dir) = exe.parent() else { return };
+    let pending = dir.join("update-pending");
+    let prev = dir.join("mizu.prev");
+    if !prev.exists() || std::fs::write(&pending, version).is_err() {
+        launch(exe);
+        return;
+    }
+    let mut c = std::process::Command::new(exe);
+    c.current_dir(dir);
+    let Ok(mut child) = c.spawn() else {
+        roll_back(dir, version);
+        return;
+    };
+    let started = std::time::Instant::now();
+    loop {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        if !pending.exists() {
+            // Confirmed: the new version runs. The old copy is no longer needed.
+            let _ = std::fs::remove_file(&prev);
+            return;
+        }
+        match child.try_wait() {
+            Ok(Some(_)) => {
+                // It exited without ever showing a window (a second instance hands over to
+                // the first and exits quickly too, but then the first one confirms).
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                if pending.exists() {
+                    roll_back(dir, version);
+                }
+                return;
+            }
+            Ok(None) if started.elapsed() > std::time::Duration::from_secs(120) => {
+                // Still running but never got a window up: leave it be, keep the old copy
+                // for the next attempt, and stop waiting.
+                return;
+            }
+            _ => {}
+        }
+    }
+}
+
+fn roll_back(dir: &Path, version: &str) {
+    let exe = dir.join("mizu.exe");
+    let prev = dir.join("mizu.prev");
+    if let Ok(bytes) = std::fs::read(&prev) {
+        if replace_file(&exe, &bytes).is_ok() {
+            let _ = std::fs::remove_file(&prev);
+        }
+    }
+    let _ = std::fs::remove_file(dir.join("update-pending"));
+    let _ = std::fs::write(dir.join("update-failed"), version);
+    launch(&exe);
 }

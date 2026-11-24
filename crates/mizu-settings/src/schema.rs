@@ -14,6 +14,8 @@ pub struct Settings {
     pub performance: PerformanceSettings,
     pub media: MediaSettings,
     pub advanced: AdvancedSettings,
+    /// Experimental features: off by default, may change or go away.
+    pub labs: LabsSettings,
     /// Customised keyboard shortcuts: action id → combos ("Ctrl+Shift+T"). Missing = default.
     pub shortcuts: std::collections::BTreeMap<String, Vec<String>>,
 }
@@ -31,6 +33,9 @@ impl Settings {
             self.search.engine = SearchSettings::default().engine;
         }
         self.appearance.sidebar_width = self.appearance.sidebar_width.clamp(160, 520);
+        if !["stable", "beta"].contains(&self.general.update_channel.as_str()) {
+            self.general.update_channel = "stable".into();
+        }
         if !["top", "side"].contains(&self.appearance.tab_layout.as_str()) {
             self.appearance.tab_layout = "top".into();
         }
@@ -91,6 +96,10 @@ pub struct GeneralSettings {
     pub confirm_close_multiple_tabs: bool,
     /// The welcome tour last completed (0 = never). Shown again when WELCOME_VERSION grows.
     pub welcome_version: u32,
+    /// "stable" or "beta" (beta also offers test versions before they are released).
+    pub update_channel: String,
+    /// A version that failed to start after updating; it is not offered again.
+    pub skipped_update: String,
 }
 
 /// Bump to show the welcome tour once more to everyone (0.3.0 introduced it).
@@ -107,6 +116,8 @@ impl Default for GeneralSettings {
             restore_after_crash: true,
             confirm_close_multiple_tabs: true,
             welcome_version: 0,
+            update_channel: "stable".into(),
+            skipped_update: String::new(),
         }
     }
 }
@@ -483,6 +494,10 @@ pub struct PerformanceSettings {
     pub efficiency_mode: bool,
     /// Requires restart.
     pub hardware_acceleration: bool,
+    /// While you type an address, connect to the likely site ahead of time.
+    pub preconnect: bool,
+    /// After start, load pinned tabs one by one in the background.
+    pub load_pinned_tabs: bool,
 }
 
 impl Default for PerformanceSettings {
@@ -490,6 +505,8 @@ impl Default for PerformanceSettings {
         Self {
             efficiency_mode: true,
             hardware_acceleration: true,
+            preconnect: true,
+            load_pinned_tabs: true,
         }
     }
 }
@@ -565,6 +582,22 @@ impl Default for AdvancedSettings {
             userscript_auto_update: true,
         }
     }
+}
+
+/// Experimental features (Settings → Experimental).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct LabsSettings {
+    /// The engine darkens light websites. Requires restart.
+    pub force_dark_pages: bool,
+    /// Thin scrollbars that widen on hover, like Windows 11. Requires restart.
+    pub overlay_scrollbars: bool,
+    /// Large downloads in several parallel connections. Requires restart.
+    pub parallel_downloads: bool,
+    /// Double-clicking a tab closes it.
+    pub double_click_closes_tab: bool,
+    /// The mouse wheel over the tab strip switches tabs.
+    pub wheel_switches_tabs: bool,
 }
 
 /// A site that may open links of one scheme in its application without asking.

@@ -11,6 +11,8 @@ pub enum ViewEvent {
     SourceChanged { uri: String },
     TitleChanged { title: String },
     HistoryChanged { can_go_back: bool, can_go_forward: bool },
+    /// A top-level navigation was allowed to start (also for redirects).
+    NavigationStarting,
     ContentLoading,
     NavigationCompleted { success: bool, http_status: i32, web_error: i32 },
     DomContentLoaded,

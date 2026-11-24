@@ -6,6 +6,30 @@ How to use a feature is in the [user guide](docs/GUIDE.md); what comes next is i
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.5] — 2026-11-25
+
+### Added
+- **Updates roll back by themselves:** the installer keeps the previous version until the new one has opened its
+  window. If the new version closes before that, Mizu goes back to the previous one, tells you, and doesn't offer that
+  version again.
+- **Beta channel** (Settings → General → Updates → Update channel): get test versions before release.
+- **Faster loading:** **Connect while I type** opens the connection to the site you are typing (or your search engine)
+  before you press Enter; **Load pinned tabs after start** gets pinned sites ready in the background, one by one.
+- **Experimental** settings page: dark mode for every site, thin Windows 11–style scrollbars, parallel downloading,
+  double-click to close a tab, mouse wheel to switch tabs.
+
+### Changed
+- **Settings are reorganised** into three groups (Browser, Protection, More), each page with a short description and,
+  on long pages, links to its sections. Mizu Shield and Privacy are separate pages; passwords are in one place
+  (Passwords & security); everything about tabs is in Tabs; memory and speed are in Performance. Duplicates are gone.
+- **The loading bar** follows the page's real stages (request, response, document, loaded) instead of a fixed
+  animation, so a slow server looks slow and a fast page finishes at once.
+- A session of 300 tabs with groups opens its window in about 0.35 s.
+
+### Fixed
+- Web pages without a background of their own were drawn on Mizu's dark backdrop in the dark theme, leaving their
+  black text unreadable; they now get a white page, like in other browsers.
+
 ## [0.3.4] — 2026-11-24
 
 ### Added

@@ -6,7 +6,8 @@ technical dependencies. There are no dates: a version ships when its "done when"
 **Principles:** stability → security → performance → maintainability → extensibility. A new feature never makes
 the first three worse.
 
-**Where we are:** 0.3.4 is out. Next comes the rest of 0.3.x — faster loading and a safer updater — then 0.4.
+**Where we are:** 0.3.5 is out. What's left of 0.3.x is technical: integration tests and a code-signed installer;
+then 0.4.
 What already shipped is listed version by version in the [changelog](CHANGELOG.md).
 
 Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/issues).
@@ -22,7 +23,8 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 | 0.3.2 | Currents | Spaces, split view | ✅ Released |
 | 0.3.3 | Currents | Tree tabs, new tab folders, per-site zoom | ✅ Released |
 | 0.3.4 | Currents | Generic and procedural cosmetic filters, open in media player | ✅ Released |
-| **0.3.x** | Currents | Faster loading, updater rollback | 🔜 Next |
+| 0.3.5 | Currents | Faster loading, updater rollback and beta, new settings, experimental features | ✅ Released |
+| **0.3.x** | Currents | Integration tests, code-signed installer | 🔜 Next |
 | 0.4 | Deep Water | Privacy and data: fingerprinting defence, backups | Planned |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
 | 0.6 | Estuary | Built-in tools: PDF, translation, reading mode; screen readers | Planned |
@@ -88,19 +90,20 @@ longer fills Mizu's bookmarks bar.
 **0.3.4 ✅** (2026-11-24): generic and procedural cosmetic filters in Shield; "Open in media player" for videos and
 media links.
 
-Still to come, roughly in this order:
+**0.3.5 ✅** (2026-11-25): connect while typing, a loading bar that follows real progress, pinned tabs loaded in the
+background; updates roll back if the new version fails to start, and a beta channel; settings reorganised; an
+Experimental page. Measured: a 300-tab session with groups opens its window in ~0.35 s.
 
-**Faster and handier**
-- Preconnect to the address being typed, a clearer progress bar, background tabs restored gradually.
+Still to come, roughly in this order:
 
 **Technical work**
 - Integration tests that drive the real interface.
-- Updater: roll back if a new version fails to start, and a beta channel.
 - A code-signed installer (Authenticode).
 
 **Done when:**
-- a 300-tab session with groups restores in under a second;
-- the updater survives forced failures (bad signature, interrupted download, failed start).
+- ~~a 300-tab session with groups restores in under a second~~ — done in 0.3.5 (~0.35 s);
+- ~~the updater survives forced failures (bad signature, interrupted download, failed start)~~ — done in 0.3.5;
+- the interface is covered by integration tests and the installer is signed.
 
 ## 0.4 — "Deep Water": privacy and data
 

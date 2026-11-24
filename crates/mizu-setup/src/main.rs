@@ -54,7 +54,10 @@ fn main() {
     if silent {
         let dir = setup::installed().map_or_else(setup::default_install_dir, |(_, d)| d);
         let keep_desktop = setup::desktop_link().exists();
+        // An update started by Mizu keeps the running version to fall back on.
+        let rollback = has("--relaunch") && setup::keep_previous(&dir);
         match setup::install(&dir, keep_desktop, &|_, _| {}) {
+            Ok(exe) if has("--relaunch") && rollback => setup::launch_and_confirm(&exe, env!("CARGO_PKG_VERSION")),
             Ok(exe) if has("--relaunch") => setup::launch(&exe),
             Ok(_) => {}
             Err(e) => {

@@ -34,6 +34,7 @@ const TIMER_SCRIPTS: usize = 7;
 const TIMER_SPARE: usize = 8;
 const TIMER_UPDATE: usize = 9;
 const TIMER_CLEANUP: usize = 10;
+const TIMER_PINNED: usize = 11;
 
 /// A permission prompt waiting for the user.
 pub struct PendingPermission {
@@ -138,6 +139,19 @@ fn engine_args(settings: &Settings) -> Vec<String> {
         // sites get no cookies, first-party sign-ins keep working.
         args.push("--test-third-party-cookie-phaseout".into());
     }
+    // Experimental engine features go into one --enable-features switch.
+    let labs = &settings.labs;
+    let features: Vec<&str> = [
+        (labs.force_dark_pages, "WebContentsForceDark"),
+        (labs.overlay_scrollbars, "OverlayScrollbar,msOverlayScrollbarWinStyle,msOverlayScrollbarWinStyleAnimation"),
+        (labs.parallel_downloads, "ParallelDownloading"),
+    ]
+    .into_iter()
+    .filter_map(|(on, f)| on.then_some(f))
+    .collect();
+    if !features.is_empty() {
+        args.push(format!("--enable-features={}", features.join(",")));
+    }
     args
 }
 
@@ -190,6 +204,16 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         mizu_storage::OpenOutcome::RecreatedEmpty { .. } => {
             Some("Your profile database was damaged and could not be restored; a new one was created.".to_owned())
         }
+    };
+    // A new version that failed to start was rolled back: say so, and don't offer it again.
+    let startup_notice = match crate::update::take_failed_update() {
+        Some(v) => {
+            tracing::warn!(version = v, "the update failed to start and was rolled back");
+            settings.general.skipped_update = v.clone();
+            let _ = mizu_settings::save(&paths.settings(), &settings);
+            Some(format!("Mizu {v} did not start, so Mizu went back to {}. Your tabs and data are safe.", mizu_core::VERSION))
+        }
+        None => startup_notice,
     };
     let _ = storage.mark_stale_downloads_interrupted();
     let previous_session = storage.load_session::<SessionSnapshot>().ok().flatten();
@@ -317,6 +341,8 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
             SetTimer(Some(app.msg_hwnd), TIMER_UPDATE, 12_000, None);
             // Cookie cleanup a minute after start (when pages have settled), then daily.
             SetTimer(Some(app.msg_hwnd), TIMER_CLEANUP, 60_000, None);
+            // Pinned tabs start loading in the background once the first page has had time.
+            SetTimer(Some(app.msg_hwnd), TIMER_PINNED, 3_000, None);
         }
     });
     Ok(())
@@ -553,6 +579,29 @@ impl App {
         }
     }
 
+    /// Starts loading the next pinned tab that has no page yet (normal windows only). Returns
+    /// whether one was started.
+    fn load_next_pinned_tab(&mut self) -> bool {
+        if !self.settings.performance.load_pinned_tabs {
+            return false;
+        }
+        let next = self.windows.iter().filter(|w| !w.private && !w.app && !w.closing).find_map(|w| {
+            w.strip
+                .tabs()
+                .iter()
+                .take_while(|t| t.pinned)
+                .find(|t| w.tabs.get(&t.id).is_some_and(|s| s.view.is_none() && !s.creating))
+                .map(|t| (w.id, t.id))
+        });
+        match next {
+            Some((window, tab)) => {
+                self.ensure_view(window, tab);
+                true
+            }
+            None => false,
+        }
+    }
+
     fn on_timer(&mut self, id: usize) {
         match id {
             TIMER_SESSION if self.session_dirty => {
@@ -571,6 +620,20 @@ impl App {
                 }
                 if self.settings.advanced.userscript_auto_update {
                     self.check_script_updates(false, None);
+                }
+            }
+            TIMER_PINNED => {
+                // One pinned tab per tick, so start-up stays smooth; stop when none is left.
+                if !self.load_next_pinned_tab() {
+                    // SAFETY: stopping our own timer.
+                    unsafe {
+                        let _ = KillTimer(Some(self.msg_hwnd), TIMER_PINNED);
+                    }
+                } else {
+                    // SAFETY: re-arming our own timer.
+                    unsafe {
+                        SetTimer(Some(self.msg_hwnd), TIMER_PINNED, 1_200, None);
+                    }
                 }
             }
             TIMER_CLEANUP => {
@@ -776,6 +839,7 @@ impl App {
             created_at: std::time::Instant::now(),
             show_maximized: app_mode || self.settings.general.start_maximized || placement.is_some_and(|p| p.4),
             spare: None,
+            preconnected: Vec::new(),
             spare_creating: false,
             sidebar: None,
             sidebar_key: TabId::next().0,

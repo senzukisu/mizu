@@ -461,6 +461,10 @@ impl App {
         if matches!(event, ViewEvent::ContentLoading) && self.media.forget(tab.0) {
             self.media_dirty = true;
         }
+        // Web pages that paint no background of their own get white, like in other browsers
+        // (Mizu's dark backdrop would leave their black text unreadable); Mizu's own pages
+        // keep the themed colour, which also avoids a white flash while loading.
+        let themed_bg = crate::theme::page_rgba(&self.settings, private);
         let default_zoom = f64::from(self.settings.appearance.zoom_percent) / 100.0;
         let mut zoom_record: Option<(String, u32)> = None;
         let site_zoom = match &event {
@@ -510,13 +514,26 @@ impl App {
                     state.can_go_back = can_go_back;
                     state.can_go_forward = can_go_forward;
                 }
-                ViewEvent::ContentLoading => {
+                ViewEvent::NavigationStarting => {
+                    if !state.loading {
+                        state.progress = 0.1;
+                    }
                     state.loading = true;
+                }
+                ViewEvent::ContentLoading => {
+                    if let Some(v) = &state.view {
+                        let url = w.strip.get(tab).map(|t| t.url.as_str()).unwrap_or_default();
+                        let web = url.starts_with("http://") || url.starts_with("https://") || url.starts_with("file:");
+                        v.set_background(if web { [0xff, 0xff, 0xff, 0xff] } else { themed_bg });
+                    }
+                    state.loading = true;
+                    state.progress = state.progress.max(0.35);
                     state.crashed = false;
                     state.favicon = None;
                 }
                 ViewEvent::NavigationCompleted { success, http_status, .. } => {
                     state.loading = false;
+                    state.progress = 1.0;
                     if let Some(started) = hot::with(|h| h.nav_started.remove(&tab.0)).flatten() {
                         let ms = started.elapsed().as_millis();
                         let host = w.strip.get(tab).and_then(|t| mizu_core::omnibox::host_of(&t.url)).unwrap_or_default();
@@ -533,7 +550,11 @@ impl App {
                         record = Some((url, title));
                     }
                 }
-                ViewEvent::DomContentLoaded => {}
+                ViewEvent::DomContentLoaded => {
+                    if state.loading {
+                        state.progress = state.progress.max(0.75);
+                    }
+                }
                 ViewEvent::FaviconChanged { png } => {
                     state.favicon = png_data_url(&png);
                     let ev = Event::Favicon { id: tab.0, data: state.favicon.clone().unwrap_or_default() }.to_json();
@@ -673,6 +694,7 @@ impl App {
                 "can_go_back": s.can_go_back,
                 "can_go_forward": s.can_go_forward,
                 "loading": s.loading,
+                "progress": s.progress,
                 "security": security,
                 "bookmarked": bookmarked,
                 "zoom": (s.zoom * 100.0).round(),

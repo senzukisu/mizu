@@ -526,22 +526,25 @@ button {
 
 #progress {
   position: absolute;
-  left: 0;
+  left: 10px;
   bottom: 0;
-  height: 2px;
+  height: 2.5px;
   width: 0;
-  background: linear-gradient(90deg, transparent, var(--accent));
+  max-width: calc(100% - 20px);
+  border-radius: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 25%, transparent), var(--accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
   opacity: 0;
-  transition: width 1.6s var(--ease), opacity var(--t-slow);
+  pointer-events: none;
 }
+/* Each stage eases quickly at first, then crawls towards the next one. */
 #progress.loading {
-  width: 80%;
   opacity: 1;
+  transition: width 6s cubic-bezier(0.08, 0.7, 0.2, 1), opacity 120ms;
 }
 #progress.done {
-  width: 100%;
   opacity: 0;
-  transition: width var(--t-med), opacity var(--t-slow) 150ms;
+  transition: width 220ms ease-out, opacity 300ms ease 220ms;
 }
 
 #downloads {

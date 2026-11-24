@@ -214,8 +214,14 @@ TIMER_UPDATE (12 s after start, then every 6 h)
   ─► ed25519 signature check (public key compiled in) ─► is the version newer?
   ─► installed copy? ─► download the installer (URL must be in this repo's releases) ─► SHA-256 check
   ─► "Update to Mizu X? Update now / Later" ─► MizuSetup /S --wait-pid <pid> --relaunch
-     (waits for Mizu to exit, replaces the files, starts Mizu again)
+     (waits for Mizu to exit, keeps mizu.exe as mizu.prev, replaces the files, writes update-pending,
+      starts Mizu again)
+  ─► new Mizu opens its first window ─► deletes update-pending ─► setup removes mizu.prev
+  ─► new Mizu exits first ─► setup restores mizu.prev, writes update-failed, starts the old version,
+     which tells the user and skips that version from now on
 ```
+
+The **beta channel** also reads the signed manifest of a `beta` pre-release and takes it when it is newer.
 
 Only the copy MizuSetup installed (the folder recorded in its uninstall entry) updates itself. A portable copy only announces
 new versions. Windows updates the engine independently, and `mizu://about` shows both versions and the update state.

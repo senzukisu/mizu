@@ -119,6 +119,11 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
                 Surface::Chrome if is_sidebar => {}
                 Surface::Chrome => {
                     if let Some(w) = app.window_mut(window) {
+                        if !w.chrome_ready {
+                            let ms = crate::STARTED.get().map_or(0, |t| t.elapsed().as_millis());
+                            tracing::info!(ms, tabs = w.strip.len(), "window ready");
+                            crate::update::confirm_started();
+                        }
                         w.chrome_ready = true;
                         w.layout();
                         w.state_dirty = true;
@@ -640,7 +645,20 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
                 && !private
                 && items.first().is_some_and(|s| s.kind == "search");
             let data = json!({ "items": items, "selected": 0, "width": anchor.width });
+            let preconnect = app.settings.performance.preconnect;
+            let search_origin = mizu_core::omnibox::origin_of(&app.settings.search.active_engine().template);
             if let Some(w) = app.window_mut(window) {
+                if preconnect {
+                    // Enter goes to the first suggestion: open the connection now.
+                    let target = items.first().and_then(|s| match s.kind {
+                        "navigate" | "history" | "bookmark" => mizu_core::omnibox::origin_of(&s.url),
+                        "search" => search_origin.clone(),
+                        _ => None,
+                    });
+                    if let Some(origin) = target.filter(|o| o.starts_with("https://") || o.starts_with("http://")) {
+                        preconnect_origin(w, &origin);
+                    }
+                }
                 w.suggestions = items;
                 w.omnibox_query = text.clone();
                 w.post_chrome(&Event::Suggestions { items: data["items"].clone() }.to_json());
@@ -1324,5 +1342,22 @@ fn move_to_space(app: &mut App, window: WindowId, tab: TabId, space: u32) {
     }
     if let Some(w) = app.window(window) {
         w.layout();
+    }
+}
+
+/// Opens a connection (DNS, TCP, TLS) to `origin` from the window's hidden spare view, so the
+/// page starts sooner when the address is entered. Each origin once per window (recently).
+fn preconnect_origin(w: &mut crate::window::BrowserWindow, origin: &str) {
+    if w.preconnected.iter().any(|o| o == origin) {
+        return;
+    }
+    let Some(spare) = &w.spare else { return };
+    let Ok(href) = serde_json::to_string(origin) else { return };
+    spare.execute_script(&format!(
+        "(()=>{{const d=document;const add=(r)=>{{const l=d.createElement('link');l.rel=r;l.href={href};(d.head||d.documentElement||d).appendChild(l);}};add('dns-prefetch');add('preconnect');}})()"
+    ));
+    w.preconnected.push(origin.to_owned());
+    if w.preconnected.len() > 16 {
+        w.preconnected.remove(0);
     }
 }

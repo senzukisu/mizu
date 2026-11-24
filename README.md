@@ -21,7 +21,7 @@
 
 ## Install in a minute
 
-1. Download **`MizuSetup-0.3.4.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest).
+1. Download **`MizuSetup-0.3.5.exe`** from the [latest release](https://github.com/senzukisu/mizu/releases/latest).
 2. Run it and press **Install**. No administrator rights are needed.
 3. The welcome tour lets you import from your old browser and make Mizu the default — or skip both and do it later in
    Settings → General.

@@ -32,6 +32,9 @@ pub struct TabState {
     pub pending_url: Option<String>,
     pub pending_new_window: Option<NewWindowRequest>,
     pub loading: bool,
+    /// How far the page has got: 0.1 request sent, 0.35 response arriving, 0.75 document
+    /// ready, 1.0 loaded.
+    pub progress: f32,
     pub can_go_back: bool,
     pub can_go_forward: bool,
     pub favicon: Option<String>,
@@ -58,6 +61,7 @@ impl TabState {
             pending_url,
             pending_new_window: None,
             loading: false,
+            progress: 0.0,
             can_go_back: false,
             can_go_forward: false,
             favicon: None,
@@ -119,6 +123,8 @@ pub struct BrowserWindow {
     pub created_at: std::time::Instant,
     /// Pre-created, hidden engine view handed to the next new tab (makes new tabs instant).
     pub spare: Option<View>,
+    /// Origins already preconnected from the address bar (most recent last).
+    pub preconnected: Vec<String>,
     pub spare_creating: bool,
     /// Vertical tabs: a second browser-UI view (`mizu://chrome/?sidebar`) left of the page.
     pub sidebar: Option<View>,
