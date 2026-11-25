@@ -7,6 +7,13 @@ const REPO = 'https://github.com/senzukisu/mizu';
 
 // Newest first. [icon, title, text, optional Mizu link]
 const RELEASES = [
+  { v: '0.4.0', name: 'Deep Water', items: [
+    ['lock', 'HTTPS-First', 'Mizu opens the secure version of a site when you go to an http address. If a site has none, it asks before loading it without encryption — and can remember your answer.', 'mizu://settings/#privacy'],
+    ['shield', 'A new Shield dashboard', 'How much was blocked today and this month, a 30-day timeline, and the sites where Shield stopped the most. Kept on this PC only.', 'mizu://shield/'],
+    ['menu', 'New menus', 'The ⋮ menu has big buttons for what you open most, and right-click menus on pages now look like the rest of Mizu.'],
+    ['upload', 'Updates you can watch', 'Settings and the toolbar show the new version downloading, with a progress bar.', 'mizu://settings/#general'],
+    ['sparkle', 'The start of 0.4', 'Next in this series: fingerprinting defence and encrypted backups.'],
+  ] },
   { v: '0.3.6', name: 'Prism', items: [
     ['sparkle', 'What’s new, after every update', 'This page opens once after Mizu updates, in the language you use Mizu in. Turn it off below, in Settings or in the welcome tour.', 'mizu://settings/#general'],
     ['download', 'Downloads open in Mizu', 'Click a finished PDF, picture, video or song to open it in a new tab. Other files still open in their Windows app.', 'mizu://settings/#downloads'],
@@ -100,7 +107,7 @@ function timeline(releases, from) {
     });
   }
   return h('section', { class: 'wn-earlier' },
-    h('h2', { text: from ? 'Also since your last version' : 'Earlier in 0.3' }),
+    h('h2', { text: from ? 'Also since your last version' : 'Earlier versions' }),
     list, more);
 }
 

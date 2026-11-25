@@ -18,6 +18,7 @@ mod players;
 mod flyout;
 mod handler;
 mod hot;
+mod https;
 mod internal;
 mod omnibox;
 mod passwords;

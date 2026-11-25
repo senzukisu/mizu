@@ -6,8 +6,8 @@ technical dependencies. There are no dates: a version ships when its "done when"
 **Principles:** stability → security → performance → maintainability → extensibility. A new feature never makes
 the first three worse.
 
-**Where we are:** 0.3.6 is out. What's left of 0.3.x is technical: integration tests and a code-signed installer;
-then 0.4.
+**Where we are:** 0.4.0 is out — the first step of "Deep Water". Next: fingerprinting defence (0.4.1), then
+encrypted backups; integration tests and a code-signed installer are still open from 0.3.x.
 What already shipped is listed version by version in the [changelog](CHANGELOG.md).
 
 Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/issues).
@@ -26,7 +26,8 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 | 0.3.5 | Currents | Faster loading, updater rollback and beta, new settings, experimental features | ✅ Released |
 | 0.3.6 | Currents | What's new after updates, sites follow the theme, restart fix | ✅ Released |
 | **0.3.x** | Currents | Integration tests, code-signed installer | 🔜 Next |
-| 0.4 | Deep Water | Privacy and data: fingerprinting defence, backups | Planned |
+| 0.4.0 | Deep Water | HTTPS-First, Shield dashboard v2 | ✅ Released |
+| **0.4.x** | Deep Water | Fingerprinting defence, encrypted backups | 🔜 Next |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
 | 0.6 | Estuary | Built-in tools: PDF, translation, reading mode; screen readers | Planned |
 | 0.7 | Rivers | Linux, macOS, Android and iOS | Planned |
@@ -114,7 +115,7 @@ Shipped in steps, each one usable on its own:
 
 | Step | What you get | How it works |
 |---|---|---|
-| **0.4.0** | **HTTPS-First** · Shield dashboard v2 | Top-level `http://` navigations are retried as `https://` (on failure Mizu shows a clear "this site has no secure version — continue?" page, remembered per site). The Shield page gains a per-site breakdown and a timeline from the counters Mizu already keeps. |
+| **0.4.0 ✅** | **HTTPS-First** · Shield dashboard v2 | Top-level `http://` navigations are retried as `https://` (on failure Mizu shows a clear "this site has no secure version — continue?" page, remembered per site). The Shield page gains a per-site breakdown and a timeline from the counters Mizu already keeps. |
 | **0.4.1** | **Fingerprinting defence** (standard) | A document-start script gives high-entropy APIs protective values: small per-site, per-session noise for canvas readback and audio, bucketed `hardwareConcurrency`/`deviceMemory`, no battery API, a common font list. Off per site from the lock icon. |
 | **0.4.2** | Fingerprinting report · strict mode | Shield shows which scripts read which APIs on the page. Strict mode also hides WebGL details and screen size precision. |
 | **0.4.3** | **Encrypted backup and restore** | One file with bookmarks, history, passwords, settings, scripts and tiles; key from a passphrase with Argon2id, sealed with XChaCha20-Poly1305 (RustCrypto crates, no own crypto). Restore checks integrity first and never half-applies. Optional scheduled backup to a folder you pick. |

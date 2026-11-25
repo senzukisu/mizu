@@ -84,6 +84,15 @@ impl ViewHandler for Dispatcher {
         items
     }
 
+    fn on_page_menu(&self, key: ViewKey, x: i32, y: i32, items: Vec<mizu_engine::PageMenuItem>, menu: mizu_engine::PageMenu) -> bool {
+        let Some(Role::Tab { window, tab }) = hot::role(key) else { return false };
+        if !hot::with(|h| h.mizu_page_menu).unwrap_or(false) || items.is_empty() {
+            return false;
+        }
+        queue::with_app(move |app| app.show_page_menu(window, tab, x, y, &items, menu));
+        true
+    }
+
     fn on_context_item(&self, _key: ViewKey, id: u32, t: &mizu_engine::ContextTarget) {
         let Some(Some(player)) = hot::with(|h| h.media_player.clone()) else { return };
         let url = match id {
@@ -133,6 +142,36 @@ impl ViewHandler for Dispatcher {
                 v.set_document_script(None);
             }
             return NavigationDecision::Allow;
+        }
+
+        if uri.starts_with("http://") {
+            let upgrade = hot::with(|h| {
+                if !h.https_first {
+                    return None;
+                }
+                let target = crate::https::upgrade_target(uri)?;
+                let site = crate::https::site(&host_of(uri));
+                if h.http_allowed.contains(&site) {
+                    return None;
+                }
+                // The HTTPS page sent us back to HTTP: the site wants HTTP; allow it this session.
+                if req.redirect && h.https_pending.get(&key).is_some_and(|p| crate::https::site(&host_of(p)) == site) {
+                    h.https_pending.remove(&key);
+                    h.http_allowed.insert(site);
+                    return None;
+                }
+                h.https_pending.insert(key, uri.to_owned());
+                Some(target)
+            })
+            .flatten();
+            if let Some(target) = upgrade {
+                queue::with_app(move |_| {
+                    if let Some(v) = hot::view(key) {
+                        v.navigate(&target);
+                    }
+                });
+                return NavigationDecision::Cancel;
+            }
         }
 
         if uri.starts_with("http://") || uri.starts_with("https://") {
@@ -335,7 +374,7 @@ fn resource_decision(key: ViewKey, req: &ResourceRequest) -> ResourceDecision {
             }
         }
         if verdict.is_blocking() {
-            h.stats.record(uri);
+            h.stats.record(uri, &source);
             h.stats_dirty = true;
             *h.page_blocked.entry(key).or_default() += 1;
         }

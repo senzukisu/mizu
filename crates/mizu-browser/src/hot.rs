@@ -32,6 +32,11 @@ pub struct Hot {
     /// Hosts where Mizu Shield is switched off by the user.
     pub allowlist: HashSet<String>,
     pub global_privacy_control: bool,
+    /// HTTPS-First: on, the sites allowed over HTTP (settings plus this session), and the
+    /// `http://` address each view is currently trying over HTTPS.
+    pub https_first: bool,
+    pub http_allowed: HashSet<String>,
+    pub https_pending: HashMap<ViewKey, String>,
     /// Theme attributes for internal pages' `<html>` element (see `theme::html_attrs`).
     pub theme_attrs: String,
     /// Hosts the user chose to open despite a document-level block (this session only).
@@ -56,6 +61,8 @@ pub struct Hot {
     pub media_hub: bool,
     /// "Open in media player" target, and whether the interface is in Russian.
     pub media_player: Option<crate::players::Player>,
+    /// Page context menus are drawn by Mizu.
+    pub mizu_page_menu: bool,
     pub ui_ru: bool,
     /// Offer to save passwords (Mizu Passwords enabled).
     pub password_capture: bool,
@@ -120,6 +127,7 @@ pub fn forget(key: ViewKey) {
         h.gm_tokens.remove(&key);
         h.pw_tokens.remove(&key);
         h.cosmetic_pages.remove(&key);
+        h.https_pending.remove(&key);
     });
 }
 

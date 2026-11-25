@@ -48,6 +48,7 @@ Everything you can do in Mizu, grouped by task. Short on time? Read [Quick start
 | keep work and personal tabs apart | Menu → **New space** ([more](#spaces)) |
 | see two pages side by side | right-click a tab → **Open in split view** ([more](#split-view)) |
 | free memory | right-click a tab → **Unload other tabs** ([more](#sleeping-and-unloaded-tabs)) |
+| stop being asked about a site without HTTPS | tick **Remember for this site** on that page ([more](#secure-connections-https-first)) |
 | block a site's annoying element | Settings → Mizu Shield → **My rules** ([more](#mizu-shield)) |
 | fix a site Shield breaks | click the **shield** → turn it off for the site |
 | sign out of one site / forget it | lock icon → **Site settings** → **Forget this site** |
@@ -231,7 +232,8 @@ Blocks ads, trackers and known malicious sites with uBlock Origin–compatible f
 - What Shield understands: network rules, `$redirect`, `$removeparam`, scriptlets, and element hiding — per-site
   rules, generic rules (`##.ad-banner` on every site) and procedural rules (`:has-text()`, `:upward()`, `:xpath()`,
   `:remove()`, `:style()` and more), including content a page adds later.
-- `mizu://shield` shows statistics.
+- `mizu://shield` is the dashboard: blocked today, this month and in total, a 30-day timeline, and the sites where
+  the most was blocked. The numbers never leave your PC.
 
 ### Site settings
 
@@ -242,6 +244,13 @@ Click the **lock** → **Site settings** (or `mizu://site/?host=example.com`):
 - permissions — camera, microphone, location, notifications…: Allow / Block / Ask;
 - the zoom Mizu remembers for it, with **Reset**;
 - your last visit.
+
+### Secure connections (HTTPS-First)
+
+When you open an `http://` address, Mizu goes to its secure `https://` version. If the site has none, you see **This
+site has no secure version** with **Continue to the site (not secure)** — tick **Remember for this site** to not be
+asked again. Routers, printers and other home-network addresses are left alone. Settings → Privacy → **Secure
+connections** turns it off and lists the exceptions; the site's page (lock icon) has **Use HTTPS again**.
 
 ### Cookies
 
@@ -338,6 +347,8 @@ Tampermonkey/Greasemonkey format. Menu → **Scripts & extensions** (`mizu://scr
 - **Language:** Settings → General → Language: Automatic (follows Windows), English or Russian. Restart to apply
   everywhere.
 - **Settings that need a restart** show a **Restart Mizu** button; your tabs come back.
+- **Page menus:** right-click menus on web pages are drawn in Mizu's style; Settings → Appearance → **Mizu-style page
+  menus** brings back the engine's own menu.
 - **Speed** (Settings → Performance): **Connect while I type** opens the connection to the site you are typing before
   you press Enter; **Load pinned tabs after start** gets pinned sites ready in the background. The loading bar under
   the address bar follows the page's real progress.

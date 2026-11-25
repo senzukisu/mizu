@@ -239,6 +239,74 @@ pub struct ContextTarget {
     pub page: String,
 }
 
+/// One entry of the engine's page context menu, for the browser to draw itself.
+#[derive(Debug, Clone)]
+pub struct PageMenuItem {
+    pub id: i32,
+    pub label: String,
+    /// The engine's name for it ("copy", "back", "saveImageAs", …; "custom" for ours).
+    pub name: String,
+    pub kind: PageMenuKind,
+    pub checked: bool,
+    pub enabled: bool,
+    pub shortcut: String,
+    pub children: Vec<PageMenuItem>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PageMenuKind {
+    Command,
+    Check,
+    Radio,
+    Separator,
+    Submenu,
+}
+
+/// A page context menu waiting for the user: [`PageMenu::select`] runs a command, dropping
+/// it (or [`PageMenu::dismiss`]) closes it without one.
+#[derive(Clone)]
+pub struct PageMenu(std::rc::Rc<PageMenuInner>);
+
+struct PageMenuInner {
+    args: ICoreWebView2ContextMenuRequestedEventArgs,
+    deferral: std::cell::RefCell<Option<ICoreWebView2Deferral>>,
+}
+
+impl PageMenu {
+    pub(crate) fn new(args: ICoreWebView2ContextMenuRequestedEventArgs, deferral: ICoreWebView2Deferral) -> Self {
+        Self(std::rc::Rc::new(PageMenuInner { args, deferral: std::cell::RefCell::new(Some(deferral)) }))
+    }
+
+    pub fn select(&self, id: i32) {
+        // SAFETY: setter on the UI thread, before the deferral completes.
+        unsafe {
+            let _ = self.0.args.SetSelectedCommandId(id);
+        }
+        self.0.complete();
+    }
+
+    pub fn dismiss(&self) {
+        self.0.complete();
+    }
+}
+
+impl PageMenuInner {
+    fn complete(&self) {
+        if let Some(d) = self.deferral.borrow_mut().take() {
+            // SAFETY: completing our own deferral on the UI thread.
+            unsafe {
+                let _ = d.Complete();
+            }
+        }
+    }
+}
+
+impl Drop for PageMenuInner {
+    fn drop(&mut self) {
+        self.complete();
+    }
+}
+
 /// An entry the browser adds at the top of a page's context menu.
 #[derive(Debug, Clone)]
 pub struct ContextItem {
@@ -288,6 +356,12 @@ pub trait ViewHandler {
 
     /// One of the entries from [`ViewHandler::context_items`] was chosen.
     fn on_context_item(&self, _key: ViewKey, _id: u32, _target: &ContextTarget) {}
+
+    /// The page's context menu, for the browser to draw (at `x`, `y` in view pixels). Return
+    /// `true` to take it over; `false` shows the engine's own menu.
+    fn on_page_menu(&self, _key: ViewKey, _x: i32, _y: i32, _items: Vec<PageMenuItem>, _menu: PageMenu) -> bool {
+        false
+    }
 
     /// Keyboard shortcut pressed while the view has focus. Return `true` if handled.
     fn on_accelerator(&self, _key: ViewKey, _vk: u32, _ctrl: bool, _shift: bool, _alt: bool) -> bool {

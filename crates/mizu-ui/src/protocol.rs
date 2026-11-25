@@ -98,6 +98,8 @@ pub enum Command {
     SpaceDelete { id: u32 },
     /// Media players found on this PC (for "Open in media player").
     MediaPlayers,
+    /// An entry of the page context menu was chosen.
+    PageMenuSelect { id: i32 },
     /// Per-site zoom back to the default.
     SiteZoomReset { host: String },
     /// Tree tabs: fold or unfold a tab's children; close a tab with all its children.
@@ -314,6 +316,14 @@ pub enum Command {
     ChooseDownloadFolder,
     RestoreSession,
     BlockedProceed { url: String },
+    /// HTTPS-First fallback: open the `http://` page; `remember` keeps the site as an exception.
+    HttpProceed {
+        url: String,
+        #[serde(default)]
+        remember: bool,
+    },
+    /// Removes a site from the HTTPS-First exceptions.
+    HttpForget { host: String },
 
     // ── Userscripts & extensions ─────────────────────────────
     ScriptsGet,
@@ -435,6 +445,8 @@ pub enum FlyoutKind {
     GroupMenu,
     /// Spaces: switch, name, colour, icon, add, delete.
     SpaceMenu,
+    /// A web page's context menu, drawn by Mizu.
+    PageMenu,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]

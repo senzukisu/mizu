@@ -592,13 +592,11 @@ impl View {
                             page: sender.map(|s| get_string(|p| s.Source(p))).unwrap_or_default(),
                         };
                         let items = h.context_items(key, &t);
-                        if items.is_empty() {
-                            return Ok(());
-                        }
-                        let Ok(env9) = env.cast::<ICoreWebView2Environment9>() else { return Ok(()) };
                         let list = args.MenuItems()?;
+                        let env9 = env.cast::<ICoreWebView2Environment9>().ok();
                         let mut at = 0u32;
                         for it in items {
+                            let Some(env9) = env9.as_ref() else { break };
                             let item = env9.CreateContextMenuItem(&HSTRING::from(it.label.as_str()), None, COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND)?;
                             let (h2, t2, id) = (h.clone(), t.clone(), it.id);
                             let mut tok = 0i64;
@@ -612,8 +610,21 @@ impl View {
                             list.InsertValueAtIndex(at, &item)?;
                             at += 1;
                         }
-                        let sep = env9.CreateContextMenuItem(&HSTRING::new(), None, COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SEPARATOR)?;
-                        list.InsertValueAtIndex(at, &sep)?;
+                        if at > 0 {
+                            if let Some(env9) = env9.as_ref() {
+                                let sep = env9.CreateContextMenuItem(&HSTRING::new(), None, COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SEPARATOR)?;
+                                list.InsertValueAtIndex(at, &sep)?;
+                            }
+                        }
+                        // Offer the whole menu to the browser to draw in its own style.
+                        let mut pt = windows::Win32::Foundation::POINT::default();
+                        let _ = args.Location(&mut pt);
+                        let entries = collect_menu(&list);
+                        let deferral = args.GetDeferral()?;
+                        let menu = PageMenu::new(args.clone(), deferral);
+                        if h.on_page_menu(key, pt.x, pt.y, entries, menu) {
+                            args.SetHandled(true)?;
+                        }
                         Ok(())
                     })),
                     &mut token,
@@ -990,4 +1001,42 @@ impl Drop for Inner {
             }
         }
     }
+}
+
+/// The engine's context menu entries (and submenus) as plain data.
+fn collect_menu(list: &ICoreWebView2ContextMenuItemCollection) -> Vec<PageMenuItem> {
+    let mut out = Vec::new();
+    let mut n = 0u32;
+    // SAFETY: reading a collection handed to us by the engine, on the UI thread.
+    unsafe {
+        if list.Count(&mut n).is_err() {
+            return out;
+        }
+        for i in 0..n {
+            let Ok(it) = list.GetValueAtIndex(i) else { continue };
+            let mut kind = COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND;
+            let _ = it.Kind(&mut kind);
+            let kind = match kind {
+                COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_CHECK_BOX => PageMenuKind::Check,
+                COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_RADIO => PageMenuKind::Radio,
+                COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SEPARATOR => PageMenuKind::Separator,
+                COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SUBMENU => PageMenuKind::Submenu,
+                _ => PageMenuKind::Command,
+            };
+            let mut id = 0i32;
+            let _ = it.CommandId(&mut id);
+            let children = if kind == PageMenuKind::Submenu { it.Children().map(|c| collect_menu(&c)).unwrap_or_default() } else { Vec::new() };
+            out.push(PageMenuItem {
+                id,
+                label: get_string(|p| it.Label(p)).replace('&', ""),
+                name: get_string(|p| it.Name(p)),
+                kind,
+                checked: get_bool(|b| it.IsChecked(b)),
+                enabled: get_bool(|b| it.IsEnabled(b)),
+                shortcut: get_string(|p| it.ShortcutKeyDescription(p)),
+                children,
+            });
+        }
+    }
+    out
 }

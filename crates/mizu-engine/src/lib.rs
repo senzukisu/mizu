@@ -26,7 +26,7 @@ pub use cookies::CookieData;
 pub use download::{Download, DownloadInfo, DownloadStatus};
 pub use environment::{Engine, EngineOptions, ExitWaiter, ProfileKind, TrackingLevel, browser_version};
 pub use events::{
-    ContextItem, ContextTarget, NavigationDecision, NavigationRequest, NewWindowRequest, PermissionKind, PermissionRequest,
+    ContextItem, ContextTarget, NavigationDecision, PageMenu, PageMenuItem, PageMenuKind, NavigationRequest, NewWindowRequest, PermissionKind, PermissionRequest,
     ResourceDecision, ResourceRequest, ViewEvent, ViewHandler, ViewKey,
 };
 pub use profile::{BrowsingDataKinds, ExtensionInfo};

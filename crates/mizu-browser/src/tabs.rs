@@ -522,7 +522,28 @@ impl App {
                     state.crashed = false;
                     state.favicon = None;
                 }
-                ViewEvent::NavigationCompleted { success, http_status, .. } => {
+                ViewEvent::NavigationCompleted { success, http_status, web_error } => {
+                    let attempt = hot::with(|h| {
+                        if success {
+                            h.https_pending.remove(&tab.0);
+                            None
+                        } else if crate::https::is_failure(web_error) {
+                            h.https_pending.remove(&tab.0)
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten();
+                    if let Some(http) = attempt {
+                        let key = tab.0;
+                        queue::with_app(move |_| {
+                            let target = format!("mizu://blocked/?kind=http&url={}", url::form_urlencoded::byte_serialize(http.as_bytes()).collect::<String>());
+                            if let Some(v) = hot::view(key) {
+                                hot::allow_internal(key);
+                                v.navigate(&target);
+                            }
+                        });
+                    }
                     state.loading = false;
                     state.progress = 1.0;
                     if let Some(started) = hot::with(|h| h.nav_started.remove(&tab.0)).flatten() {
@@ -721,8 +742,15 @@ impl App {
             "spaces": self.window(id).map(|w| w.strip.spaces().to_vec()).unwrap_or_default(),
             "active_space": self.window(id).map(|w| w.strip.active_space()),
             "shield": { "session": session_blocked },
+            "menu_open": self.window(id).is_some_and(|w| w.menu_open),
             "update": match &self.update {
                 crate::update::UpdateState::Ready { version, .. } => serde_json::Value::String(version.clone()),
+                _ => serde_json::Value::Null,
+            },
+            "update_progress": match &self.update {
+                crate::update::UpdateState::Downloading { version, received, total, .. } => {
+                    json!({ "version": version, "progress": if *total > 0 { *received as f64 / *total as f64 } else { 0.0 } })
+                }
                 _ => serde_json::Value::Null,
             },
         });

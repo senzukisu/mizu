@@ -312,6 +312,8 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 "last_visit": last,
                 "visits": count,
                 "zoom": app.settings.appearance.site_zoom.get(&host),
+                "https_first": app.settings.privacy.https_first,
+                "http_allowed": app.settings.privacy.http_allowed.iter().any(|h| crate::https::site(h) == crate::https::site(&host)),
                 "zoom_default": app.settings.appearance.zoom_percent,
             }))
         }
@@ -457,15 +459,42 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 (h.stats.clone(), h.blocker.as_ref().map(|b| b.rule_count()).unwrap_or(0))
             })
             .unwrap_or_default();
+            let days = stats.last_days(30);
             data(json!({
                 "session": stats.session_blocked,
                 "lifetime": stats.lifetime_blocked,
                 "top": stats.top_trackers(15),
+                "sites": stats.top_sites(15),
+                "days": days,
+                "month": days.iter().map(|d| d.1).sum::<u64>(),
+                "https_first": app.settings.privacy.https_first,
                 "rules": rules,
                 "enabled": app.settings.privacy.content_blocking,
                 "tracking_prevention": app.settings.privacy.tracking_prevention,
                 "allowlist": app.settings.privacy.allowlist,
             }))
+        }
+        Command::HttpProceed { url, remember } => {
+            if !url.starts_with("http://") {
+                return Err("Not an HTTP address".into());
+            }
+            let site = crate::https::site(&mizu_core::omnibox::host_of(&url).unwrap_or_default());
+            hot::with(|h| h.http_allowed.insert(site.clone()));
+            if remember && !app.settings.privacy.http_allowed.contains(&site) {
+                app.settings.privacy.http_allowed.push(site);
+                app.persist_settings();
+            }
+            if let Some(Role::Tab { window, .. }) = hot::role(key) {
+                app.navigate_active(window, &url);
+            }
+            ok()
+        }
+        Command::HttpForget { host } => {
+            let site = crate::https::site(&host);
+            app.settings.privacy.http_allowed.retain(|h| crate::https::site(h) != site);
+            hot::with(|h| h.http_allowed.remove(&site));
+            app.persist_settings();
+            ok()
         }
         Command::BlockedProceed { url } => {
             if let Some(host) = mizu_core::omnibox::host_of(&url) {

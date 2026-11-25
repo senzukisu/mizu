@@ -274,6 +274,7 @@ function appearance() {
         save(true);
       })),
       toggle('Animations', 'Smooth transitions in the interface. Windows "reduce motion" is always respected.', () => a.animations, (v) => (a.animations = v)),
+      toggle('Mizu-style page menus', 'Right-click menus on web pages are drawn like the rest of Mizu. Off shows the engine\u2019s own menu.', () => a.mizu_page_menu !== false, (v) => (a.mizu_page_menu = v)),
       toggle('Translucent window (Mica)', 'Lets the desktop colour show through the tab strip on Windows 11.', () => a.translucency, (v) => (a.translucency = v)),
     ),
     card('Zoom', null,
@@ -430,6 +431,7 @@ function privacy() {
       toggle('Block third-party cookies', 'Sites embedded in other sites (ads, trackers, widgets) cannot set or read cookies. A rare embedded sign-in may need it off. Requires restart.', () => p.block_third_party_cookies, (v) => (p.block_third_party_cookies = v)),
       toggle('Send Global Privacy Control', 'Tells websites not to sell or share your data (Sec-GPC header). Legally binding in some regions.', () => p.global_privacy_control, (v) => (p.global_privacy_control = v)),
     ),
+    httpsCard(),
     cookieCleanupCard(),
     permissionsCard(),
     externalAppsCard(),
@@ -481,6 +483,30 @@ function permissionsCard() {
     body.append(table);
   });
   return card('Site permissions', null, body);
+}
+
+// HTTPS-First and the sites allowed over HTTP.
+function httpsCard() {
+  const p = s.privacy;
+  p.http_allowed = p.http_allowed || [];
+  const list = h('div', { class: 'keep-list' });
+  const draw = () => {
+    list.replaceChildren();
+    if (!p.http_allowed.length) list.append(h('div', { class: 'd', text: 'No exceptions. When a site has no secure version, Mizu asks and can remember your answer here.' }));
+    p.http_allowed.forEach((host, i) => {
+      const del = h('button', { class: 'icon-btn', title: 'Remove' }, icon('close'));
+      del.addEventListener('click', () => {
+        p.http_allowed.splice(i, 1);
+        save(true);
+        draw();
+      });
+      list.append(h('div', { class: 'keep-row' }, icon('warning', { size: 14 }), h('span', { translate: 'no', text: host }), del));
+    });
+  };
+  draw();
+  return card('Secure connections', null,
+    toggle('HTTPS-First', 'Mizu opens the secure (https) version of a site when you go to an http address. If there is none, it asks before loading the site without encryption. Home network devices are left alone.', () => p.https_first !== false, (v) => (p.https_first = v)),
+    h('div', { class: 'setting col' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Sites allowed without HTTPS' })), list));
 }
 
 // Automatic cookie cleanup and the "keep me signed in" sites.
@@ -743,23 +769,44 @@ function updateText(u, installed) {
 }
 
 function updatesCard(g) {
-  const status = h('div', { class: 'd', text: '' });
-  const version = h('div', { class: 't', text: 'Mizu' });
+  const status = h('div', { class: 'upd-status', text: '' });
+  const version = h('div', { class: 'upd-version', translate: 'no', text: 'Mizu' });
+  const bar = h('div', { class: 'upd-bar', hidden: true }, h('div', { class: 'upd-fill' }));
+  const sizes = h('div', { class: 'upd-sizes', hidden: true });
   const check = h('button', { class: 'btn' }, icon('reload'), h('span', { text: 'Check for updates' }));
   const install = h('button', { class: 'btn primary' }, icon('upload'), h('span', { text: 'Update' }));
+  const badge = h('span', { class: 'upd-badge', hidden: true });
   let installed = false;
+  let poll = 0;
+  const mb = (n) => `${(n / 1048576).toFixed(1)} MB`;
   const show = (u) => {
-    status.textContent = i18n.tr(updateText(u, installed));
-    status.classList.toggle('warn', !!u && u.state === 'failed');
-    check.disabled = !!u && u.state === 'checking';
-    const ready = !!u && u.state === 'ready';
-    const available = !!u && u.state === 'available';
+    const st = u && u.state;
+    status.textContent = st === 'downloading' ? i18n.tr(`Downloading Mizu ${u.version}…`) : i18n.tr(updateText(u, installed));
+    status.classList.toggle('warn', st === 'failed');
+    check.disabled = st === 'checking' || st === 'downloading';
+    const ready = st === 'ready';
+    const available = st === 'available';
     install.hidden = !ready && !available;
-    install.lastChild.textContent = i18n.tr(available ? 'Download' : 'Update');
+    install.lastChild.textContent = i18n.tr(available ? 'Download' : 'Update now');
     install.onclick = () => {
       if (available) mizu.send('open_url', { url: 'https://github.com/senzukisu/mizu/releases/latest', disposition: 'new_tab' });
       else mizu.request('update_install').catch((e) => showToast(e.message));
     };
+    const dl = st === 'downloading';
+    bar.hidden = !dl && st !== 'checking';
+    bar.classList.toggle('indeterminate', st === 'checking');
+    sizes.hidden = !dl;
+    if (dl) {
+      const p = u.total ? u.received / u.total : 0;
+      bar.firstChild.style.width = `${Math.round(p * 100)}%`;
+      sizes.textContent = `${mb(u.received)} / ${mb(u.total)} · ${Math.round(p * 100)}%`;
+    }
+    badge.hidden = !(ready || st === 'up_to_date');
+    badge.className = `upd-badge ${ready ? 'new' : 'ok'}`;
+    badge.textContent = i18n.tr(ready ? 'Ready to install' : 'Up to date');
+    // While something is happening, follow it.
+    clearTimeout(poll);
+    if (st === 'checking' || dl) poll = setTimeout(() => mizu.request('update_state').then((r) => show(r.update)).catch(() => {}), 500);
   };
   check.addEventListener('click', () => {
     show({ state: 'checking' });
@@ -772,8 +819,11 @@ function updatesCard(g) {
     show(r.update);
   }).catch(() => show(null));
   return card('Updates', null,
-    h('div', { class: 'setting' }, h('div', { class: 'txt' }, version, status), h('div', { class: 'upd-btns' }, check, install)),
-    toggle('Update Mizu automatically', 'Checks for new versions when Mizu starts and every few hours, then asks before installing.', () => g.auto_update, (v) => (g.auto_update = v)),
+    h('div', { class: 'upd-panel' },
+      h('div', { class: 'upd-logo' }, h('img', { src: '/_/logo.svg', alt: '' })),
+      h('div', { class: 'upd-main' }, h('div', { class: 'upd-head' }, version, badge), status, bar, sizes),
+      h('div', { class: 'upd-btns' }, check, install)),
+    toggle('Update Mizu automatically', 'Checks for new versions when Mizu starts and every few hours, downloads them in the background, then asks before installing.', () => g.auto_update, (v) => (g.auto_update = v)),
     toggle('Show “What’s new” after each update', 'A page with what the new version brings, once, in your language.', () => g.whats_new !== false, (v) => (g.whats_new = v)),
     setting('Update channel', 'Beta gets new versions earlier, for testing. If an update fails to start, Mizu goes back to the previous version by itself.', seg([['stable', 'Stable'], ['beta', 'Beta']], g.update_channel || 'stable', (v) => {
       g.update_channel = v;

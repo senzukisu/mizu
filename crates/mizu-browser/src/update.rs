@@ -21,6 +21,8 @@ pub enum UpdateState {
     UpToDate { checked_at: i64 },
     /// A newer version exists but this copy is not installed (portable/dev build).
     Available { version: String, notes: String },
+    /// The installer of a newer version is downloading.
+    Downloading { version: String, notes: String, received: u64, total: u64 },
     /// Installer downloaded and verified; ready to install on restart.
     Ready { version: String, notes: String, #[serde(skip)] path: PathBuf },
     Failed { error: String },
@@ -96,7 +98,17 @@ fn run(sender: WorkerSender, reply: Option<(ViewKey, u64)>, beta: bool, skipped:
                 if !is_installed_copy() {
                     return Ok(Outcome::Available { version: m.version, notes: m.notes });
                 }
-                let installer = mizu_privacy::fetch_https_bytes(&m.url, 400 * 1024 * 1024).map_err(|e| e.to_string())?;
+                let mut last = 0u64;
+                let version = m.version.clone();
+                let installer = mizu_privacy::fetch_https_bytes_progress(&m.url, 400 * 1024 * 1024, |done, total| {
+                    let total = total.unwrap_or(m.size);
+                    // About every 1 % (and the last chunk), not for every 64 KB.
+                    if done == total || done.saturating_sub(last) >= (total / 100).max(256 * 1024) {
+                        last = done;
+                        sender.send(WorkerResult::UpdateProgress(version.clone(), done, total));
+                    }
+                })
+                .map_err(|e| e.to_string())?;
                 mizu_update::check_installer(&installer, &m).map_err(|e| e.to_string())?;
                 let path = std::env::temp_dir().join(format!("MizuSetup-{}.exe", m.version));
                 std::fs::write(&path, &installer).map_err(|e| e.to_string())?;
@@ -110,7 +122,7 @@ fn run(sender: WorkerSender, reply: Option<(ViewKey, u64)>, beta: bool, skipped:
 impl App {
     /// Starts an update check unless one is running or an update is already downloaded.
     pub fn check_for_update(&mut self, reply: Option<(ViewKey, u64)>) {
-        if matches!(self.update, UpdateState::Checking | UpdateState::Ready { .. }) {
+        if matches!(self.update, UpdateState::Checking | UpdateState::Downloading { .. } | UpdateState::Ready { .. }) {
             if let Some((key, rid)) = reply {
                 crate::commands::reply(key, rid, serde_json::to_value(&self.update).unwrap_or_default());
             }

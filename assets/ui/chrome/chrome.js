@@ -885,7 +885,21 @@ const updateBtn = $('update-btn');
 updateBtn.addEventListener('click', () => mizu.request('update_install').catch((e) => toast(e.message)));
 function renderUpdate() {
   const v = state.update;
-  updateBtn.hidden = !v;
+  const dl = state.update_progress;
+  updateBtn.hidden = !v && !dl;
+  updateBtn.classList.toggle('downloading', !v && !!dl);
+  if (!v && dl) {
+    const pct = Math.round((dl.progress || 0) * 100);
+    if (updateBtn.dataset.v !== `dl:${dl.version}`) {
+      updateBtn.dataset.v = `dl:${dl.version}`;
+      updateBtn.replaceChildren(h('span', { class: 'upd-ring' }, h('i')), h('span', { class: 'upd-pct', text: '0%' }));
+    }
+    updateBtn.style.setProperty('--p', String(pct));
+    updateBtn.querySelector('.upd-pct').textContent = `${pct}%`;
+    updateBtn.title = i18n.tr(`Downloading Mizu ${dl.version}: ${pct}%`);
+    return;
+  }
+  updateBtn.style.removeProperty('--p');
   if (v && updateBtn.dataset.v !== v) {
     updateBtn.dataset.v = v;
     updateBtn.replaceChildren(icon('upload', { size: 14 }), h('span', { text: 'Update' }));
@@ -1030,6 +1044,7 @@ function render() {
   renderNav();
   renderDownloads();
   renderUpdate();
+  $('menu').classList.toggle('open', !!state.menu_open);
   renderBookmarks();
   reportMetrics();
 }

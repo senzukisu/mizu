@@ -197,6 +197,8 @@ pub struct AppearanceSettings {
     pub zoom_percent: u32,
     /// Zoom chosen per site (host → percent); sites at the default zoom are absent.
     pub site_zoom: std::collections::BTreeMap<String, u32>,
+    /// Page context menus drawn by Mizu (off: the engine's own menu).
+    pub mizu_page_menu: bool,
     /// "top" (tab strip) or "side" (vertical tabs in a sidebar).
     pub tab_layout: String,
     /// Vertical tabs sidebar shows icons only.
@@ -243,6 +245,7 @@ impl Default for AppearanceSettings {
             show_home_button: false,
             zoom_percent: 100,
             site_zoom: std::collections::BTreeMap::new(),
+            mizu_page_menu: true,
             tab_layout: "top".into(),
             sidebar_collapsed: false,
             sidebar_width: 252,
@@ -386,6 +389,10 @@ pub struct PrivacySettings {
     pub external_apps: Vec<ExternalAppRule>,
     /// Send the Global Privacy Control signal (`Sec-GPC: 1`).
     pub global_privacy_control: bool,
+    /// Try `https://` before loading an `http://` page.
+    pub https_first: bool,
+    /// Sites the user chose to open over HTTP (HTTPS-First leaves them alone).
+    pub http_allowed: Vec<String>,
     /// Let the engine offer to save passwords. Off by default: Mizu has no password
     /// manager UI yet, and stored passwords would be invisible to the user.
     pub engine_password_saving: bool,
@@ -408,6 +415,8 @@ impl Default for PrivacySettings {
             cookie_cleanup_days: 0,
             keep_signed_in: Vec::new(),
             global_privacy_control: true,
+            https_first: true,
+            http_allowed: Vec::new(),
             engine_password_saving: false,
             engine_autofill: false,
             password_manager: true,

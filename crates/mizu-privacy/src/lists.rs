@@ -290,6 +290,40 @@ pub fn fetch_https_bytes(url: &str, limit: u64) -> Result<Vec<u8>, ListError> {
     Ok(bytes)
 }
 
+/// Like [`fetch_https_bytes`], reporting `(received, total)` as the body arrives (total when
+/// the server says it).
+pub fn fetch_https_bytes_progress(url: &str, limit: u64, mut progress: impl FnMut(u64, Option<u64>)) -> Result<Vec<u8>, ListError> {
+    if !url.starts_with("https://") {
+        return Err(ListError::InsecureUrl);
+    }
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .timeout_global(Some(Duration::from_secs(600)))
+        .https_only(true)
+        .user_agent(USER_AGENT)
+        .tls_config(
+            ureq::tls::TlsConfig::builder()
+                .provider(ureq::tls::TlsProvider::NativeTls)
+                .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+                .build(),
+        )
+        .build()
+        .into();
+    let mut response = agent.get(url).call().map_err(|e| ListError::Http(e.to_string()))?;
+    let total = response.headers().get("content-length").and_then(|v| v.to_str().ok()).and_then(|v| v.parse::<u64>().ok());
+    let mut reader = response.body_mut().with_config().limit(limit).reader();
+    let mut bytes = Vec::with_capacity(total.unwrap_or(0).min(limit) as usize);
+    let mut buf = vec![0u8; 64 * 1024];
+    loop {
+        let n = reader.read(&mut buf).map_err(|e| ListError::Http(e.to_string()))?;
+        if n == 0 {
+            break;
+        }
+        bytes.extend_from_slice(&buf[..n]);
+        progress(bytes.len() as u64, total);
+    }
+    Ok(bytes)
+}
+
 fn looks_like_filter_list(text: &str) -> bool {
     let head = text.trim_start();
     if head.is_empty() || head.starts_with('<') || head.starts_with('{') {

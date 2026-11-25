@@ -1403,3 +1403,42 @@ body.collapsed #vt #tabs.has-tree .tab {
 body.collapsed #vt .tab .twisty {
   display: none !important;
 }
+
+/* Update downloading: a ring that fills, and the percentage. */
+.update-pill.downloading {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+  cursor: default;
+  animation: none;
+}
+.upd-ring {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--p, 0) * 1%), color-mix(in srgb, var(--accent) 22%, transparent) 0);
+  -webkit-mask: radial-gradient(circle, transparent 3.5px, #000 4px);
+  mask: radial-gradient(circle, transparent 3.5px, #000 4px);
+  transition: background 300ms;
+}
+.upd-pct {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The ⋮ menu button ─────────────────────────────────────────── */
+#menu {
+  border-radius: 50%;
+  position: relative;
+}
+#menu svg.icon {
+  width: 20px;
+  height: 20px;
+}
+#menu:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-3));
+  color: var(--ink);
+}
+#menu.open {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}

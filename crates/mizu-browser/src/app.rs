@@ -96,6 +96,8 @@ pub struct App {
     pub session_dirty: bool,
     pub filters_updating: bool,
     pub startup_notice: Option<String>,
+    /// A page context menu on screen: (window, the engine's menu, when it opened).
+    pub page_menu: Option<(WindowId, mizu_engine::PageMenu, std::time::Instant)>,
     /// Replies that complete asynchronously: (view key, request id).
     pub media_waiters: HashMap<u64, (ViewKey, u64)>,
     /// Cached bookmarks-bar items for the chrome state (None = needs reload).
@@ -242,12 +244,11 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
     })?;
     tracing::info!(engine = engine.version(), "engine ready");
 
-    let lifetime_blocked = std::fs::read_to_string(paths.root.join("stats.json"))
+    // Shield counters kept on this device (older files hold only the lifetime total).
+    let stats: mizu_privacy::BlockStats = std::fs::read_to_string(paths.root.join("stats.json"))
         .ok()
-        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
-        .and_then(|v| v["lifetime_blocked"].as_u64())
-        .unwrap_or(0);
-    let stats = mizu_privacy::BlockStats { lifetime_blocked, ..Default::default() };
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .unwrap_or_default();
 
     hot::install(Hot {
         roles: HashMap::new(),
@@ -270,9 +271,13 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         pw_tokens: HashMap::new(),
         media_tokens: HashMap::new(),
         cosmetic_pages: HashMap::new(),
+        https_first: settings.privacy.https_first,
+        http_allowed: settings.privacy.http_allowed.iter().map(|h| crate::https::site(h)).collect(),
+        https_pending: HashMap::new(),
         site_volumes: settings.media.site_volumes.iter().map(|(k, v)| (k.clone(), *v)).collect(),
         media_hub: settings.media.media_hub,
         media_player: crate::players::chosen(&settings.media.player),
+        mizu_page_menu: settings.appearance.mizu_page_menu,
         ui_ru: crate::theme::ui_language(&settings) == "ru",
         password_capture: settings.privacy.password_manager,
         pip_button: settings.media.pip_button,
@@ -317,6 +322,7 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         session_dirty: false,
         filters_updating: true,
         startup_notice,
+        page_menu: None,
         media_waiters: HashMap::new(),
         bookmarks_bar: None,
         bookmarks_other: 0,
@@ -493,6 +499,20 @@ impl App {
                 w.reveal();
             }
         }
+        // A page menu whose panel was closed some other way (a click elsewhere) is dismissed.
+        if let Some((wid, _, at)) = &self.page_menu {
+            let shown = self.windows.iter().any(|w| w.id == *wid && w.flyout.kind == Some(mizu_ui::protocol::FlyoutKind::PageMenu));
+            if !shown && at.elapsed() > std::time::Duration::from_millis(400) {
+                self.page_menu = None;
+            }
+        }
+        for w in &mut self.windows {
+            let open = w.flyout.kind == Some(mizu_ui::protocol::FlyoutKind::Menu);
+            if open != w.menu_open {
+                w.menu_open = open;
+                w.state_dirty = true;
+            }
+        }
         let stats_dirty = hot::with(|h| std::mem::take(&mut h.stats_dirty)).unwrap_or(false);
         if stats_dirty {
             for w in &mut self.windows {
@@ -573,6 +593,14 @@ impl App {
                 crate::extensions::finish_store_install(self, key, rid, result);
             }
             WorkerResult::Update { result, reply } => self.finish_update_check(result, reply),
+            WorkerResult::UpdateProgress(version, received, total) => {
+                if matches!(self.update, crate::update::UpdateState::Checking | crate::update::UpdateState::Downloading { .. }) {
+                    self.update = crate::update::UpdateState::Downloading { version, notes: String::new(), received, total };
+                    for w in &mut self.windows {
+                        w.state_dirty = true;
+                    }
+                }
+            }
             WorkerResult::SearchSuggestions { window, query, items } => self.merge_search_suggestions(window, &query, items),
             WorkerResult::MediaReport(report, token) => {
                 if let Some((key, rid)) = self.media_waiters.remove(&token) {
@@ -688,8 +716,14 @@ impl App {
     }
 
     fn save_stats(&self) {
-        let lifetime = hot::with(|h| h.stats.lifetime_blocked).unwrap_or(0);
-        let json = serde_json::json!({ "lifetime_blocked": lifetime }).to_string();
+        let json = hot::with(|h| {
+            h.stats.trim();
+            serde_json::to_string(&h.stats).unwrap_or_default()
+        })
+        .unwrap_or_default();
+        if json.is_empty() {
+            return;
+        }
         let tmp = self.paths.root.join("stats.json.tmp");
         if std::fs::write(&tmp, json).is_ok() {
             let _ = std::fs::rename(tmp, self.paths.root.join("stats.json"));
@@ -866,6 +900,7 @@ impl App {
             show_maximized: app_mode || self.settings.general.start_maximized || placement.is_some_and(|p| p.4),
             spare: None,
             preconnected: Vec::new(),
+            menu_open: false,
             spare_creating: false,
             sidebar: None,
             sidebar_key: TabId::next().0,
@@ -1317,12 +1352,16 @@ impl App {
         hot::with(|h| {
             h.content_blocking = self.settings.privacy.content_blocking;
             h.global_privacy_control = self.settings.privacy.global_privacy_control;
+            h.https_first = self.settings.privacy.https_first;
+            // Session exceptions (a site that redirected back to HTTP) are kept.
+            h.http_allowed.extend(self.settings.privacy.http_allowed.iter().map(|x| crate::https::site(x)));
             h.theme_attrs = crate::theme::html_attrs(&self.settings);
             h.password_capture = self.settings.privacy.password_manager;
             h.pip_button = self.settings.media.pip_button;
             h.pip_config = crate::scripts::pip_config(&self.settings.media);
             h.media_hub = self.settings.media.media_hub;
             h.media_player = crate::players::chosen(&self.settings.media.player);
+            h.mizu_page_menu = self.settings.appearance.mizu_page_menu;
             h.ui_ru = crate::theme::ui_language(&self.settings) == "ru";
             h.site_volumes = self.settings.media.site_volumes.iter().map(|(k, v)| (k.clone(), *v)).collect();
             h.bindings = crate::shortcuts::Bindings::build(&self.settings.shortcuts);

@@ -16,9 +16,11 @@ const open = (url, disposition = 'new_tab') => {
 function reportSize() {
   // The popup's current size caps an inline-block root; content wider than that (the
   // suggestions list follows the address bar width) shows up in scrollWidth.
-  const r = root.getBoundingClientRect();
-  const width = Math.max(r.width, root.scrollWidth);
-  mizu.send('flyout_size', { width: Math.ceil(width), height: Math.ceil(r.height) });
+  // Layout sizes, not getBoundingClientRect: the opening animation scales the panel, and a
+  // size measured mid-animation would cut off its last row.
+  const width = Math.max(root.offsetWidth, root.scrollWidth);
+  const height = Math.max(root.offsetHeight, root.scrollHeight);
+  mizu.send('flyout_size', { width: Math.ceil(width), height: Math.ceil(height) });
 }
 
 const GROUP_COLOR_NAMES = { blue: 'Blue', green: 'Green', orange: 'Orange', pink: 'Pink', purple: 'Purple', teal: 'Teal', yellow: 'Yellow', grey: 'Grey' };
@@ -26,7 +28,8 @@ const groupColorName = (c) => i18n.tr(GROUP_COLOR_NAMES[c] || 'Group');
 
 function item(iconName, label, onClick, opts = {}) {
   const lead = opts.dot ? h('span', { class: `gdot g-${opts.dot}` }) : iconName ? icon(iconName) : h('span', { style: { width: '16px' } });
-  const el = h('button', { class: `item${opts.danger ? ' danger' : ''}` }, lead, h('span', { class: 'label', text: label }), opts.kbd ? h('span', { class: 'kbd', text: opts.kbd }) : null);
+  const keys = opts.kbd ? h('span', { class: 'kbd' }, ...opts.kbd.split('+').filter(Boolean).map((k) => h('kbd', { text: k }))) : null;
+  const el = h('button', { class: `item${opts.danger ? ' danger' : ''}` }, lead, h('span', { class: 'label', text: label }), keys);
   el.addEventListener('click', () => {
     onClick();
     if (!opts.keepOpen) close();
@@ -36,6 +39,16 @@ function item(iconName, label, onClick, opts = {}) {
 const sep = () => h('div', { class: 'sep' });
 
 // ── Main menu ────────────────────────────────────────────────
+// Big tiles for what you open most, zoom as a compact control, then a short list.
+function tile(iconName, label, onClick, kbd) {
+  const b = h('button', { class: 'm-tile', title: kbd ? `${i18n.tr(label)} (${kbd})` : label }, h('span', { class: 'm-tile-icon' }, icon(iconName)), h('span', { class: 'm-tile-label', text: label }));
+  b.addEventListener('click', () => {
+    onClick();
+    close();
+  });
+  return b;
+}
+
 function renderMenu(d) {
   const zoomVal = h('span', { class: 'val', text: `${d.zoom || 100}%` });
   const zoomBtn = (name, delta, title) => {
@@ -51,6 +64,11 @@ function renderMenu(d) {
     });
     return b;
   };
+  zoomVal.title = i18n.tr('Reset zoom (Ctrl+0)');
+  zoomVal.addEventListener('click', () => {
+    mizu.send('zoom', { delta: 0 });
+    zoomVal.textContent = '100%';
+  });
   const fs = h('button', { class: 'mini', title: 'Full screen (F11)' }, icon('fullscreen'));
   fs.addEventListener('click', () => {
     mizu.send('window', { action: 'fullscreen' });
@@ -58,27 +76,51 @@ function renderMenu(d) {
   });
   return h(
     'div',
-    { class: 'menu' },
-    item('plus', 'New tab', () => mizu.send('new_tab'), { kbd: 'Ctrl+T' }),
-    item('window', 'New window', () => mizu.send('new_window', { private: false }), { kbd: 'Ctrl+N' }),
-    item('private', 'New private window', () => mizu.send('new_window', { private: true }), { kbd: 'Ctrl+Shift+N' }),
+    { class: 'menu main-menu' },
+    h('div', { class: 'm-tiles' },
+      tile('plus', 'Tab', () => mizu.send('new_tab'), 'Ctrl+T'),
+      tile('window', 'Window', () => mizu.send('new_window', { private: false }), 'Ctrl+N'),
+      tile('private', 'Private', () => mizu.send('new_window', { private: true }), 'Ctrl+Shift+N')),
+    h('div', { class: 'zoom-row' }, icon('zoom-in'), h('span', { class: 'label', text: 'Zoom' }),
+      h('div', { class: 'zoom-ctl' }, zoomBtn('zoom-out', -1, 'Zoom out (Ctrl+−)'), zoomVal, zoomBtn('zoom-in', 1, 'Zoom in (Ctrl++)')), fs),
+    h('div', { class: 'm-tiles small' },
+      tile('history', 'History', () => open('mizu://history/'), 'Ctrl+H'),
+      tile('download', 'Downloads', () => open('mizu://downloads/'), 'Ctrl+J'),
+      tile('bookmark', 'Bookmarks', () => open('mizu://bookmarks/'), 'Ctrl+Shift+O'),
+      tile('key', 'Passwords', () => open('mizu://passwords/'))),
+    sep(),
     d.private ? null : item('sparkle', 'New space', () => mizu.send('space_create', {})),
-    sep(),
-    h('div', { class: 'zoom-row' }, h('span', { class: 'label', text: 'Zoom' }), zoomBtn('zoom-out', -1, 'Zoom out (Ctrl+−)'), zoomVal, zoomBtn('zoom-in', 1, 'Zoom in (Ctrl++)'), fs),
-    sep(),
-    item('history', 'History', () => open('mizu://history/'), { kbd: 'Ctrl+H' }),
-    item('download', 'Downloads', () => open('mizu://downloads/'), { kbd: 'Ctrl+J' }),
-    item('bookmark', 'Bookmarks', () => open('mizu://bookmarks/'), { kbd: 'Ctrl+Shift+O' }),
-    item('key', 'Passwords', () => open('mizu://passwords/')),
     item('puzzle', 'Scripts & extensions', () => open('mizu://scripts/')),
     item('shield', 'Mizu Shield', () => open('mizu://shield/')),
-    sep(),
     item('print', 'Print…', () => mizu.send('print'), { kbd: 'Ctrl+P' }),
     d.devtools ? item('devtools', 'Developer tools', () => mizu.send('devtools'), { kbd: 'F12' }) : null,
     item('gauge', 'Task manager', () => mizu.send('task_manager'), { kbd: 'Shift+Esc' }),
     sep(),
-    item('settings', 'Settings', () => open('mizu://settings/')),
-    item('info', 'About Mizu', () => open('mizu://about/')),
+    h('div', { class: 'm-foot' },
+      (() => {
+        const b = h('button', { class: 'm-foot-main' }, icon('settings'), h('span', { text: 'Settings' }));
+        b.addEventListener('click', () => {
+          open('mizu://settings/');
+          close();
+        });
+        return b;
+      })(),
+      (() => {
+        const b = h('button', { class: 'mini', title: 'What\u2019s new' }, icon('sparkle'));
+        b.addEventListener('click', () => {
+          open('mizu://whatsnew/');
+          close();
+        });
+        return b;
+      })(),
+      (() => {
+        const b = h('button', { class: 'mini', title: 'About Mizu' }, icon('info'));
+        b.addEventListener('click', () => {
+          open('mizu://about/');
+          close();
+        });
+        return b;
+      })()),
   );
 }
 
@@ -87,7 +129,7 @@ function renderTabMenu(d) {
   const id = d.id;
   return h(
     'div',
-    { class: 'menu', style: { width: '250px' } },
+    { class: 'menu' },
     item('plus', 'New tab', () => mizu.send('new_tab'), { kbd: 'Ctrl+T' }),
     sep(),
     item('reload', 'Reload', () => mizu.send('reload_tab', { id }), { kbd: 'Ctrl+R' }),
@@ -115,6 +157,47 @@ function renderTabMenu(d) {
   );
 }
 
+// ── Page context menu (the engine's entries, drawn by Mizu) ──
+const PAGE_ICONS = {
+  back: 'back', forward: 'forward', reload: 'reload', saveAs: 'download', print: 'print', createQrCode: 'sparkle',
+  inspectElement: 'devtools', emoji: 'sparkle', cut: 'edit', copy: 'copy', paste: 'clipboard', pasteAndMatchStyle: 'clipboard',
+  selectAll: 'check', openLinkInNewWindow: 'window', copyLinkLocation: 'copy', saveLinkAs: 'download', saveImageAs: 'download',
+  copyImage: 'copy', copyImageLocation: 'copy', saveMediaAs: 'download', copyVideoLocation: 'copy', copyAudioLocation: 'copy',
+  loop: 'reload', showAllControls: 'sliders', pictureInPicture: 'media', mute: 'mute', unmute: 'volume', webCapture: 'camera',
+  readAloud: 'volume', translate: 'globe', search: 'search', custom: 'external', other: null,
+};
+function pageEntries(items, depth = 0) {
+  const out = [];
+  for (const it of items) {
+    if (it.kind === 'separator') {
+      if (out.length && !out[out.length - 1].classList.contains('sep')) out.push(sep());
+      continue;
+    }
+    if (it.kind === 'submenu') {
+      const kids = h('div', { class: 'pm-sub', hidden: true }, ...pageEntries(it.children || [], depth + 1));
+      const head = h('button', { class: 'item pm-subhead' }, icon(PAGE_ICONS[it.name] || 'more'), h('span', { class: 'label', text: it.label }), icon('chevron-right', { class: 'pm-chev' }));
+      head.addEventListener('click', () => {
+        kids.hidden = !kids.hidden;
+        head.classList.toggle('open', !kids.hidden);
+        reportSize();
+      });
+      out.push(head, kids);
+      continue;
+    }
+    const lead = it.kind === 'check' || it.kind === 'radio' ? (it.checked ? icon('check') : h('span', { style: { width: '16px' } })) : PAGE_ICONS[it.name] ? icon(PAGE_ICONS[it.name]) : h('span', { style: { width: '16px' } });
+    const short = (k) => ({ 'left arrow': '←', 'right arrow': '→', 'up arrow': '↑', 'down arrow': '↓', 'стрелка влево': '←', 'стрелка вправо': '→', 'стрелка вверх': '↑', 'стрелка вниз': '↓' })[k.trim().toLowerCase()] || k.trim();
+    const keys = it.shortcut ? h('span', { class: 'kbd' }, ...it.shortcut.split('+').filter(Boolean).map((k) => h('kbd', { text: short(k) }))) : null;
+    const el = h('button', { class: `item${it.enabled ? '' : ' disabled'}`, disabled: !it.enabled }, lead, h('span', { class: 'label', text: it.label }), keys);
+    if (it.enabled) el.addEventListener('click', () => mizu.send('page_menu_select', { id: it.id }));
+    out.push(el);
+  }
+  while (out.length && out[out.length - 1].classList.contains('sep')) out.pop();
+  return out;
+}
+function renderPageMenu(d) {
+  return h('div', { class: 'menu page-menu' }, ...pageEntries(d.items || []));
+}
+
 // ── Bookmarks bar item menu ──────────────────────────────────
 function renderBookmarkMenu(d) {
   const open = (disposition) => mizu.send('open_url', { url: d.url, disposition });
@@ -125,7 +208,7 @@ function renderBookmarkMenu(d) {
       sep(),
       item('trash', 'Delete folder', remove, { danger: true }));
   }
-  return h('div', { class: 'menu', style: { width: '250px' } },
+  return h('div', { class: 'menu' },
     item('external', 'Open in new tab', () => open('background')),
     item('window', 'Open in new window', () => open('new_window')),
     d.private ? null : item('private', 'Open in private window', () => open('private_window')),
@@ -588,6 +671,7 @@ const RENDERERS = {
   tab_menu: renderTabMenu,
   group_menu: renderGroupMenu,
   space_menu: renderSpaceMenu,
+  page_menu: renderPageMenu,
   bookmark_menu: renderBookmarkMenu,
   downloads: renderDownloads,
   media: renderMedia,

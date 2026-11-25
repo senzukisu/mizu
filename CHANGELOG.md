@@ -6,6 +6,30 @@ How to use a feature is in the [user guide](docs/GUIDE.md); what comes next is i
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-11-25 · Deep Water
+
+### Added
+- **HTTPS-First** (Settings → Privacy → Secure connections, on by default): when you go to an `http://` address, Mizu
+  opens its `https://` version. If the site has none, a page explains the risk and offers **Continue to the site (not
+  secure)**, remembered for that site if you like. Home-network addresses (IP addresses, `localhost`, names without a
+  dot, `.local`, `.lan`, explicit ports) are left alone, and a site that sends you back to HTTP is respected.
+  Exceptions are listed in Settings and on the site's page (lock icon → Site settings).
+- **Shield dashboard v2** (`mizu://shield`): blocked today, in the last 30 days and in total; a 30-day timeline; the
+  sites where Shield blocked the most (each opens its site settings); the trackers blocked most often this session.
+  The counts are kept on this PC only.
+- **Mizu-style page menus:** right-click menus on web pages are drawn like the rest of Mizu — the engine's own
+  entries (copy, paste, save image, inspect…) with icons, keys and submenus. Settings → Appearance turns it off.
+
+### Changed
+- **The ⋮ menu** is redesigned: big buttons for a new tab, window and private window, a compact zoom control, quick
+  buttons for history, downloads, bookmarks and passwords, and Settings / What's new / About at the bottom. The button
+  stays lit while the menu is open. All menus got more room, keys drawn as keys and clearer hover.
+- **Updates you can watch:** while a new version downloads, the toolbar shows a progress ring with the percentage,
+  and Settings → General → Updates a progress bar with the size.
+
+### Fixed
+- Menus could have their last row cut off, because they were measured during their opening animation.
+
 ## [0.3.6] — 2026-11-25
 
 ### Added

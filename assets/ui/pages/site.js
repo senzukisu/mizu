@@ -66,6 +66,16 @@ function permissionsCard() {
   return card('Permissions', null, ...rows);
 }
 
+function httpCard() {
+  if (!info.http_allowed) return null;
+  const forget = h('button', { class: 'btn', text: 'Use HTTPS again' });
+  forget.addEventListener('click', () => mizu.request('http_forget', { host }).then(() => {
+    info.http_allowed = false;
+    render();
+  }));
+  return card('Secure connection', null, row('Allowed without HTTPS', 'You chose to open this site over HTTP when it had no secure version.', forget));
+}
+
 function zoomCard() {
   const pct = info.zoom || info.zoom_default;
   const reset = h('button', { class: 'btn', text: 'Reset' });
@@ -90,7 +100,7 @@ function render() {
   go.addEventListener('click', () => mizu.send('open_url', { url: `https://${host}/`, disposition: 'current' }));
   main.replaceChildren(h('div', { class: 'page', style: { maxWidth: '820px' } },
     h('div', { class: 'site-head' }, letterAvatar(`https://${host}/`, host), h('div', { class: 'grow' }, h('h1', { translate: 'no', text: host }), h('div', { class: 'd', text: 'Site settings' })), go),
-    shieldCard(), cookiesCard(), permissionsCard(), zoomCard(), historyCard()));
+    ...[shieldCard(), httpCard(), cookiesCard(), permissionsCard(), zoomCard(), historyCard()].filter(Boolean)));
 }
 
 bootPage(() => {

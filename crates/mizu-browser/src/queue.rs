@@ -87,6 +87,8 @@ pub enum WorkerResult {
         result: Result<crate::update::Outcome, String>,
         reply: Option<(mizu_engine::ViewKey, u64)>,
     },
+    /// The new version's installer is downloading: (version, bytes so far, total bytes).
+    UpdateProgress(String, u64, u64),
     ExtensionDownloaded {
         key: mizu_engine::ViewKey,
         rid: Option<u64>,

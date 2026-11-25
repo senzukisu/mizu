@@ -14,7 +14,7 @@ const ICONS = {
   'shield-check': [['path', { d: 'M12 3.5l7 2.6v5.4c0 4.4-3 7.8-7 9-4-1.2-7-4.6-7-9V6.1z' }], ['path', { d: 'M8.8 12.2l2.2 2.2 4.3-4.4' }]],
   'shield-off': [['path', { d: 'M12 3.5l7 2.6v5.4c0 4.4-3 7.8-7 9-4-1.2-7-4.6-7-9V6.1z' }], ['path', { d: 'M4 4l16 16' }]],
   download: [['path', { d: 'M12 4v11' }], ['path', { d: 'M7.5 10.5L12 15l4.5-4.5' }], ['path', { d: 'M5 19.5h14' }]],
-  menu: [['circle', { cx: 12, cy: 5.5, r: 1.3, fill: 'currentColor', stroke: 'none' }], ['circle', { cx: 12, cy: 12, r: 1.3, fill: 'currentColor', stroke: 'none' }], ['circle', { cx: 12, cy: 18.5, r: 1.3, fill: 'currentColor', stroke: 'none' }]],
+  menu: [['circle', { cx: 12, cy: 5.8, r: 1.75, fill: 'currentColor', stroke: 'none' }], ['circle', { cx: 12, cy: 12, r: 1.75, fill: 'currentColor', stroke: 'none' }], ['circle', { cx: 12, cy: 18.2, r: 1.75, fill: 'currentColor', stroke: 'none' }]],
   plus: [['path', { d: 'M12 5v14M5 12h14' }]],
   close: [['path', { d: 'M7 7l10 10M17 7L7 17' }]],
   lock: [['rect', { x: 5.5, y: 10.5, width: 13, height: 9.5, rx: 2 }], ['path', { d: 'M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5' }]],

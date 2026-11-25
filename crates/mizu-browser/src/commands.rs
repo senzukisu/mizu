@@ -142,6 +142,25 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
                     if let Some(w) = app.window_mut(window) {
                         w.flyout.ready = true;
                     }
+                    // Test hook: MIZU_TEST_FLYOUT=menu|tab_menu opens that panel once, so its look
+                    // can be checked without clicking.
+                    if let Some(kind) = std::env::var("MIZU_TEST_FLYOUT").ok().and_then(|k| serde_json::from_value::<FlyoutKind>(json!(k)).ok()) {
+                        let at = app.window(window).map(|w| {
+                            let rc = crate::win::client_rect(w.hwnd);
+                            let scale = crate::win::dpi_scale(w.hwnd);
+                            (f64::from(rc.right) / scale, w.active_tab().map(|t| t.0))
+                        });
+                        if let Some((width, tab)) = at {
+                            let (anchor, tab_id) = if kind == FlyoutKind::Menu {
+                                (mizu_ui::protocol::Anchor { x: width - 46.0, y: 70.0, width: 32.0, height: 32.0 }, None)
+                            } else {
+                                (mizu_ui::protocol::Anchor { x: 120.0, y: 30.0, width: 1.0, height: 1.0 }, tab)
+                            };
+                            queue::with_app(move |a| {
+                                let _ = handle(a, window, key, Surface::Chrome, Command::ShowFlyout { kind, anchor, tab_id });
+                            });
+                        }
+                    }
                 }
                 Surface::Page => {}
             }
@@ -223,6 +242,8 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             ok()
         }
         Command::CloseFlyout => {
+            // Closing the page menu without a choice.
+            app.page_menu = None;
             if app.pending_password.as_ref().is_some_and(|p| p.window == window) {
                 app.pending_password = None;
             }
@@ -346,6 +367,15 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
             branch.push(root);
             for t in branch {
                 app.close_tab(window, t);
+            }
+            ok()
+        }
+        Command::PageMenuSelect { id } => {
+            if let Some((_, menu, _)) = app.page_menu.take() {
+                menu.select(id);
+            }
+            if let Some(w) = app.window_mut(window) {
+                w.flyout.hide();
             }
             ok()
         }
@@ -873,6 +903,8 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
     let private = app.window(window).is_some_and(|w| w.private);
     match kind {
         FlyoutKind::Downloads => app.downloads.to_json(private),
+        // Its data comes with the request (App::show_page_menu).
+        FlyoutKind::PageMenu => Value::Null,
         FlyoutKind::GroupMenu => {
             let g = tab_id.and_then(|id| app.window(window)?.strip.group(id as u32).cloned());
             let count = tab_id.map(|id| app.window(window).map(|w| w.strip.group_tabs(id as u32).len()).unwrap_or(0)).unwrap_or(0);
@@ -1361,5 +1393,49 @@ fn preconnect_origin(w: &mut crate::window::BrowserWindow, origin: &str) {
     w.preconnected.push(origin.to_owned());
     if w.preconnected.len() > 16 {
         w.preconnected.remove(0);
+    }
+}
+
+fn page_menu_json(items: &[mizu_engine::PageMenuItem]) -> Value {
+    Value::Array(
+        items
+            .iter()
+            .map(|i| {
+                json!({
+                    "id": i.id,
+                    "label": i.label,
+                    "name": i.name,
+                    "kind": match i.kind {
+                        mizu_engine::PageMenuKind::Command => "command",
+                        mizu_engine::PageMenuKind::Check => "check",
+                        mizu_engine::PageMenuKind::Radio => "radio",
+                        mizu_engine::PageMenuKind::Separator => "separator",
+                        mizu_engine::PageMenuKind::Submenu => "submenu",
+                    },
+                    "checked": i.checked,
+                    "enabled": i.enabled,
+                    "shortcut": i.shortcut,
+                    "children": page_menu_json(&i.children),
+                })
+            })
+            .collect(),
+    )
+}
+
+impl App {
+    /// Shows a page's context menu in Mizu's style at the point it was requested.
+    pub fn show_page_menu(&mut self, window: WindowId, tab: TabId, x: i32, y: i32, items: &[mizu_engine::PageMenuItem], menu: mizu_engine::PageMenu) {
+        let Some(w) = self.window(window) else { return };
+        let rect = w.tab_rect(tab);
+        let scale = crate::win::dpi_scale(w.hwnd);
+        let anchor = mizu_ui::protocol::Anchor {
+            x: f64::from(rect.left + x) / scale,
+            y: f64::from(rect.top + y) / scale,
+            width: 1.0,
+            height: 1.0,
+        };
+        let data = json!({ "items": page_menu_json(items) });
+        self.page_menu = Some((window, menu, std::time::Instant::now()));
+        self.show_flyout(window, FlyoutKind::PageMenu, anchor, data, None);
     }
 }

@@ -123,6 +123,8 @@ pub struct BrowserWindow {
     pub created_at: std::time::Instant,
     /// Pre-created, hidden engine view handed to the next new tab (makes new tabs instant).
     pub spare: Option<View>,
+    /// Whether the main menu was open at the last state push (the ⋮ button stays lit).
+    pub menu_open: bool,
     /// Origins already preconnected from the address bar (most recent last).
     pub preconnected: Vec<String>,
     pub spare_creating: bool,
