@@ -28,10 +28,11 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 | **0.3.x** | Currents | Integration tests, code-signed installer | 🔜 Next |
 | 0.4.0 | Deep Water | HTTPS-First, Shield dashboard v2 | ✅ Released |
 | 0.4.1 | Deep Water | Fingerprinting defence, fingerprint check page | ✅ Released |
-| **0.4.x** | Deep Water | Fingerprinting defence, encrypted backups | 🔜 Next |
+| **0.4.x** | Deep Water | Fingerprinting report, encrypted backups | 🔜 Next |
+| 0.4.4 | Deep Water | Mizu for Android (first version) | Planned |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
 | 0.6 | Estuary | Built-in tools: PDF, translation, reading mode; screen readers | Planned |
-| 0.7 | Rivers | Linux, macOS, Android and iOS | Planned |
+| 0.7 | Rivers | Linux, macOS and iOS | Planned |
 | 1.0 | Ocean | Stable: accessibility, guarantees, long-term engine plan | Planned |
 
 ## Already in 0.1.x
@@ -120,6 +121,7 @@ Shipped in steps, each one usable on its own:
 | **0.4.1 ✅** | **Fingerprinting defence** (standard) | A document-start script gives high-entropy APIs protective values: small per-site, per-session noise for canvas readback and audio, bucketed `hardwareConcurrency`/`deviceMemory`, no battery API, a common font list. Off per site from the lock icon. |
 | **0.4.2** | Fingerprinting report · strict mode | Shield shows which scripts read which APIs on the page. Strict mode also hides WebGL details and screen size precision. |
 | **0.4.3** | **Encrypted backup and restore** | One file with bookmarks, history, passwords, settings, scripts and tiles; key from a passphrase with Argon2id, sealed with XChaCha20-Poly1305 (RustCrypto crates, no own crypto). Restore checks integrity first and never half-applies. Optional scheduled backup to a folder you pick. |
+| **0.4.4** | **Mizu for Android** (first version) | Android System WebView behind the same `mizu-engine` interface, a thin Kotlin shell around the Rust core (storage, settings, Shield's filter engine, the tab model). A phone layout: address bar at the bottom, a tab grid, swipe between tabs. Shield through request interception plus Mizu's cosmetic and scriptlet layer; HTTPS-First and fingerprinting defence carried over; passwords in the Android Keystore. A signed APK on the GitHub releases page, updating itself like the desktop version. |
 
 **Ground rules**
 
@@ -133,6 +135,8 @@ two banks, two shops with 3-D Secure, Cloudflare and hCaptcha checks.
 
 **Done when:**
 - the test list works with HTTPS-First and standard fingerprinting defence on;
+- on Android (0.4.4): browsing, tabs, bookmarks, history, Shield and updates work on Android 10 and later, on a phone
+  and a tablet;
 - the noise is stable within a site and a session, and different across sites (checked by a test page);
 - a backup restores bit for bit on a clean profile, and a wrong passphrase or a damaged file is refused with a clear
   message.
@@ -161,7 +165,7 @@ two banks, two shops with 3-D Secure, Cloudflare and hCaptcha checks.
   hosted pages and the interface, plus full keyboard navigation of the sidebar and panels. Done when NVDA and
   Narrator read pages, menus and panels.
 
-## 0.7 — "Rivers": Linux, macOS and mobile
+## 0.7 — "Rivers": Linux, macOS and iOS
 
 WebView2 exists only on Windows, so each platform gets its own engine behind the `mizu-engine` interface:
 
@@ -169,13 +173,13 @@ WebView2 exists only on Windows, so each platform gets its own engine behind the
 |---|---|---|
 | macOS | WKWebView | H.264/AAC from the system; Shield through WebKit content rules plus Mizu's cosmetic and scriptlet layer |
 | Linux | WebKitGTK (or CEF) | WebKitGTK ships with distributions; CEF only if extensions are needed there |
-| Android | Android System WebView | A mobile layout around the same HTML interface |
+| Android | Android System WebView | Comes earlier, in **0.4.4** (see above); 0.7 brings it level with the desktop |
 | iOS / iPadOS | WKWebView | Apple requires WebKit on iOS (outside the EU) |
 
 - **Already portable:** the interface (`assets/ui`), storage, settings, Shield's filter engine, userscripts and the
   tab model. Passwords switch to each platform's keychain instead of DPAPI.
 - **Platform specific:** the engine adapter, windows and input, the installer and updates.
-- **Mobile layout:** a bottom address bar, a tab grid and gestures, sharing settings and features with desktop.
+- **Mobile layout:** the one made for Android in 0.4.4 (bottom address bar, tab grid, gestures) is reused on iOS.
 - **Extensions** stay Windows-first. On WebKit platforms, userscripts and Shield cover the most common needs.
 
 **Done when:** the core features work on every platform, as tracked in a parity table in

@@ -66,7 +66,7 @@ Windows 11 and most Windows 10 PCs. A **portable** zip is on the same page (no a
 
 ## Good to know
 
-- Windows only for now; Linux, macOS and mobile are planned ([roadmap](ROADMAP.md)).
+- Windows only for now. Android is planned for 0.4.4, Linux, macOS and iOS for 0.7 ([roadmap](ROADMAP.md)).
 - Extensions must be Chromium Manifest V3. They have no toolbar buttons yet, so their pages open in a tab. Firefox
   add-ons are not supported.
 - Screen reader support is limited until Mizu provides its own accessibility tree (planned for 0.6).
