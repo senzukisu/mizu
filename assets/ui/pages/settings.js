@@ -432,6 +432,7 @@ function privacy() {
       toggle('Send Global Privacy Control', 'Tells websites not to sell or share your data (Sec-GPC header). Legally binding in some regions.', () => p.global_privacy_control, (v) => (p.global_privacy_control = v)),
     ),
     httpsCard(),
+    fingerprintCard(),
     cookieCleanupCard(),
     permissionsCard(),
     externalAppsCard(),
@@ -483,6 +484,36 @@ function permissionsCard() {
     body.append(table);
   });
   return card('Site permissions', null, body);
+}
+
+// Fingerprinting defence and the sites where it is off.
+function fingerprintCard() {
+  const p = s.privacy;
+  p.fingerprint_exceptions = p.fingerprint_exceptions || [];
+  const list = h('div', { class: 'keep-list' });
+  const draw = () => {
+    list.replaceChildren();
+    if (!p.fingerprint_exceptions.length) list.append(h('div', { class: 'd', text: 'None. If a site misbehaves, turn the defence off for it from the lock icon \u2192 Site settings.' }));
+    p.fingerprint_exceptions.forEach((host, i) => {
+      const del = h('button', { class: 'icon-btn', title: 'Remove' }, icon('close'));
+      del.addEventListener('click', () => {
+        p.fingerprint_exceptions.splice(i, 1);
+        save(true);
+        draw();
+      });
+      list.append(h('div', { class: 'keep-row' }, icon('shield-off', { size: 14 }), h('span', { translate: 'no', text: host }), del));
+    });
+  };
+  draw();
+  const check = h('button', { class: 'btn' }, icon('eye'), h('span', { text: 'See what sites see' }));
+  check.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://fingerprint/', disposition: 'new_tab' }));
+  return card('Fingerprinting defence', 'Sites can recognise your browser without cookies, from how it draws, plays sound and what hardware it reports. Mizu gives each site slightly different values, so sites cannot link your visits. It is not anonymity: your IP address and sign-ins still identify you.',
+    setting('Protection', null, seg([['standard', 'Standard'], ['off', 'Off']], p.fingerprinting || 'standard', (v) => {
+      p.fingerprinting = v;
+      save(true);
+    })),
+    setting('Check', 'What websites can read about this PC, with and without the defence.', check),
+    h('div', { class: 'setting col' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Sites where the defence is off' })), list));
 }
 
 // HTTPS-First and the sites allowed over HTTP.

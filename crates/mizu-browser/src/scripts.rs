@@ -51,7 +51,7 @@ document.addEventListener('enterpictureinpicture',e=>controls(e.target),true);
 })();"#;
 
 /// Unpredictable token for the userscript message channel (SipHash with OS-random keys).
-fn random_token() -> String {
+pub fn random_token() -> String {
     let a = std::collections::hash_map::RandomState::new().build_hasher().finish();
     let mut h = std::collections::hash_map::RandomState::new().build_hasher();
     h.write_u64(a);
@@ -343,6 +343,25 @@ fn fetch(url: &str) -> Result<String, String> {
 pub fn pip_config(m: &mizu_settings::MediaSettings) -> String {
     let position = if m.pip_position == "top-left" { "top-left" } else { "top-right" };
     serde_json::json!({ "button": m.pip_button, "position": position, "compact": m.pip_compact, "controls": m.pip_controls }).to_string()
+}
+
+/// The fingerprinting defence script (shared with the check page mizu://fingerprint).
+const FINGERPRINT_SCRIPT: &str = include_str!("../../../assets/ui/shared/fingerprint.js");
+
+/// The fingerprinting defence for a view: registered once (before its first page) and kept
+/// for every page and frame. Each document derives its key from this run's secret and the
+/// top-level site (`location.ancestorOrigins` in frames), so a site sees the same values for
+/// the whole session, different sites see different ones, and an embedded tracker cannot
+/// match visits across sites. `None` when the defence is off.
+pub fn fingerprint_base_script(h: &Hot) -> Option<String> {
+    if !h.fingerprinting {
+        return None;
+    }
+    let exceptions = serde_json::to_string(&h.fp_exceptions.iter().collect::<Vec<_>>()).unwrap_or_else(|_| "[]".into());
+    Some(format!(
+        "(()=>{{try{{const anc=location.ancestorOrigins;const web=/^https?:$/.test(location.protocol);if(!web&&!(anc&&anc.length))return;let top=location.hostname;         if(anc&&anc.length){{try{{top=new URL(anc[anc.length-1]).hostname;}}catch(e){{}}}}         top=top.toLowerCase().replace(/^www[.]/,'');if({exceptions}.includes(top))return;         let k={secret};for(let i=0;i<top.length;i++)k=Math.imul(k^top.charCodeAt(i),16777619)>>>0;         {FINGERPRINT_SCRIPT}\n;mizuFingerprintProtect(window,k||1);}}catch(e){{}}}})();",
+        secret = h.fp_secret,
+    ))
 }
 
 /// Gives pages without any background the `Canvas` colour (it follows their colour scheme),

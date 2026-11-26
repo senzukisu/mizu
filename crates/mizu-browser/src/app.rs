@@ -98,6 +98,8 @@ pub struct App {
     pub startup_notice: Option<String>,
     /// A page context menu on screen: (window, the engine's menu, when it opened).
     pub page_menu: Option<(WindowId, mizu_engine::PageMenu, std::time::Instant)>,
+    /// The fingerprinting script last registered in views (to notice changes).
+    pub fp_base_last: Option<String>,
     /// Replies that complete asynchronously: (view key, request id).
     pub media_waiters: HashMap<u64, (ViewKey, u64)>,
     /// Cached bookmarks-bar items for the chrome state (None = needs reload).
@@ -274,6 +276,9 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         https_first: settings.privacy.https_first,
         http_allowed: settings.privacy.http_allowed.iter().map(|h| crate::https::site(h)).collect(),
         https_pending: HashMap::new(),
+        fingerprinting: settings.privacy.fingerprinting == "standard",
+        fp_exceptions: settings.privacy.fingerprint_exceptions.iter().map(|h| crate::https::site(h)).collect(),
+        fp_secret: u32::from_str_radix(&crate::scripts::random_token()[..8], 16).unwrap_or(0x5eed) | 1,
         site_volumes: settings.media.site_volumes.iter().map(|(k, v)| (k.clone(), *v)).collect(),
         media_hub: settings.media.media_hub,
         media_player: crate::players::chosen(&settings.media.player),
@@ -323,6 +328,7 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         filters_updating: true,
         startup_notice,
         page_menu: None,
+        fp_base_last: None,
         media_waiters: HashMap::new(),
         bookmarks_bar: None,
         bookmarks_other: 0,
@@ -1353,6 +1359,8 @@ impl App {
             h.content_blocking = self.settings.privacy.content_blocking;
             h.global_privacy_control = self.settings.privacy.global_privacy_control;
             h.https_first = self.settings.privacy.https_first;
+            h.fingerprinting = self.settings.privacy.fingerprinting == "standard";
+            h.fp_exceptions = self.settings.privacy.fingerprint_exceptions.iter().map(|x| crate::https::site(x)).collect();
             // Session exceptions (a site that redirected back to HTTP) are kept.
             h.http_allowed.extend(self.settings.privacy.http_allowed.iter().map(|x| crate::https::site(x)));
             h.theme_attrs = crate::theme::html_attrs(&self.settings);
@@ -1367,6 +1375,16 @@ impl App {
             h.bindings = crate::shortcuts::Bindings::build(&self.settings.shortcuts);
             h.allowlist = self.settings.privacy.allowlist.iter().map(|x| crate::shield::normalize_host(x)).collect();
         });
+        // Fingerprinting defence: re-register the lasting script when its inputs changed.
+        let base = hot::with(|h| crate::scripts::fingerprint_base_script(h)).flatten();
+        if base != self.fp_base_last {
+            self.fp_base_last = base.clone();
+            for w in &self.windows {
+                for v in w.tabs.values().filter_map(|t| t.view.as_ref()).chain(w.spare.as_ref()) {
+                    v.set_base_script(base.clone(), || {});
+                }
+            }
+        }
     }
 
     /// Creates the spare view of a window soon (after the current work settles).

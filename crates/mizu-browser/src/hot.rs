@@ -37,6 +37,12 @@ pub struct Hot {
     pub https_first: bool,
     pub http_allowed: HashSet<String>,
     pub https_pending: HashMap<ViewKey, String>,
+    /// Fingerprinting defence: on, the sites excepted, and a random key per site for this
+    /// session (never stored).
+    pub fingerprinting: bool,
+    pub fp_exceptions: HashSet<String>,
+    /// Secret for this run of Mizu; with the top site's name it gives the site's key.
+    pub fp_secret: u32,
     /// Theme attributes for internal pages' `<html>` element (see `theme::html_attrs`).
     pub theme_attrs: String,
     /// Hosts the user chose to open despite a document-level block (this session only).

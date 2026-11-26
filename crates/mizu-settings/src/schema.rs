@@ -33,6 +33,9 @@ impl Settings {
             self.search.engine = SearchSettings::default().engine;
         }
         self.appearance.sidebar_width = self.appearance.sidebar_width.clamp(160, 520);
+        if !["standard", "off"].contains(&self.privacy.fingerprinting.as_str()) {
+            self.privacy.fingerprinting = "standard".into();
+        }
         if !["stable", "beta"].contains(&self.general.update_channel.as_str()) {
             self.general.update_channel = "stable".into();
         }
@@ -393,6 +396,10 @@ pub struct PrivacySettings {
     pub https_first: bool,
     /// Sites the user chose to open over HTTP (HTTPS-First leaves them alone).
     pub http_allowed: Vec<String>,
+    /// Fingerprinting defence: "standard" or "off".
+    pub fingerprinting: String,
+    /// Sites where fingerprinting defence is off.
+    pub fingerprint_exceptions: Vec<String>,
     /// Let the engine offer to save passwords. Off by default: Mizu has no password
     /// manager UI yet, and stored passwords would be invisible to the user.
     pub engine_password_saving: bool,
@@ -417,6 +424,8 @@ impl Default for PrivacySettings {
             global_privacy_control: true,
             https_first: true,
             http_allowed: Vec::new(),
+            fingerprinting: "standard".into(),
+            fingerprint_exceptions: Vec::new(),
             engine_password_saving: false,
             engine_autofill: false,
             password_manager: true,

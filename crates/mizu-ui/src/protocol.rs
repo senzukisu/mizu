@@ -324,6 +324,8 @@ pub enum Command {
     },
     /// Removes a site from the HTTPS-First exceptions.
     HttpForget { host: String },
+    /// Fingerprinting defence on or off for one site.
+    SiteFingerprint { host: String, enabled: bool },
 
     // ── Userscripts & extensions ─────────────────────────────
     ScriptsGet,

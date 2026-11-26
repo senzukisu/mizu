@@ -218,6 +218,7 @@ impl App {
                         let Some(w) = app.window_mut(window) else { return };
                         v.set_visible(false);
                         v.set_zoom(zoom);
+                        v.set_base_script(hot::with(|h| crate::scripts::fingerprint_base_script(h)).flatten(), || {});
                         w.spare = Some(v);
                     }
                     Err(e) => tracing::warn!(error = %e, "could not create spare view"),
@@ -313,11 +314,17 @@ impl App {
         } else {
             view.set_visible(false);
         }
+        let base = hot::with(|h| crate::scripts::fingerprint_base_script(h)).flatten();
         if let Some(req) = state.pending_new_window.take() {
             state.pending_url = None;
+            view.set_base_script(base, || {});
             req.complete_with(&view);
         } else if let Some(url) = state.pending_url.take() {
-            load(tab.0, &view, &url);
+            let v = view.clone();
+            let key = tab.0;
+            view.set_base_script(base, move || load(key, &v, &url));
+        } else {
+            view.set_base_script(base, || {});
         }
         w.state_dirty = true;
         if apply_profile {

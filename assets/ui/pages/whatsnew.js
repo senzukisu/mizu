@@ -7,6 +7,11 @@ const REPO = 'https://github.com/senzukisu/mizu';
 
 // Newest first. [icon, title, text, optional Mizu link]
 const RELEASES = [
+  { v: '0.4.1', name: 'Deep Water', items: [
+    ['shield-check', 'Fingerprinting defence', 'Sites can recognise your browser without cookies. Mizu now gives every site slightly different canvas, audio and hardware values, so your visits cannot be linked — on by default.', 'mizu://settings/#privacy'],
+    ['eye', 'See what sites see', 'A new page shows what websites can read about this PC, with and without the defence.', 'mizu://fingerprint/'],
+    ['lock', 'Per-site switch', 'If a site misbehaves, turn the defence off just for it from the lock icon.'],
+  ] },
   { v: '0.4.0', name: 'Deep Water', items: [
     ['lock', 'HTTPS-First', 'Mizu opens the secure version of a site when you go to an http address. If a site has none, it asks before loading it without encryption — and can remember your answer.', 'mizu://settings/#privacy'],
     ['shield', 'A new Shield dashboard', 'How much was blocked today and this month, a 30-day timeline, and the sites where Shield stopped the most. Kept on this PC only.', 'mizu://shield/'],

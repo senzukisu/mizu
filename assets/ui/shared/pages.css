@@ -3608,3 +3608,82 @@ body.p-whatsnew {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Fingerprint check ────────────────────────────────────────── */
+.fp-banner {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.fp-banner.on {
+  border-color: color-mix(in srgb, #22a06b 40%, var(--line));
+  background: color-mix(in srgb, #22a06b 9%, var(--surface));
+}
+.fp-banner.on > .icon {
+  color: #22a06b;
+}
+.fp-banner.off > .icon {
+  color: #d9822b;
+}
+.fp-banner div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fp-banner span {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+.fp-loading {
+  padding: 30px;
+  text-align: center;
+  color: var(--ink-3);
+}
+.fp-table {
+  display: flex;
+  flex-direction: column;
+}
+.fp-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) 1fr 1fr 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 20px;
+  border-top: 1px solid var(--line);
+}
+.fp-row.head {
+  border-top: 0;
+  color: var(--ink-3);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.fp-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+}
+.fp-name small {
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.fp-name i {
+  font-style: normal;
+  margin-top: 4px;
+}
+.fp-row code {
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--ink-2);
+}
+.fp-row code.diff {
+  color: #22a06b;
+  font-weight: 600;
+}

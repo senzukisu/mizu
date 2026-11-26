@@ -359,6 +359,10 @@ fn resource_decision(key: ViewKey, req: &ResourceRequest) -> ResourceDecision {
     let decision = hot::with(|h| {
         let source = h.top_urls.get(&key).cloned().unwrap_or_default();
         let gpc = h.global_privacy_control;
+        let reduce_hints = h.fingerprinting && {
+            let site = crate::https::site(&host_of(&source));
+            !site.is_empty() && !h.fp_exceptions.contains(&site)
+        };
         let mut verdict = Verdict::Allow;
         if let (true, Some(blocker)) = (h.content_blocking, h.blocker.as_ref()) {
             if !is_internal_url(&source) && !crate::shield::allowlisted(&h.allowlist, &source) {
@@ -378,9 +382,9 @@ fn resource_decision(key: ViewKey, req: &ResourceRequest) -> ResourceDecision {
             h.stats_dirty = true;
             *h.page_blocked.entry(key).or_default() += 1;
         }
-        (verdict, gpc)
+        (verdict, gpc, reduce_hints)
     });
-    let Some((verdict, gpc)) = decision else { return ResourceDecision::Continue };
+    let Some((verdict, gpc, reduce_hints)) = decision else { return ResourceDecision::Continue };
     match verdict {
         Verdict::Block => ResourceDecision::Block,
         Verdict::Redirect(data_url) => match decode_data_url(&data_url) {
@@ -393,10 +397,33 @@ fn resource_decision(key: ViewKey, req: &ResourceRequest) -> ResourceDecision {
             None => ResourceDecision::Block,
         },
         Verdict::Rewrite(u) => ResourceDecision::Rewrite(u),
-        Verdict::Allow if gpc => ResourceDecision::ContinueWithHeaders(vec![("Sec-GPC".into(), "1".into())]),
+        Verdict::Allow if gpc || reduce_hints => {
+            let mut headers: Vec<(String, String)> = Vec::new();
+            if gpc {
+                headers.push(("Sec-GPC".into(), "1".into()));
+            }
+            if reduce_hints {
+                for name in HIGH_ENTROPY_HINTS {
+                    headers.push(((*name).into(), String::new()));
+                }
+            }
+            ResourceDecision::ContinueWithHeaders(headers)
+        }
         Verdict::Allow => ResourceDecision::Continue,
     }
 }
+
+/// Client Hints that identify the exact device and build; removed under fingerprinting defence.
+const HIGH_ENTROPY_HINTS: &[&str] = &[
+    "Sec-CH-UA-Full-Version-List",
+    "Sec-CH-UA-Full-Version",
+    "Sec-CH-UA-Platform-Version",
+    "Sec-CH-UA-Model",
+    "Sec-CH-UA-Arch",
+    "Sec-CH-UA-Bitness",
+    "Sec-CH-UA-WoW64",
+    "Sec-CH-UA-Form-Factors",
+];
 
 #[cfg(test)]
 mod tests {

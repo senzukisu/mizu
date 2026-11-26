@@ -313,6 +313,8 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 "visits": count,
                 "zoom": app.settings.appearance.site_zoom.get(&host),
                 "https_first": app.settings.privacy.https_first,
+                "fingerprinting": app.settings.privacy.fingerprinting == "standard",
+                "fp_excepted": app.settings.privacy.fingerprint_exceptions.iter().any(|h| crate::https::site(h) == crate::https::site(&host)),
                 "http_allowed": app.settings.privacy.http_allowed.iter().any(|h| crate::https::site(h) == crate::https::site(&host)),
                 "zoom_default": app.settings.appearance.zoom_percent,
             }))
@@ -487,6 +489,17 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
             if let Some(Role::Tab { window, .. }) = hot::role(key) {
                 app.navigate_active(window, &url);
             }
+            ok()
+        }
+        Command::SiteFingerprint { host, enabled } => {
+            let site = crate::https::site(&host);
+            let list = &mut app.settings.privacy.fingerprint_exceptions;
+            list.retain(|h| crate::https::site(h) != site);
+            if !enabled {
+                list.push(site);
+            }
+            app.persist_settings();
+            app.apply_settings_to_surfaces();
             ok()
         }
         Command::HttpForget { host } => {

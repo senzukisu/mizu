@@ -66,6 +66,12 @@ function permissionsCard() {
   return card('Permissions', null, ...rows);
 }
 
+function fingerprintSiteCard() {
+  if (!info.fingerprinting) return null;
+  const toggle = switchInput(!info.fp_excepted, (v) => mizu.request('site_fingerprint', { host, enabled: v }).then(() => showToast(i18n.tr('Reload the site to apply'))), { label: 'Fingerprinting defence' });
+  return card('Fingerprinting defence', null, row('Protect this site', 'Gives the site slightly different canvas, audio and hardware values. Turn off only if the site does not work.', toggle));
+}
+
 function httpCard() {
   if (!info.http_allowed) return null;
   const forget = h('button', { class: 'btn', text: 'Use HTTPS again' });
@@ -100,7 +106,7 @@ function render() {
   go.addEventListener('click', () => mizu.send('open_url', { url: `https://${host}/`, disposition: 'current' }));
   main.replaceChildren(h('div', { class: 'page', style: { maxWidth: '820px' } },
     h('div', { class: 'site-head' }, letterAvatar(`https://${host}/`, host), h('div', { class: 'grow' }, h('h1', { translate: 'no', text: host }), h('div', { class: 'd', text: 'Site settings' })), go),
-    ...[shieldCard(), httpCard(), cookiesCard(), permissionsCard(), zoomCard(), historyCard()].filter(Boolean)));
+    ...[shieldCard(), fingerprintSiteCard(), httpCard(), cookiesCard(), permissionsCard(), zoomCard(), historyCard()].filter(Boolean)));
 }
 
 bootPage(() => {

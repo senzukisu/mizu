@@ -55,7 +55,7 @@ pub struct ResourceRequest {
 #[derive(Debug, Clone)]
 pub enum ResourceDecision {
     Continue,
-    /// Continue, adding request headers (e.g. `Sec-GPC: 1`).
+    /// Continue, adding request headers (e.g. `Sec-GPC: 1`); an empty value removes one.
     ContinueWithHeaders(Vec<(String, String)>),
     /// Continue with a different URL (tracking parameters stripped).
     Rewrite(String),

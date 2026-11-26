@@ -252,6 +252,17 @@ site has no secure version** with **Continue to the site (not secure)** — tick
 asked again. Routers, printers and other home-network addresses are left alone. Settings → Privacy → **Secure
 connections** turns it off and lists the exceptions; the site's page (lock icon) has **Use HTTPS again**.
 
+### Fingerprinting defence
+
+Sites can recognise a browser without cookies — from how it draws, plays sound and what hardware it reports. Mizu
+gives each site slightly different values (canvas, WebGL and audio noise; rounded processor and memory; the graphics
+card's maker only; no battery or font list; short user-agent hints), so visits to different sites cannot be linked.
+
+- Settings → Privacy → **Fingerprinting defence**: Standard (default) or Off, and the sites where it is off.
+- Lock icon → Site settings → **Protect this site** turns it off for one site if it misbehaves.
+- `mizu://fingerprint` shows what websites can read about this PC, with and without the defence.
+- It is not anonymity: sites still see your IP address and recognise you when you sign in.
+
 ### Cookies
 
 - **Third-party cookies** are blocked (Settings → Privacy; needs a restart). Turn this off only if an
@@ -434,6 +445,7 @@ Type these in the address bar:
 | `mizu://site/?host=example.com` | One site's settings |
 | `mizu://import` | Import from another browser |
 | `mizu://media` | Codecs and hardware decoding |
+| `mizu://fingerprint` | What websites can read about this PC |
 | `mizu://about` | Version, engine, updates, crash reports |
 | `mizu://welcome` | The welcome tour again |
 | `mizu://whatsnew` | What the latest versions brought |

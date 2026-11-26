@@ -6,6 +6,23 @@ How to use a feature is in the [user guide](docs/GUIDE.md); what comes next is i
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] — 2026-11-26 · Deep Water
+
+### Added
+- **Fingerprinting defence** (Settings → Privacy, on by default). Sites can recognise a browser without cookies from
+  how it draws, plays sound and what hardware it reports. Mizu now gives each site slightly different values, so
+  visits to different sites cannot be linked; a site sees the same values for the whole session, and new ones after
+  Mizu restarts:
+  - invisible noise in canvas and WebGL readback, inaudible noise in audio processing;
+  - the graphics card's maker only, processor cores and memory rounded to common values;
+  - no battery or installed-fonts API; one camera and microphone listed until you allow access; voices for your
+    language and English only;
+  - no exact Windows build, browser build or device model in user-agent hints (in scripts and request headers).
+
+  It applies in every frame, keyed to the site in the address bar, so an embedded tracker sees different values on
+  different sites. Turn it off for one site from the lock icon → Site settings.
+- **`mizu://fingerprint`**: what websites can read about this PC — without protection and as two different sites.
+
 ## [0.4.0] — 2026-11-25 · Deep Water
 
 ### Added

@@ -42,6 +42,9 @@ struct Inner {
     /// The page's document was created while the current script was still registering, so it
     /// did not run at document start; it runs as soon as registration completes instead.
     doc_script_missed: Cell<bool>,
+    /// A script kept across navigations (registered once, replaced on demand).
+    base_script: RefCell<Option<String>>,
+    base_script_gen: Cell<u64>,
     closed: Cell<bool>,
     /// Window whose composition tree shows this view.
     parent: HWND,
@@ -96,6 +99,8 @@ impl View {
                         doc_script_gen: Cell::new(0),
                         doc_script_ready: Cell::new(true),
                         doc_script_missed: Cell::new(false),
+                        base_script: RefCell::new(None),
+                        base_script_gen: Cell::new(0),
                         closed: Cell::new(false),
                         parent,
                     }),
@@ -365,7 +370,11 @@ impl View {
                         ResourceDecision::ContinueWithHeaders(headers) => {
                             let hs = request.Headers()?;
                             for (k, v) in headers {
-                                let _ = hs.SetHeader(&HSTRING::from(k), &HSTRING::from(v));
+                                if v.is_empty() {
+                                    let _ = hs.RemoveHeader(&HSTRING::from(k));
+                                } else {
+                                    let _ = hs.SetHeader(&HSTRING::from(k), &HSTRING::from(v));
+                                }
                             }
                         }
                         ResourceDecision::Rewrite(uri) => {
@@ -833,6 +842,50 @@ impl View {
                 &HSTRING::from(js),
                 &ExecuteScriptCompletedHandler::create(Box::new(|_, _| Ok(()))),
             );
+        }
+    }
+
+    /// A script that runs at the start of every document from now on, in every frame, until it
+    /// is replaced. `done` runs once it is registered (navigate after that to be sure the first
+    /// page gets it).
+    pub fn set_base_script(&self, js: Option<String>, done: impl FnOnce() + 'static) {
+        let generation = self.inner.base_script_gen.get() + 1;
+        self.inner.base_script_gen.set(generation);
+        if let Some(old) = self.inner.base_script.borrow_mut().take() {
+            // SAFETY: COM call on the UI thread.
+            unsafe {
+                let _ = self.inner.core.RemoveScriptToExecuteOnDocumentCreated(&HSTRING::from(old));
+            }
+        }
+        let Some(js) = js else {
+            done();
+            return;
+        };
+        let weak = Rc::downgrade(&self.inner);
+        let done = RefCell::new(Some(done));
+        let asked = std::time::Instant::now();
+        let handler = AddScriptToExecuteOnDocumentCreatedCompletedHandler::create(Box::new(move |hr, id| {
+            if let Some(inner) = weak.upgrade() {
+                if hr.is_ok() {
+                    if inner.base_script_gen.get() == generation {
+                        *inner.base_script.borrow_mut() = Some(id);
+                    } else {
+                        // SAFETY: COM call on the UI thread.
+                        unsafe {
+                            let _ = inner.core.RemoveScriptToExecuteOnDocumentCreated(&HSTRING::from(id));
+                        }
+                    }
+                }
+            }
+            tracing::debug!(ms = asked.elapsed().as_millis(), "base script registered");
+            if let Some(f) = done.borrow_mut().take() {
+                f();
+            }
+            Ok(())
+        }));
+        // SAFETY: COM call on the UI thread.
+        unsafe {
+            let _ = self.inner.core.AddScriptToExecuteOnDocumentCreated(&HSTRING::from(js), &handler);
         }
     }
 
