@@ -136,6 +136,7 @@ impl ViewHandler for Dispatcher {
             hot::with(|h| {
                 h.top_urls.insert(key, uri.to_owned());
                 h.page_blocked.remove(&key);
+                h.fp_report.remove(&key);
                 h.gm_tokens.remove(&key);
             });
             if let Some(v) = hot::view(key) {
@@ -204,6 +205,7 @@ impl ViewHandler for Dispatcher {
                 h.top_urls.insert(key, uri.to_owned());
                 if !req.redirect {
                     h.page_blocked.insert(key, 0);
+                    h.fp_report.remove(&key);
                     h.nav_started.insert(key, std::time::Instant::now());
                 }
                 crate::scripts::document_script(h, key, uri)

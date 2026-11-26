@@ -7,6 +7,12 @@ const REPO = 'https://github.com/senzukisu/mizu';
 
 // Newest first. [icon, title, text, optional Mizu link]
 const RELEASES = [
+  { v: '0.4.2', name: 'Deep Water', items: [
+    ['eye', 'Who is reading your fingerprint', 'The Shield panel now lists the scripts on a page that read your device details — and marks the ones that look like fingerprinting.'],
+    ['shield-check', 'Strict fingerprinting defence', 'Every site sees the same graphics card, a common screen size and the same hardware. For when standard is not enough.', 'mizu://settings/#privacy'],
+    ['zoom-in', 'Your zoom, kept', 'With a default zoom other than 100%, Ctrl+0 and the menu now return to it instead of 100%.', 'mizu://settings/#appearance'],
+    ['search', 'Calmer suggestions', 'Address bar suggestions no longer replay their animation on every key you press.'],
+  ] },
   { v: '0.4.1', name: 'Deep Water', items: [
     ['shield-check', 'Fingerprinting defence', 'Sites can recognise your browser without cookies. Mizu now gives every site slightly different canvas, audio and hardware values, so your visits cannot be linked — on by default.', 'mizu://settings/#privacy'],
     ['eye', 'See what sites see', 'A new page shows what websites can read about this PC, with and without the defence.', 'mizu://fingerprint/'],

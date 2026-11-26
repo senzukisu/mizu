@@ -57,6 +57,10 @@ pub fn on_message(app: &mut App, key: ViewKey, source: &str, json: &str) {
                 crate::scripts::on_cosmetic(key, &value);
                 return;
             }
+            if value.get("mizu_fp").is_some() {
+                hot::with(|h| crate::scripts::on_fp_report(h, key, &value));
+                return;
+            }
             let action = hot::with(|h| crate::scripts::handle_gm_message(h, key, &value));
             if let Some(crate::scripts::GmAction::OpenTab { url, background }) = action {
                 let opts = if background { OpenOptions::background() } else { OpenOptions::foreground() };
@@ -92,6 +96,32 @@ pub fn on_message(app: &mut App, key: ViewKey, source: &str, json: &str) {
 
 fn ok() -> Result<Option<Value>, String> {
     Ok(Some(Value::Null))
+}
+
+type AppTask = Box<dyn FnOnce(&mut App)>;
+
+thread_local! {
+    static TEST_LATER: std::cell::RefCell<Option<AppTask>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Test hooks only: runs `f` with the app after `ms` milliseconds.
+fn test_later(ms: u32, f: impl FnOnce(&mut App) + 'static) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{KillTimer, SetTimer};
+    unsafe extern "system" fn fire(_: HWND, _: u32, id: usize, _: u32) {
+        // SAFETY: a thread timer created below; killed once it fires.
+        unsafe {
+            let _ = KillTimer(None, id);
+        }
+        if let Some(f) = TEST_LATER.with(|t| t.borrow_mut().take()) {
+            queue::with_app(f);
+        }
+    }
+    TEST_LATER.with(|t| *t.borrow_mut() = Some(Box::new(f)));
+    // SAFETY: a thread timer on this (UI) thread, which pumps messages.
+    unsafe {
+        SetTimer(None, 0, ms, Some(fire));
+    }
 }
 
 fn active_tab(app: &App, window: WindowId) -> Option<TabId> {
@@ -156,9 +186,14 @@ fn handle(app: &mut App, window: WindowId, key: ViewKey, surface: Surface, cmd: 
                             } else {
                                 (mizu_ui::protocol::Anchor { x: 120.0, y: 30.0, width: 1.0, height: 1.0 }, tab)
                             };
-                            queue::with_app(move |a| {
+                            let open = move |a: &mut App| {
                                 let _ = handle(a, window, key, Surface::Chrome, Command::ShowFlyout { kind, anchor, tab_id });
-                            });
+                            };
+                            // MIZU_TEST_FLYOUT_DELAY=<ms> waits first (for panels about the page).
+                            match std::env::var("MIZU_TEST_FLYOUT_DELAY").ok().and_then(|d| d.parse::<u32>().ok()) {
+                                Some(ms) => test_later(ms, open),
+                                None => queue::with_app(open),
+                            }
                         }
                     }
                 }
@@ -963,14 +998,17 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
         FlyoutKind::Shield | FlyoutKind::SiteInfo => {
             let url = app.current_url(window).unwrap_or_default();
             let key = active_tab(app, window).map(|t| t.0).unwrap_or_default();
-            let (blocked, top, allowlisted) = hot::with(|h| {
+            let (blocked, top, allowlisted, fp) = hot::with(|h| {
                 (
                     h.page_blocked.get(&key).copied().unwrap_or(0),
                     h.stats.top_trackers(5),
                     crate::shield::allowlisted(&h.allowlist, &url),
+                    h.fp_report.get(&key).map(crate::scripts::FpReport::to_json).unwrap_or_else(|| json!([])),
                 )
             })
             .unwrap_or_default();
+            let host = mizu_core::omnibox::host_of(&url).unwrap_or_default();
+            let fp_excepted = app.settings.privacy.fingerprint_exceptions.iter().any(|h| crate::https::site(h) == crate::https::site(&host));
             let origin = mizu_core::omnibox::origin_of(&url).unwrap_or_default();
             let permissions: Vec<Value> = if private {
                 Vec::new()
@@ -995,6 +1033,9 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
                 "top": top,
                 "permissions": permissions,
                 "private": private,
+                "fp_level": if fp_excepted { "off" } else { app.settings.privacy.fingerprinting.as_str() },
+                "fp_excepted": fp_excepted,
+                "fp": fp,
             })
         }
         FlyoutKind::Bookmark => {
@@ -1015,6 +1056,7 @@ fn flyout_data(app: &App, window: WindowId, kind: FlyoutKind, tab_id: Option<u64
             json!({
                 "private": private,
                 "zoom": (zoom * 100.0).round(),
+                "zoom_default": app.settings.appearance.zoom_percent,
                 "fullscreen": app.window(window).is_some_and(|w| w.fullscreen.browser),
                 "devtools": app.settings.advanced.developer_tools,
                 "bookmarks_bar": app.settings.appearance.show_bookmarks_bar,
@@ -1113,10 +1155,12 @@ fn reload_tab(app: &mut App, window: WindowId, tab: TabId, bypass: bool) {
 
 fn zoom(app: &mut App, window: WindowId, delta: i32) {
     const STEPS: [f64; 13] = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0];
+    // Reset goes back to the default zoom from Settings, not to 100%.
+    let default = f64::from(app.settings.appearance.zoom_percent) / 100.0;
     with_active_view(app, window, |_, v| {
         let current = v.zoom();
         let next = match delta.signum() {
-            0 => 1.0,
+            0 => default,
             1 => STEPS.iter().copied().find(|s| *s > current + 0.001).unwrap_or(3.0),
             _ => STEPS.iter().rev().copied().find(|s| *s < current - 0.001).unwrap_or(0.25),
         };

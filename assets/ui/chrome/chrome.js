@@ -872,7 +872,7 @@ function renderNav() {
   els.shield.title = nav.shield ? `Mizu Shield: ${nav.blocked || 0} blocked on this page` : 'Mizu Shield is off for this site';
 
   const zb = $('zoom-badge');
-  zb.hidden = !nav.zoom || nav.zoom === 100;
+  zb.hidden = !nav.zoom || nav.zoom === (nav.zoom_default || 100);
   zb.textContent = `${nav.zoom}%`;
 
   drawProgress(nav);
@@ -1014,7 +1014,7 @@ function activateNow(id) {
   state = {
     ...state,
     active: id,
-    nav: { url, display: url.startsWith('mizu://newtab') ? '' : url, security, loading: t.loading, zoom: state.nav?.zoom },
+    nav: { url, display: url.startsWith('mizu://newtab') ? '' : url, security, loading: t.loading, zoom: state.nav?.zoom, zoom_default: state.nav?.zoom_default },
   };
   render();
 }

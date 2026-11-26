@@ -6,6 +6,27 @@ How to use a feature is in the [user guide](docs/GUIDE.md); what comes next is i
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.2] — 2026-11-26 · Deep Water
+
+### Added
+- **Fingerprinting report** in the Shield panel: which scripts on the page read details that can identify the browser
+  (canvas, WebGL, audio, fonts, screen, hardware, cameras and microphones, voices, browser version). Scripts that read
+  drawing or sound output, or three kinds of details or more, are marked **Fingerprinting**. Only the script's address
+  and the kind of detail are noted, for the current page, and never leave Mizu.
+- **Strict fingerprinting defence** (Settings → Privacy → Fingerprinting defence → Strict). On top of the standard
+  defence: the same generic graphics card for every site (no WebGL debug details), a common screen size with no
+  taskbar and no window position, and fixed processor and memory numbers. Some games, maps and video calls may look or
+  work worse; turn it off for one site from the lock icon.
+- `mizu://fingerprint` shows the screen size too, and the strict values when strict is on.
+
+### Fixed
+- **Default zoom:** with a default other than 100% (Settings → Appearance), the menu and the zoom badge showed 100%,
+  and **Ctrl+0** or clicking the zoom value reset pages to 100% and remembered that for the site. Reset now returns
+  to your default zoom.
+- **Address bar suggestions** no longer replay their opening animation on every key press.
+- The fingerprinting defence no longer runs in frames of Mizu's own pages, so the check page shows different values
+  for "Site A" and "Site B" again.
+
 ## [0.4.1] — 2026-11-26 · Deep Water
 
 ### Added

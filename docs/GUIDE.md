@@ -258,7 +258,11 @@ Sites can recognise a browser without cookies — from how it draws, plays sound
 gives each site slightly different values (canvas, WebGL and audio noise; rounded processor and memory; the graphics
 card's maker only; no battery or font list; short user-agent hints), so visits to different sites cannot be linked.
 
-- Settings → Privacy → **Fingerprinting defence**: Standard (default) or Off, and the sites where it is off.
+- Settings → Privacy → **Fingerprinting defence**: Standard (default), Strict or Off, and the sites where it is off.
+  **Strict** also gives every site the same generic graphics card, a common screen size without the taskbar and fixed
+  hardware numbers; some games, maps and video calls may look or work worse.
+- The **Shield panel** (shield icon) shows which scripts on the page read such details, and marks the ones that look
+  like fingerprinting.
 - Lock icon → Site settings → **Protect this site** turns it off for one site if it misbehaves.
 - `mizu://fingerprint` shows what websites can read about this PC, with and without the defence.
 - It is not anonymity: sites still see your IP address and recognise you when you sign in.
@@ -353,7 +357,7 @@ Tampermonkey/Greasemonkey format. Menu → **Scripts & extensions** (`mizu://scr
 - **Settings → Appearance:** light, dark or system theme; palettes and any accent colour (optionally tinting the
   window); density; Soft, Round or Crisp style; Mica translucency (Windows 11); interface font; animations; toolbar
   buttons; tab layout.
-- **Zoom:** **Ctrl+plus / minus**, **Ctrl+wheel**, **Ctrl+0** resets. Mizu remembers the zoom **per site**; reset it
+- **Zoom:** **Ctrl+plus / minus**, **Ctrl+wheel**, **Ctrl+0** returns to your default zoom. Mizu remembers the zoom **per site**; reset it
   in the lock icon → Site settings. The default zoom is in Settings → Appearance.
 - **Language:** Settings → General → Language: Automatic (follows Windows), English or Russian. Restart to apply
   everywhere.

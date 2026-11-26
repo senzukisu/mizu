@@ -733,6 +733,86 @@ button {
 .rows + .rows {
   margin-top: 6px;
 }
+
+/* Fingerprinting report (Shield) */
+.fp-rows {
+  margin-top: 8px;
+  padding-bottom: 8px;
+}
+.fp-none,
+.fp-sum {
+  font-size: var(--fs-xs, 11px);
+  line-height: 1.5;
+  padding: 0 0 6px 20px;
+}
+.fp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+}
+.fp-item {
+  border-radius: var(--r-sm, 8px);
+  background: var(--surface);
+  padding: 7px 9px;
+  border: 1px solid transparent;
+}
+.fp-item.likely {
+  border-color: color-mix(in srgb, var(--warning, #e0a030) 45%, transparent);
+}
+.fp-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: var(--fs-sm);
+}
+.fp-name b {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+.fp-name .muted {
+  font-size: var(--fs-xs, 11px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.fp-flag {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: var(--warning, #c98a10);
+  background: color-mix(in srgb, var(--warning, #e0a030) 16%, transparent);
+  flex: none;
+  margin-left: auto;
+}
+.fp-apis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.fp-api {
+  font-size: 10.5px;
+  line-height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line, rgb(127 127 127 / 0.2));
+}
+.fp-more {
+  align-self: flex-start;
+  margin-left: 2px;
+}
 .cookie-list {
   max-height: 160px;
   max-width: 300px;

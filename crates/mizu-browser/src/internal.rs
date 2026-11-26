@@ -313,7 +313,8 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 "visits": count,
                 "zoom": app.settings.appearance.site_zoom.get(&host),
                 "https_first": app.settings.privacy.https_first,
-                "fingerprinting": app.settings.privacy.fingerprinting == "standard",
+                "fingerprinting": app.settings.privacy.fingerprinting != "off",
+                "fp_level": app.settings.privacy.fingerprinting,
                 "fp_excepted": app.settings.privacy.fingerprint_exceptions.iter().any(|h| crate::https::site(h) == crate::https::site(&host)),
                 "http_allowed": app.settings.privacy.http_allowed.iter().any(|h| crate::https::site(h) == crate::https::site(&host)),
                 "zoom_default": app.settings.appearance.zoom_percent,
@@ -328,14 +329,16 @@ pub fn handle_data(app: &mut App, window: WindowId, key: ViewKey, cmd: Command) 
                 app.persist_settings();
             }
             let z = f64::from(app.settings.appearance.zoom_percent) / 100.0;
-            for w in &app.windows {
-                for s in w.tabs.values() {
+            for w in &mut app.windows {
+                for s in w.tabs.values_mut() {
                     if s.zoom_host == host {
                         if let Some(v) = &s.view {
                             v.set_zoom(z);
                         }
+                        s.zoom = z;
                     }
                 }
+                w.state_dirty = true;
             }
             ok()
         }

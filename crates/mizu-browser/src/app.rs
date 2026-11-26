@@ -276,7 +276,9 @@ pub fn start(paths: ProfilePaths, args: LaunchArgs) -> Result<(), String> {
         https_first: settings.privacy.https_first,
         http_allowed: settings.privacy.http_allowed.iter().map(|h| crate::https::site(h)).collect(),
         https_pending: HashMap::new(),
-        fingerprinting: settings.privacy.fingerprinting == "standard",
+        fingerprinting: settings.privacy.fingerprinting != "off",
+        fp_strict: settings.privacy.fingerprinting == "strict",
+        fp_report: HashMap::new(),
         fp_exceptions: settings.privacy.fingerprint_exceptions.iter().map(|h| crate::https::site(h)).collect(),
         fp_secret: u32::from_str_radix(&crate::scripts::random_token()[..8], 16).unwrap_or(0x5eed) | 1,
         site_volumes: settings.media.site_volumes.iter().map(|(k, v)| (k.clone(), *v)).collect(),
@@ -1359,7 +1361,8 @@ impl App {
             h.content_blocking = self.settings.privacy.content_blocking;
             h.global_privacy_control = self.settings.privacy.global_privacy_control;
             h.https_first = self.settings.privacy.https_first;
-            h.fingerprinting = self.settings.privacy.fingerprinting == "standard";
+            h.fingerprinting = self.settings.privacy.fingerprinting != "off";
+            h.fp_strict = self.settings.privacy.fingerprinting == "strict";
             h.fp_exceptions = self.settings.privacy.fingerprint_exceptions.iter().map(|x| crate::https::site(x)).collect();
             // Session exceptions (a site that redirected back to HTTP) are kept.
             h.http_allowed.extend(self.settings.privacy.http_allowed.iter().map(|x| crate::https::site(x)));

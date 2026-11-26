@@ -350,18 +350,73 @@ const FINGERPRINT_SCRIPT: &str = include_str!("../../../assets/ui/shared/fingerp
 
 /// The fingerprinting defence for a view: registered once (before its first page) and kept
 /// for every page and frame. Each document derives its key from this run's secret and the
-/// top-level site (`location.ancestorOrigins` in frames), so a site sees the same values for
+/// top-level site (`location.ancestorOrigins` in frames; only under web pages, so Mizu's own
+/// pages and their frames are left alone), so a site sees the same values for
 /// the whole session, different sites see different ones, and an embedded tracker cannot
 /// match visits across sites. `None` when the defence is off.
 pub fn fingerprint_base_script(h: &Hot) -> Option<String> {
     if !h.fingerprinting {
         return None;
     }
+    let strict = h.fp_strict;
     let exceptions = serde_json::to_string(&h.fp_exceptions.iter().collect::<Vec<_>>()).unwrap_or_else(|_| "[]".into());
     Some(format!(
-        "(()=>{{try{{const anc=location.ancestorOrigins;const web=/^https?:$/.test(location.protocol);if(!web&&!(anc&&anc.length))return;let top=location.hostname;         if(anc&&anc.length){{try{{top=new URL(anc[anc.length-1]).hostname;}}catch(e){{}}}}         top=top.toLowerCase().replace(/^www[.]/,'');if({exceptions}.includes(top))return;         let k={secret};for(let i=0;i<top.length;i++)k=Math.imul(k^top.charCodeAt(i),16777619)>>>0;         {FINGERPRINT_SCRIPT}\n;mizuFingerprintProtect(window,k||1);}}catch(e){{}}}})();",
+        "(()=>{{try{{const anc=location.ancestorOrigins;const topUrl=anc&&anc.length?anc[anc.length-1]:location.href;if(!/^https?:/.test(topUrl))return;let top=location.hostname;         if(anc&&anc.length){{try{{top=new URL(anc[anc.length-1]).hostname;}}catch(e){{}}}}         top=top.toLowerCase().replace(/^www[.]/,'');if({exceptions}.includes(top))return;         let k={secret};for(let i=0;i<top.length;i++)k=Math.imul(k^top.charCodeAt(i),16777619)>>>0;         {FINGERPRINT_SCRIPT}\n;mizuFingerprintProtect(window,k||1,{{strict:{strict},report:true}});}}catch(e){{}}}})();",
         secret = h.fp_secret,
     ))
+}
+
+/// The kinds of API the fingerprinting report knows (see `fingerprint.js`).
+const FP_APIS: [&str; 9] = ["canvas", "webgl", "audio", "fonts", "screen", "hardware", "devices", "voices", "ua"];
+/// At most this many scripts are listed for one page.
+const FP_MAX_SCRIPTS: usize = 60;
+
+/// Scripts on a page that read fingerprintable APIs: script address (empty for the page's
+/// own inline code) → kinds of API, in `FP_APIS` order.
+#[derive(Debug, Default, Clone)]
+pub struct FpReport(std::collections::BTreeMap<String, std::collections::BTreeSet<usize>>);
+
+impl FpReport {
+    /// Adds one script/API pair; unknown APIs and malformed addresses are ignored.
+    pub fn add(&mut self, script: &str, api: &str) {
+        let Some(i) = FP_APIS.iter().position(|a| *a == api) else { return };
+        let script = script.split(['?', '#']).next().unwrap_or_default();
+        let script = if script.starts_with("https://") || script.starts_with("http://") { script.chars().take(200).collect() } else { String::new() };
+        if !self.0.contains_key(&script) && self.0.len() >= FP_MAX_SCRIPTS {
+            return;
+        }
+        self.0.entry(script).or_default().insert(i);
+    }
+
+    /// `[{script, apis, likely}]`, the scripts that read the most first. "Likely" marks scripts
+    /// that read drawing or sound output, or three kinds of API or more.
+    pub fn to_json(&self) -> serde_json::Value {
+        let mut list: Vec<_> = self.0.iter().collect();
+        list.sort_by_key(|(s, apis)| (std::cmp::Reverse(apis.len()), (*s).clone()));
+        serde_json::Value::Array(
+            list.into_iter()
+                .map(|(script, apis)| {
+                    let likely = apis.len() >= 3 || (apis.contains(&0) && (apis.contains(&1) || apis.contains(&2)));
+                    serde_json::json!({
+                        "script": script,
+                        "apis": apis.iter().map(|i| FP_APIS[*i]).collect::<Vec<_>>(),
+                        "likely": likely,
+                    })
+                })
+                .collect(),
+        )
+    }
+}
+
+/// `{"mizu_fp": {items: [[script, api], ...]}}` from a page's fingerprinting defence.
+pub fn on_fp_report(h: &mut Hot, key: ViewKey, value: &serde_json::Value) {
+    let Some(items) = value["mizu_fp"]["items"].as_array() else { return };
+    let report = h.fp_report.entry(key).or_default();
+    for item in items.iter().take(100) {
+        if let (Some(script), Some(api)) = (item[0].as_str(), item[1].as_str()) {
+            report.add(script, api);
+        }
+    }
 }
 
 /// Gives pages without any background the `Canvas` colour (it follows their colour scheme),
@@ -432,6 +487,32 @@ pub fn on_cosmetic(key: ViewKey, value: &serde_json::Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fingerprint_report_keeps_known_apis_and_strips_queries() {
+        let mut r = FpReport::default();
+        r.add("https://cdn.example/fp.js?v=1#x", "canvas");
+        r.add("https://cdn.example/fp.js", "webgl");
+        r.add("https://cdn.example/fp.js", "nonsense");
+        r.add("javascript:alert(1)", "screen");
+        r.add("https://site.example/app.js", "screen");
+        let j = r.to_json();
+        let list = j.as_array().unwrap();
+        assert_eq!(list.len(), 3);
+        assert_eq!(list[0]["script"], "https://cdn.example/fp.js");
+        assert_eq!(list[0]["apis"], serde_json::json!(["canvas", "webgl"]));
+        assert_eq!(list[0]["likely"], true);
+        assert!(list.iter().any(|x| x["script"] == "" && x["likely"] == false));
+    }
+
+    #[test]
+    fn fingerprint_report_is_bounded() {
+        let mut r = FpReport::default();
+        for i in 0..200 {
+            r.add(&format!("https://t{i}.example/a.js"), "canvas");
+        }
+        assert_eq!(r.to_json().as_array().unwrap().len(), FP_MAX_SCRIPTS);
+    }
 
     #[test]
     fn tokens_are_unique() {

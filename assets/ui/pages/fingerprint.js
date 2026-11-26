@@ -11,12 +11,14 @@ function hash(s) {
   return h.toString(16).padStart(8, '0');
 }
 
+let strict = false;
+
 function frame(seed) {
   const f = document.createElement('iframe');
   f.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;border:0';
   f.setAttribute('aria-hidden', 'true');
   document.body.append(f);
-  if (seed) mizuFingerprintProtect(f.contentWindow, seed);
+  if (seed) mizuFingerprintProtect(f.contentWindow, seed, { strict });
   return f.contentWindow;
 }
 
@@ -63,6 +65,7 @@ async function measure(win) {
   } catch {
     out.audio = '—';
   }
+  out.screen = `${win.screen.width}×${win.screen.height} · ${win.screen.availWidth}×${win.screen.availHeight}`;
   out.cores = String(win.navigator.hardwareConcurrency ?? '—');
   out.memory = win.navigator.deviceMemory ? `${win.navigator.deviceMemory} GB` : '—';
   out.battery = 'getBattery' in win.navigator ? 'available' : 'hidden';
@@ -84,7 +87,8 @@ async function measure(win) {
 const ROWS = [
   ['canvas', 'Canvas drawing', 'How your graphics card draws a picture. Mizu adds invisible noise: each site sees a different result.', 'site'],
   ['audio', 'Audio processing', 'How your PC processes sound. Mizu adds inaudible noise per site.', 'site'],
-  ['gpu', 'Graphics card', 'Sites see only the maker, not the model or driver.', 'same'],
+  ['gpu', 'Graphics card', 'Sites see only the maker, not the model or driver. Strict: a generic card for everyone.', 'same'],
+  ['screen', 'Screen size', 'Screen and usable area (without the taskbar). Strict: a common size and no taskbar.', 'same'],
   ['cores', 'Processor cores', 'Rounded to a common value.', 'same'],
   ['memory', 'Memory', 'Rounded to a common value.', 'same'],
   ['battery', 'Battery level', 'Hidden: ordinary sites do not need it.', 'same'],
@@ -95,6 +99,7 @@ const ROWS = [
 
 async function run(settings) {
   const on = settings.privacy.fingerprinting !== 'off';
+  strict = settings.privacy.fingerprinting === 'strict';
   const body = h('div', { class: 'card fp-card' }, h('div', { class: 'fp-loading', text: 'Measuring…' }));
   const again = h('button', { class: 'btn' }, icon('reload'), h('span', { text: 'Measure again' }));
   again.addEventListener('click', () => location.reload());
@@ -103,7 +108,7 @@ async function run(settings) {
   main.replaceChildren(h('div', { class: 'page fp' },
     pageHead('Fingerprint check', again, toSettings),
     h('div', { class: `fp-banner ${on ? 'on' : 'off'}` }, icon(on ? 'shield-check' : 'shield-off', { size: 20 }), h('div', null,
-      h('b', { text: on ? 'Fingerprinting defence is on' : 'Fingerprinting defence is off' }),
+      h('b', { text: on ? (strict ? 'Fingerprinting defence is on (strict)' : 'Fingerprinting defence is on') : 'Fingerprinting defence is off' }),
       h('span', { text: on ? 'Websites see the values on the right, different for every site and new each time Mizu starts.' : 'Websites see the real values. The columns on the right show what they would see with the defence on.' }))),
     body,
     h('p', { class: 'muted', text: 'Measured on this page only; nothing is sent anywhere. Fingerprinting defence makes tracking harder, not impossible: sites still see your IP address and recognise you when you sign in.' })));

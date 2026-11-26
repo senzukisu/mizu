@@ -33,7 +33,7 @@ impl Settings {
             self.search.engine = SearchSettings::default().engine;
         }
         self.appearance.sidebar_width = self.appearance.sidebar_width.clamp(160, 520);
-        if !["standard", "off"].contains(&self.privacy.fingerprinting.as_str()) {
+        if !["standard", "strict", "off"].contains(&self.privacy.fingerprinting.as_str()) {
             self.privacy.fingerprinting = "standard".into();
         }
         if !["stable", "beta"].contains(&self.general.update_channel.as_str()) {
@@ -396,7 +396,7 @@ pub struct PrivacySettings {
     pub https_first: bool,
     /// Sites the user chose to open over HTTP (HTTPS-First leaves them alone).
     pub http_allowed: Vec<String>,
-    /// Fingerprinting defence: "standard" or "off".
+    /// Fingerprinting defence: "standard", "strict" or "off".
     pub fingerprinting: String,
     /// Sites where fingerprinting defence is off.
     pub fingerprint_exceptions: Vec<String>,

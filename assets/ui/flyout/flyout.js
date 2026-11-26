@@ -50,14 +50,15 @@ function tile(iconName, label, onClick, kbd) {
 }
 
 function renderMenu(d) {
-  const zoomVal = h('span', { class: 'val', text: `${d.zoom || 100}%` });
+  const zoomDefault = d.zoom_default || 100;
+  const zoomVal = h('span', { class: 'val', text: `${d.zoom || zoomDefault}%` });
   const zoomBtn = (name, delta, title) => {
     const b = h('button', { class: 'mini', title }, icon(name));
     b.addEventListener('click', () => {
       mizu.send('zoom', { delta });
       const steps = [25, 33, 50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
       let z = parseInt(zoomVal.textContent, 10) || 100;
-      if (delta === 0) z = 100;
+      if (delta === 0) z = zoomDefault;
       else if (delta > 0) z = steps.find((s) => s > z) || 300;
       else z = [...steps].reverse().find((s) => s < z) || 25;
       zoomVal.textContent = `${z}%`;
@@ -67,7 +68,7 @@ function renderMenu(d) {
   zoomVal.title = i18n.tr('Reset zoom (Ctrl+0)');
   zoomVal.addEventListener('click', () => {
     mizu.send('zoom', { delta: 0 });
-    zoomVal.textContent = '100%';
+    zoomVal.textContent = `${zoomDefault}%`;
   });
   const fs = h('button', { class: 'mini', title: 'Full screen (F11)' }, icon('fullscreen'));
   fs.addEventListener('click', () => {
@@ -360,10 +361,57 @@ function renderShield(d) {
       : h('div', { class: 'big' }, h('span', { class: 'muted', text: 'Content blocking is turned off in Settings.' })),
     h('div', { class: 'rows' }, h('div', { class: 'row' }, h('span', { class: 'k', text: 'Tracking prevention (engine)' }), h('span', { class: 'v', text: level })), ...(d.top || []).slice(0, 4).map(([host, n]) => h('div', { class: 'row' }, h('span', { class: 'k', text: host }), h('span', { class: 'v', text: String(n) })))),
   );
+  if (/^https?:/.test(d.url || '')) panel.append(fingerprintReport(d));
   const dash = h('button', { class: 'link', text: 'Shield dashboard' });
   dash.addEventListener('click', () => open('mizu://shield/'));
   panel.append(h('div', { class: 'footer' }, dash));
   return panel;
+}
+
+// Which scripts on this page read APIs that can fingerprint the browser (canvas, WebGL…).
+const FP_API_NAMES = { canvas: 'Canvas', webgl: 'WebGL', audio: 'Audio', fonts: 'Fonts', screen: 'Screen', hardware: 'Hardware info', devices: 'Cameras and mics', voices: 'Voices', ua: 'Browser version' };
+function fingerprintReport(d) {
+  const list = d.fp || [];
+  const level = d.fp_level || 'off';
+  const levelName = d.fp_excepted ? 'Off for this site' : { standard: 'Standard', strict: 'Strict', off: 'Off' }[level] || level;
+  const box = h('div', { class: 'rows fp-rows' },
+    h('div', { class: 'row' }, h('span', { class: 'k' }, icon('eye', { size: 14 }), h('span', { style: { marginLeft: '6px' }, text: 'Fingerprinting defence' })), h('span', { class: 'v', text: levelName })));
+  if (level === 'off') return box;
+  if (!list.length) {
+    box.append(h('div', { class: 'fp-none muted', text: 'No script on this page has read fingerprintable details yet.' }));
+    return box;
+  }
+  const likely = list.filter((x) => x.likely).length;
+  box.append(h('div', { class: 'fp-sum muted', text: likely ? `${list.length} scripts read device details · ${likely} look like fingerprinting` : `${list.length} scripts read device details` }));
+  const items = h('div', { class: 'fp-list' });
+  const item = (x) => {
+    let name = 'This page (inline code)';
+    let where = '';
+    try {
+      if (x.script) {
+        const u = new URL(x.script);
+        name = u.pathname.split('/').filter(Boolean).pop() || u.hostname;
+        where = u.hostname;
+      }
+    } catch {}
+    return h('div', { class: `fp-item${x.likely ? ' likely' : ''}`, title: x.script || '' },
+      h('div', { class: 'fp-name' }, h('b', { translate: x.script ? 'no' : null, text: name }), where ? h('span', { class: 'muted', translate: 'no', text: where }) : null, x.likely ? h('i', { class: 'fp-flag', text: 'Fingerprinting' }) : null),
+      h('div', { class: 'fp-apis' }, ...x.apis.map((a) => h('span', { class: 'fp-api', text: FP_API_NAMES[a] || a }))));
+  };
+  const draw = (all) => {
+    items.replaceChildren(...(all ? list : list.slice(0, 3)).map(item));
+    if (!all && list.length > 3) {
+      const more = h('button', { class: 'link fp-more', text: `Show all ${list.length}` });
+      more.addEventListener('click', () => {
+        draw(true);
+        reportSize();
+      });
+      items.append(more);
+    }
+  };
+  draw(false);
+  box.append(items);
+  return box;
 }
 
 // ── Site info ────────────────────────────────────────────────
@@ -692,13 +740,20 @@ mizu.on('flyout', (m) => {
       return;
     }
   }
+  // Suggestions update on every key press: only a panel that opens anew plays the opening
+  // animation, an update of the one on screen just swaps its contents.
+  const update = m.kind === 'omnibox' && kind === 'omnibox' && root.childElementCount > 0;
   kind = m.kind;
   data = m.data;
   const render = RENDERERS[kind];
   if (!render) return;
-  root.style.animation = 'none';
-  void root.offsetWidth;
-  root.style.animation = '';
+  if (update) {
+    root.style.animation = 'none';
+  } else {
+    root.style.animation = 'none';
+    void root.offsetWidth;
+    root.style.animation = '';
+  }
   root.replaceChildren(render(data || {}));
   reportSize();
 });

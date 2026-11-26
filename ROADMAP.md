@@ -6,8 +6,7 @@ technical dependencies. There are no dates: a version ships when its "done when"
 **Principles:** stability → security → performance → maintainability → extensibility. A new feature never makes
 the first three worse.
 
-**Where we are:** 0.4.1 is out with fingerprinting defence. Next: the fingerprinting report and strict mode (0.4.2),
-then encrypted backups; integration tests and a code-signed installer are still open from 0.3.x.
+**Where we are:** 0.4.2 is out with the fingerprinting report and strict mode. Next: encrypted backups (0.4.3); integration tests and a code-signed installer are still open from 0.3.x.
 What already shipped is listed version by version in the [changelog](CHANGELOG.md).
 
 Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/issues).
@@ -28,7 +27,8 @@ Ideas and requests are welcome in [issues](https://github.com/senzukisu/mizu/iss
 | **0.3.x** | Currents | Integration tests, code-signed installer | 🔜 Next |
 | 0.4.0 | Deep Water | HTTPS-First, Shield dashboard v2 | ✅ Released |
 | 0.4.1 | Deep Water | Fingerprinting defence, fingerprint check page | ✅ Released |
-| **0.4.x** | Deep Water | Fingerprinting report, encrypted backups | 🔜 Next |
+| 0.4.2 | Deep Water | Fingerprinting report, strict mode | ✅ Released |
+| **0.4.x** | Deep Water | Encrypted backups | 🔜 Next |
 | 0.4.4 | Droplet | Mizu for Android (first version) | Planned |
 | 0.5 | Tide | Passwords v2 and optional end-to-end encrypted sync | Planned |
 | 0.6 | Estuary | Built-in tools: PDF, translation, reading mode; screen readers | Planned |
@@ -119,7 +119,7 @@ Shipped in steps, each one usable on its own:
 |---|---|---|
 | **0.4.0 ✅** | **HTTPS-First** · Shield dashboard v2 | Top-level `http://` navigations are retried as `https://` (on failure Mizu shows a clear "this site has no secure version — continue?" page, remembered per site). The Shield page gains a per-site breakdown and a timeline from the counters Mizu already keeps. |
 | **0.4.1 ✅** | **Fingerprinting defence** (standard) | A document-start script gives high-entropy APIs protective values: small per-site, per-session noise for canvas readback and audio, bucketed `hardwareConcurrency`/`deviceMemory`, no battery API, a common font list. Off per site from the lock icon. |
-| **0.4.2** | Fingerprinting report · strict mode | Shield shows which scripts read which APIs on the page. Strict mode also hides WebGL details and screen size precision. |
+| **0.4.2 ✅** | Fingerprinting report · strict mode | Shield shows which scripts read which APIs on the page. Strict mode also hides WebGL details and screen size precision. |
 | **0.4.3** | **Encrypted backup and restore** | One file with bookmarks, history, passwords, settings, scripts and tiles; key from a passphrase with Argon2id, sealed with XChaCha20-Poly1305 (RustCrypto crates, no own crypto). Restore checks integrity first and never half-applies. Optional scheduled backup to a folder you pick. |
 | **0.4.4 · "Droplet"** | **Mizu for Android** (first version) — water that fits in your pocket | Android System WebView behind the same `mizu-engine` interface, a thin Kotlin shell around the Rust core (storage, settings, Shield's filter engine, the tab model). A phone layout: address bar at the bottom, a tab grid, swipe between tabs. Shield through request interception plus Mizu's cosmetic and scriptlet layer; HTTPS-First and fingerprinting defence carried over; passwords in the Android Keystore. A signed APK on the GitHub releases page, updating itself like the desktop version. |
 

@@ -80,7 +80,8 @@ pub fn map(vk: u32, ctrl: bool, shift: bool, alt: bool, chrome_surface: bool) ->
             0x31..=0x39 => SelectTab((vk - 0x30) as usize),
             VK_OEM_PLUS | VK_ADD if chrome_surface => ZoomIn,
             VK_OEM_MINUS | VK_SUBTRACT if chrome_surface => ZoomOut,
-            0x30 if chrome_surface => ZoomReset,
+            // Ctrl+0 everywhere: the engine's own reset goes to 100%, Mizu's to the default zoom.
+            0x30 | 0x60 => ZoomReset,
             _ => return None,
         },
         (true, true, false) => match vk {
@@ -129,6 +130,8 @@ mod tests {
         assert_eq!(map(VK_OEM_PLUS, true, false, false, false), None);
         assert_eq!(map(VK_OEM_PLUS, true, false, false, true), Some(Shortcut::ZoomIn));
         assert_eq!(map('F' as u32, true, false, false, false), None);
+        // …but reset is Mizu's, so it returns to the default zoom from Settings.
+        assert_eq!(map(0x30, true, false, false, false), Some(Shortcut::ZoomReset));
     }
 }
 

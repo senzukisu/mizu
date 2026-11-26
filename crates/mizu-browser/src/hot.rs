@@ -40,7 +40,11 @@ pub struct Hot {
     /// Fingerprinting defence: on, the sites excepted, and a random key per site for this
     /// session (never stored).
     pub fingerprinting: bool,
+    /// Strict level: also a generic graphics card, common screen size, fixed hardware.
+    pub fp_strict: bool,
     pub fp_exceptions: HashSet<String>,
+    /// Per tab: the scripts on the current page that read fingerprintable APIs, and which.
+    pub fp_report: HashMap<ViewKey, crate::scripts::FpReport>,
     /// Secret for this run of Mizu; with the top site's name it gives the site's key.
     pub fp_secret: u32,
     /// Theme attributes for internal pages' `<html>` element (see `theme::html_attrs`).
@@ -130,6 +134,7 @@ pub fn forget(key: ViewKey) {
         h.top_urls.remove(&key);
         h.internal_allowed.remove(&key);
         h.page_blocked.remove(&key);
+        h.fp_report.remove(&key);
         h.gm_tokens.remove(&key);
         h.pw_tokens.remove(&key);
         h.cosmetic_pages.remove(&key);

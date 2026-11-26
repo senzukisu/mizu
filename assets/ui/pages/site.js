@@ -69,7 +69,7 @@ function permissionsCard() {
 function fingerprintSiteCard() {
   if (!info.fingerprinting) return null;
   const toggle = switchInput(!info.fp_excepted, (v) => mizu.request('site_fingerprint', { host, enabled: v }).then(() => showToast(i18n.tr('Reload the site to apply'))), { label: 'Fingerprinting defence' });
-  return card('Fingerprinting defence', null, row('Protect this site', 'Gives the site slightly different canvas, audio and hardware values. Turn off only if the site does not work.', toggle));
+  return card('Fingerprinting defence', null, row('Protect this site', info.fp_level === 'strict' ? 'Strict: gives the site a generic graphics card, a common screen size and slightly different canvas and audio. Turn off only if the site does not work.' : 'Gives the site slightly different canvas, audio and hardware values. Turn off only if the site does not work.', toggle));
 }
 
 function httpCard() {

@@ -507,11 +507,19 @@ function fingerprintCard() {
   draw();
   const check = h('button', { class: 'btn' }, icon('eye'), h('span', { text: 'See what sites see' }));
   check.addEventListener('click', () => mizu.send('open_url', { url: 'mizu://fingerprint/', disposition: 'new_tab' }));
+  const levelNote = () => ({
+    standard: 'Noise in canvas, WebGL and audio, rounded hardware numbers. Works on almost every site.',
+    strict: 'Also the same graphics card, a common screen size and fixed hardware numbers for every site. Some games, maps and video calls may look or work worse.',
+    off: 'Sites see the real values.',
+  })[p.fingerprinting || 'standard'];
+  const note = h('div', { class: 'd', text: levelNote() });
   return card('Fingerprinting defence', 'Sites can recognise your browser without cookies, from how it draws, plays sound and what hardware it reports. Mizu gives each site slightly different values, so sites cannot link your visits. It is not anonymity: your IP address and sign-ins still identify you.',
-    setting('Protection', null, seg([['standard', 'Standard'], ['off', 'Off']], p.fingerprinting || 'standard', (v) => {
+    setting('Protection', null, seg([['standard', 'Standard'], ['strict', 'Strict'], ['off', 'Off']], p.fingerprinting || 'standard', (v) => {
       p.fingerprinting = v;
+      note.textContent = i18n.tr(levelNote());
       save(true);
     })),
+    h('div', { class: 'setting col' }, h('div', { class: 'txt' }, note)),
     setting('Check', 'What websites can read about this PC, with and without the defence.', check),
     h('div', { class: 'setting col' }, h('div', { class: 'txt' }, h('div', { class: 't', text: 'Sites where the defence is off' })), list));
 }

@@ -287,7 +287,9 @@ impl App {
         };
         hot::attach_view(tab.0, view.clone());
         apply_view_settings(&settings, &view);
-        view.set_zoom(f64::from(settings.appearance.zoom_percent) / 100.0);
+        // The engine does not always report zoom it was given, so the tab keeps track itself.
+        state.zoom = f64::from(settings.appearance.zoom_percent) / 100.0;
+        view.set_zoom(state.zoom);
         let profile_slot = usize::from(w.private);
         let apply_profile = !applied[profile_slot];
         if apply_profile {
@@ -353,6 +355,7 @@ impl App {
             h.views.remove(&tab.0);
             h.top_urls.remove(&tab.0);
             h.page_blocked.remove(&tab.0);
+            h.fp_report.remove(&tab.0);
             h.gm_tokens.remove(&tab.0);
             h.pw_tokens.remove(&tab.0);
         });
@@ -493,9 +496,12 @@ impl App {
                     if let Some((host, z)) = site_zoom {
                         if host != state.zoom_host {
                             state.zoom_host = host;
-                            if let Some(v) = state.view.as_ref().filter(|_| (state.zoom - z).abs() > 0.004) {
-                                v.set_zoom(z);
+                            if (state.zoom - z).abs() > 0.004 {
+                                if let Some(v) = &state.view {
+                                    v.set_zoom(z);
+                                }
                             }
+                            state.zoom = z;
                         }
                     }
                     if active && !w.flyout.is_open(FlyoutKind::Omnibox) {
@@ -598,6 +604,7 @@ impl App {
                 }
                 ViewEvent::StatusText { .. } | ViewEvent::GotFocus => {}
                 ViewEvent::ZoomChanged { factor } => {
+                    tracing::debug!(tab = tab.0, factor, host = %state.zoom_host, "zoom changed");
                     state.zoom = factor;
                     if !private && !state.zoom_host.is_empty() {
                         zoom_record = Some((state.zoom_host.clone(), (factor * 100.0).round() as u32));
@@ -717,6 +724,7 @@ impl App {
                 "security": security,
                 "bookmarked": bookmarked,
                 "zoom": (s.zoom * 100.0).round(),
+                "zoom_default": self.settings.appearance.zoom_percent,
                 "blocked": blocked,
                 "shield": shield_on,
                 "crashed": s.crashed,
